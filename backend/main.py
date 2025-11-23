@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, validator, Field, EmailStr
 from typing import List, Optional
 import numpy as np
 import cv2
@@ -135,6 +135,28 @@ class SessionStartRequest(BaseModel):
             raise ValueError('El nombre de usuario no puede estar vacío')
         return v
 
+class UserRegisterRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=100)
+    age: Optional[int] = Field(None, ge=1, le=120)  # Entre 1 y 120 años
+    gender: Optional[str] = Field(None)
+    email: Optional[EmailStr] = None  # EmailStr valida formato de email automáticamente
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        v = v.strip()
+        if not v or len(v) < 2:
+            raise ValueError('El nombre completo debe tener al menos 2 caracteres')
+        return v
+    
+    @validator('gender')
+    def validate_gender(cls, v):
+        if v is None:
+            return v
+        allowed = ['m', 'f', 'otro', 'no_decir']
+        if v not in allowed:
+            raise ValueError(f'Género debe ser uno de: {", ".join(allowed)}')
+        return v
+    
 # ============================================================
 #  SALUD
 # ============================================================
@@ -147,68 +169,111 @@ def health():
 #  REGISTRO FACIAL
 # ============================================================
 @app.post("/face/register")
-async def register_face(username: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def register_face(
+    full_name: str,
+    age: Optional[int] = None,
+    gender: Optional[str] = None,
+    email: Optional[str] = None,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
     """
-    Registra rostro + guarda usuario en DB.
+    Registra rostro + guarda usuario con datos completos en DB.
     """
-    # ✅ Validaciones de entrada
-    username = username.strip()
-    if not username or len(username) < 1:
+    # Validaciones
+    full_name = full_name.strip()
+    if not full_name or len(full_name) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario no puede estar vacío"
+            detail="El nombre completo debe tener al menos 2 caracteres"
         )
     
-    if len(username) > 100:
+    if len(full_name) > 100:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario es demasiado largo (máximo 100 caracteres)"
+            detail="El nombre completo es demasiado largo (máximo 100 caracteres)"
         )
     
-    # ✅ Validar tipo de archivo
+    # Validar edad
+    if age is not None and (age < 1 or age > 120):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La edad debe estar entre 1 y 120 años"
+        )
+    
+    # Validar género
+    if gender is not None:
+        allowed_genders = ['m', 'f', 'otro', 'no_decir']
+        if gender not in allowed_genders:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Género debe ser uno de: {', '.join(allowed_genders)}"
+            )
+    
+    # Validar email
+    if email:
+        email = email.lower().strip()
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, email):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email inválido"
+            )
+        
+        # Verificar si el email ya existe
+        existing_email = db.query(models.User).filter(
+            models.User.email == email
+        ).first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este email ya está registrado"
+            )
+    
+    # Validar tipo de archivo
     if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Solo se aceptan imágenes JPEG o PNG"
         )
     
-    # ✅ Validar tamaño del archivo (máximo 5MB)
+    # Leer y validar imagen
     contents = await file.read()
-    if len(contents) > 5 * 1024 * 1024:  # 5MB
+    if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="La imagen es demasiado grande (máximo 5MB)"
         )
     
-    if len(contents) < 1000:  # Mínimo 1KB
+    if len(contents) < 1000:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La imagen es demasiado pequeña"
         )
     
-    # Leer imagen
     npimg = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
     if frame is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo procesar la imagen. Asegúrate de que sea una imagen válida."
+            detail="No se pudo procesar la imagen"
         )
 
-    # ✅ Verificar si el usuario ya existe
+    # Verificar si el usuario ya existe
     existing_user = db.query(models.User).filter(
-        models.User.full_name.ilike(username)
+        models.User.full_name.ilike(full_name)
     ).first()
     
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"El usuario '{username}' ya está registrado"
+            detail=f"El usuario '{full_name}' ya está registrado"
         )
 
     # Registrar encoding facial
-    result = face_service.register(username, frame)
+    result = face_service.register(full_name, frame)
 
     if not result["success"]:
         raise HTTPException(
@@ -216,13 +281,22 @@ async def register_face(username: str, file: UploadFile = File(...), db: Session
             detail=result.get("message", "No se pudo registrar el rostro")
         )
 
-    # Registrar usuario en BD
-    user = models.User(full_name=username)
+    # Crear usuario con todos los datos
+    user = models.User(
+        full_name=full_name,
+        age=age,
+        gender=gender,
+        email=email
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
 
     result["user_id"] = user.id
+    result["full_name"] = user.full_name
+    result["age"] = user.age
+    result["gender"] = user.gender
+    result["email"] = user.email
 
     return result
 
@@ -379,11 +453,9 @@ async def recognize_face(request: Request, file: UploadFile = File(...), db: Ses
     # Reconocimiento facial
     result = face_service.recognize(np_img)
 
-    # No rostro
     if not result["found"]:
         return result
 
-    # No reconocido
     if result["user"] is None:
         return {
             "found": True,
@@ -412,10 +484,11 @@ async def recognize_face(request: Request, file: UploadFile = File(...), db: Ses
     db.commit()
     db.refresh(session)
 
-    # 👉 "login_complete" EVITA EL BUCLE EN EL FRONTEND
+    # 🔥 ASEGURARSE DE DEVOLVER user_id
     return {
         "found": True,
         "user": username,
+        "user_id": user_id,  # 🔥 IMPORTANTE
         "confidence": result["confidence"],
         "session_id": session.id,
         "login_complete": True

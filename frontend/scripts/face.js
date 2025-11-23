@@ -278,8 +278,9 @@ async function startStandbyMode() {
                 stopEverything();
                 showSuccess(`✓ Bienvenido ${result.user}. Redirigiendo...`);
 
-                // Guardar en sessionStorage
+                // Guardar TANTO session_id COMO user_id
                 sessionStorage.setItem("session_id", result.session_id);
+                sessionStorage.setItem("user_id", result.user_id);  // 🔥 AGREGAR ESTO
                 sessionStorage.setItem("username", result.user);
 
                 console.log("🚀 Redirigiendo en 1 segundo...");
