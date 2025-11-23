@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Depends, Request, UploadFile, File
+from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles  # 🔥 AGREGAR ESTO
-from fastapi.responses import FileResponse   # 🔥 AGREGAR ESTO
-from pydantic import BaseModel
-from typing import List
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, validator, Field
+from typing import List, Optional
 import numpy as np
 import cv2
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 # -----------------------------
 # IMPORTS DE TU PROYECTO
@@ -22,6 +23,51 @@ from backend.assessments.phq_gad_service import (
 
 from backend.recognition.face_service import FaceRecognitionService
 
+# -----------------------------
+# RATE LIMITING DIFERENCIADO
+# -----------------------------
+request_counts = defaultdict(list)
+
+def check_rate_limit(client_ip: str, endpoint_type: str = "default"):
+    """
+    Limita peticiones por IP según el tipo de endpoint.
+    
+    endpoint_type:
+    - "auth": Para login/registro (estricto: 10 req/min)
+    - "monitoring": Para monitoreo de presencia (permisivo: 60 req/min)
+    - "default": Para otros endpoints (medio: 30 req/min)
+    """
+    # Configuración según tipo
+    limits = {
+        "auth": {"max_requests": 10, "window_seconds": 60},
+        "monitoring": {"max_requests": 60, "window_seconds": 60},
+        "default": {"max_requests": 30, "window_seconds": 60}
+    }
+    
+    config = limits.get(endpoint_type, limits["default"])
+    max_requests = config["max_requests"]
+    window_seconds = config["window_seconds"]
+    
+    # Crear clave única por IP y tipo de endpoint
+    key = f"{client_ip}:{endpoint_type}"
+    
+    now = datetime.now()
+    cutoff = now - timedelta(seconds=window_seconds)
+    
+    # Limpiar peticiones antiguas
+    request_counts[key] = [
+        req_time for req_time in request_counts[key]
+        if req_time > cutoff
+    ]
+    
+    # Agregar nueva petición
+    request_counts[key].append(now)
+    
+    # Verificar límite
+    if len(request_counts[key]) > max_requests:
+        return False
+    
+    return True
 
 # -----------------------------
 # INICIALIZAR API Y BASE DE DATOS
@@ -65,15 +111,29 @@ app.add_middleware(
 face_service = FaceRecognitionService()
 
 # -----------------------------
-# MODELOS
+# MODELOS CON VALIDACIÓN
 # -----------------------------
 class AssessmentRequest(BaseModel):
-    user_id: int
-    responses: List[int]
+    user_id: int = Field(gt=0, description="ID del usuario debe ser mayor a 0")
+    responses: List[int] = Field(min_length=7, max_length=9, description="Entre 7 y 9 respuestas")
+    
+    @validator('responses')
+    def validate_responses(cls, v):
+        # Validar que todas las respuestas estén entre 0 y 3
+        if not all(0 <= r <= 3 for r in v):
+            raise ValueError('Todas las respuestas deben estar entre 0 y 3')
+        return v
 
 class SessionStartRequest(BaseModel):
-    username: str
-
+    username: str = Field(..., min_length=1, max_length=100, description="Nombre de usuario")
+    
+    @validator('username')
+    def validate_username(cls, v):
+        # Remover espacios en blanco al inicio y final
+        v = v.strip()
+        if not v:
+            raise ValueError('El nombre de usuario no puede estar vacío')
+        return v
 
 # ============================================================
 #  SALUD
@@ -91,43 +151,99 @@ async def register_face(username: str, file: UploadFile = File(...), db: Session
     """
     Registra rostro + guarda usuario en DB.
     """
-    # Leer imagen
+    # ✅ Validaciones de entrada
+    username = username.strip()
+    if not username or len(username) < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre de usuario no puede estar vacío"
+        )
+    
+    if len(username) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre de usuario es demasiado largo (máximo 100 caracteres)"
+        )
+    
+    # ✅ Validar tipo de archivo
+    if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se aceptan imágenes JPEG o PNG"
+        )
+    
+    # ✅ Validar tamaño del archivo (máximo 5MB)
     contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:  # 5MB
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="La imagen es demasiado grande (máximo 5MB)"
+        )
+    
+    if len(contents) < 1000:  # Mínimo 1KB
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La imagen es demasiado pequeña"
+        )
+    
+    # Leer imagen
     npimg = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
     if frame is None:
-        return {"success": False, "message": "No se pudo procesar la imagen"}
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo procesar la imagen. Asegúrate de que sea una imagen válida."
+        )
+
+    # ✅ Verificar si el usuario ya existe
+    existing_user = db.query(models.User).filter(
+        models.User.full_name.ilike(username)
+    ).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El usuario '{username}' ya está registrado"
+        )
 
     # Registrar encoding facial
     result = face_service.register(username, frame)
 
     if not result["success"]:
-        return result
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("message", "No se pudo registrar el rostro")
+        )
 
-    # ======================
-    # 🔹 Registrar usuario en BD
-    # ======================
+    # Registrar usuario en BD
     user = models.User(full_name=username)
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # Devolver ID real del usuario recién creado
     result["user_id"] = user.id
 
     return result
-
 
 # ==============================================
 # 📌 Reconocimiento facial SIN crear sesión (para chequeo de presencia)
 # ==============================================
 @app.post("/face/recognize/check")
-async def recognize_face_check(file: UploadFile = File(...)):
+async def recognize_face_check(request: Request, file: UploadFile = File(...)):
     """
     Reconoce el rostro pero NO crea sesión en DB.
-    Usado para chequeo de presencia continua.
+    Usado para monitoreo continuo de presencia.
     """
+    # Rate limiting PERMISIVO para monitoreo (60 req/min)
+    if request.client and hasattr(request.client, 'host'):
+        client_ip = request.client.host
+        if not check_rate_limit(client_ip, endpoint_type="monitoring"):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Demasiadas peticiones de monitoreo. Espera un momento."
+            )
+    
     # Validar MIME
     if file.content_type not in ["image/jpeg", "image/png"]:
         return {"found": False, "user": None, "confidence": 0}
@@ -165,7 +281,7 @@ async def recognize_face_check(file: UploadFile = File(...)):
         "user": result["user"],
         "confidence": result["confidence"]
     }
-
+    
 
 # ==============================================
 # 📌 MANEJO DE SESIONES
@@ -230,11 +346,20 @@ async def end_session(session_id: int, db: Session = Depends(get_db)):
 # 📌 Reconocimiento facial ANTIGUO (mantener por compatibilidad)
 # ==============================================
 @app.post("/face/recognize")
-async def recognize_face(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def recognize_face(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
+    Reconocimiento facial con creación de sesión (para login).
     DEPRECADO: Usar /face/recognize/check y /session/start en su lugar.
-    Este endpoint se mantiene por compatibilidad temporal.
     """
+    # Rate limiting ESTRICTO para autenticación (10 req/min)
+    if request.client and hasattr(request.client, 'host'):
+        client_ip = request.client.host
+        if not check_rate_limit(client_ip, endpoint_type="auth"):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Demasiados intentos de login. Espera un momento."
+            )
+    
     # Validar MIME
     if file.content_type not in ["image/jpeg", "image/png"]:
         return {"found": False, "user": None, "confidence": 0}
