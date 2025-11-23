@@ -20,3 +20,4 @@
 10. Desplegar la tabla a revisar
 11. Presionar "Try it out" y luego "Execute"
 12. Bajar a code - Details y saldra el contenido en formato JSON
+13. Para cerrar el server ir a la terminal y presionar "control + C"
