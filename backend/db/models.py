@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -18,9 +18,21 @@ class Assessment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    type = Column(String, nullable=False)      # "phq9" o "gad7"
+    type = Column(String, nullable=False)
     score = Column(Integer, nullable=False)
     severity = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="assessments")
+
+
+class SessionLog(Base):
+    __tablename__ = "session_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    username = Column(String, index=True)
+    timestamp_login = Column(DateTime, default=datetime.utcnow)
+    timestamp_logout = Column(DateTime, nullable=True)
+    method = Column(String, default="face")
+    is_active = Column(Boolean, default=False)  # ✅ Ahora usa Boolean nativo

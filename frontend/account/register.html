@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Facial</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background: #111;
+            color: white;
+        }
+        #video {
+            border: 2px solid #00bfff;
+            border-radius: 10px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: #00bfff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            color: black;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0099cc;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Registro Facial</h2>
+
+    <video id="video" width="480" height="360" autoplay></video>
+    <br>
+
+    <input id="username" type="text" placeholder="Nombre del usuario" style="padding:8px; font-size:16px;">
+    <br>
+
+    <button onclick="capture()">Registrar</button>
+
+    <script>
+        const API = "http://127.0.0.1:8000";
+        const video = document.getElementById('video');
+
+        // Activar cámara
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert("Error accediendo a la cámara: " + err);
+            });
+
+        // Capturar foto
+        async function capture() {
+            const username = document.getElementById("username").value;
+            if (!username) {
+                alert("Ingresa un nombre.");
+                return;
+            }
+
+            // Crear canvas temporal para capturar el frame
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convertir a BLOB (imagen)
+            canvas.toBlob(async (blob) => {
+
+                const formData = new FormData();
+                formData.append("file", blob, "capture.jpg");
+
+                const url = `${API}/face/register?username=${username}`;
+                
+                const response = await fetch(url, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("¡Usuario registrado exitosamente!");
+                    window.location.href = "/static/account/login.html";
+                } else {
+                    alert("Error: " + result.message);
+                }
+
+            }, "image/jpeg");
+        }
+    </script>
+
+</body>
+</html>

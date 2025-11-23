@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel del Usuario</title>
+    <link rel="stylesheet" href="/static/styles/styles.css">
+    <style>
+        .presence-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: white;
+        }
+        .presence-active {
+            background-color: #4CAF50;
+        }
+        .presence-warning {
+            background-color: #ff9800;
+        }
+        .user-panel {
+            padding: 40px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="presence-indicator presence-active" id="presenceIndicator">
+        ● Presencia detectada
+    </div>
+
+    <!-- Video oculto para monitoreo -->
+    <video id="video" autoplay style="display:none"></video>
+
+    <div class="user-panel">
+        <h1 id="welcome">Bienvenido</h1>
+        <p>Tu sesión está activa y siendo monitoreada</p>
+        <p><small>Si te alejas por más de 10 segundos, tu sesión se cerrará automáticamente</small></p>
+    </div>
+
+    <script src="/static/scripts/face.js"></script>
+    <script>
+        startActiveMode();
+    </script>
+
+</body>
+</html>
