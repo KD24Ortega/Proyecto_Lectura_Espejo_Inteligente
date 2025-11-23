@@ -38,13 +38,25 @@ async def root():
     return FileResponse("frontend/account/login.html")
 
 # -----------------------------
-# CORS
+# CORS - CONFIGURACIÓN SEGURA
 # -----------------------------
+# Lista de orígenes permitidos
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",      # Servidor local FastAPI
+    "http://127.0.0.1:8000",      # IP local
+    "http://localhost:5500",      # Live Server (por si lo usas)
+    "http://127.0.0.1:5500",
+    # Agrega aquí tu dominio de producción cuando lo despliegues
+    # "https://tudominio.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # ✅ Solo orígenes específicos
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # ✅ Solo métodos necesarios
+    allow_headers=["Content-Type", "Authorization"],  # ✅ Solo headers necesarios
+    max_age=600,  # Cache de preflight requests por 10 minutos
 )
 
 # -----------------------------
