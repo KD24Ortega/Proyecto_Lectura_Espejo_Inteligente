@@ -1,143 +1,175 @@
+import os
 import cv2
-import mediapipe as mp
-import numpy as np
 import pickle
-from pathlib import Path
-
-ENCODINGS_PATH = Path("data/encodings.pkl")
-
-mp_face = mp.solutions.face_detection
+import numpy as np
+import face_recognition
+from mediapipe import solutions as mp_solutions
 
 
-class FaceService:
+class FaceRecognitionService:
+
     def __init__(self):
-        self.detector = mp_face.FaceDetection(
-            model_selection=1,
-            min_detection_confidence=0.6
+        print("🔵 Inicializando FaceRecognition con MediaPipe Solutions + face_recognition")
+
+        # -----------------------------------------------
+        # 📌 MediaPipe Solutions (API estable)
+        # -----------------------------------------------
+        self.mp_detection = mp_solutions.face_detection # type: ignore
+        self.detector = self.mp_detection.FaceDetection(
+            model_selection=1,     # 0 = corto alcance / 1 = largo alcance
+            min_detection_confidence=0.55
         )
-        self.known_embeddings = []
-        self.known_ids = []
+
+        # -----------------------------------------------
+        # 📌 Encodings
+        # -----------------------------------------------
+        self.enc_file = "backend/recognition/data/encodings.pkl"
+        os.makedirs("backend/recognition/data", exist_ok=True)
+
+        self.known_encodings = []
+        self.known_users = []
+
         self._load_encodings()
 
+        # -----------------------------------------------
+        # 📌 Cámara
+        # -----------------------------------------------
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(3, 640)
+        self.cap.set(4, 480)
+
+        print("✓ Cámara inicializada (640x480)")
+
+    # ============================================================
+    # 🔹 Encodings
+    # ============================================================
     def _load_encodings(self):
-        if ENCODINGS_PATH.exists():
-            data = pickle.load(open(ENCODINGS_PATH, "rb"))
-            self.known_embeddings = data["embeddings"]
-            self.known_ids = data["user_ids"]
+        if os.path.exists(self.enc_file):
+            with open(self.enc_file, "rb") as f:
+                data = pickle.load(f)
+                self.known_encodings = data["encodings"]
+                self.known_users = data["users"]
+            print(f"✓ Encodings cargados: {len(self.known_users)} usuarios")
+        else:
+            print("ℹ No existe encodings.pkl — Se creará uno nuevo.")
 
     def _save_encodings(self):
-        ENCODINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "embeddings": self.known_embeddings,
-            "user_ids": self.known_ids
+            "encodings": self.known_encodings,
+            "users": self.known_users
         }
-        pickle.dump(data, open(ENCODINGS_PATH, "wb"))
+        with open(self.enc_file, "wb") as f:
+            pickle.dump(data, f)
+        print("💾 Encodings guardados.")
 
-    # TODO: aquí luego conectamos TensorFlow (FaceNet / MobileFaceNet)
-    def _dummy_embedding(self, face_img: np.ndarray) -> np.ndarray:
-        """
-        Embedding de prueba: a futuro se reemplaza por modelo TensorFlow.
-        De momento solo aplana y normaliza para probar el flujo.
-        """
-        resized = cv2.resize(face_img, (32, 32))
-        vec = resized.flatten().astype("float32")
-        vec /= np.linalg.norm(vec) + 1e-8
-        return vec
+    # ============================================================
+    # 🔹 Detectar rostro (MediaPipe Solutions)
+    # ============================================================
+    def _detect_face(self, frame):
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.detector.process(rgb)
 
-    def register_user(self, user_id: int, num_samples: int = 5):
-        cap = cv2.VideoCapture(0)
+        if not results.detections:
+            return None
 
-        samples = []
-        print(f"📸 Mira a la cámara. Se capturarán {num_samples} ejemplos.")
+        h, w, _ = frame.shape
+        detection = results.detections[0]
+        box = detection.location_data.relative_bounding_box
 
-        while len(samples) < num_samples:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        x1 = int(box.xmin * w)
+        y1 = int(box.ymin * h)
+        x2 = int((box.xmin + box.width) * w)
+        y2 = int((box.ymin + box.height) * h)
 
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.detector.process(rgb)
+        # expandir un poco la caja (para capturar toda la cabeza)
+        expand = 40
+        x1 -= expand
+        y1 -= expand
+        x2 += expand
+        y2 += expand
 
-            if results.detections:
-                h, w, _ = frame.shape
-                detection = results.detections[0]
-                box = detection.location_data.relative_bounding_box
-                x1 = int(box.xmin * w)
-                y1 = int(box.ymin * h)
-                x2 = int((box.xmin + box.width) * w)
-                y2 = int((box.ymin + box.height) * h)
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(w, x2)
+        y2 = min(h, y2)
 
-                face = frame[max(0, y1):y2, max(0, x1):x2]
-                if face.size > 0:
-                    emb = self._dummy_embedding(face)
-                    samples.append(emb)
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, f"Sample {len(samples)}",
-                                (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        face = frame[y1:y2, x1:x2]
 
-            cv2.imshow("Register user", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        if face.size == 0:
+            return None
 
-        cap.release()
-        cv2.destroyAllWindows()
+        return face
 
-        if not samples:
-            print("❌ No se capturaron muestras")
-            return
+    # ============================================================
+    # 🔹 Registrar usuario
+    # ============================================================
+    def register(self, username, frame):
 
-        avg_emb = np.mean(samples, axis=0)
-        self.known_embeddings.append(avg_emb)
-        self.known_ids.append(user_id)
+        face_img = self._detect_face(frame)
+
+        if face_img is None:
+            return {"success": False, "message": "No se detectó rostro"}
+
+        rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+        enc = face_recognition.face_encodings(rgb)
+
+        if len(enc) == 0:
+            return {"success": False, "message": "No se pudo generar encoding"}
+
+        self.known_users.append(username)
+        self.known_encodings.append(enc[0])
         self._save_encodings()
-        print(f"✅ Usuario {user_id} registrado con {len(samples)} muestras")
 
-    def recognize_loop(self):
-        cap = cv2.VideoCapture(0)
+        return {"success": True, "message": f"Usuario {username} registrado"}
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+    # ============================================================
+    # 🔹 Reconocimiento facial
+    # ============================================================
+    def recognize(self, frame):
 
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.detector.process(rgb)
+        face_img = self._detect_face(frame)
 
-            if results.detections:
-                h, w, _ = frame.shape
+        if face_img is None:
+            return {"found": False, "user": None, "confidence": 0}
 
-                for detection in results.detections:
-                    box = detection.location_data.relative_bounding_box
-                    x1 = int(box.xmin * w)
-                    y1 = int(box.ymin * h)
-                    x2 = int((box.xmin + box.width) * w)
-                    y2 = int((box.ymin + box.height) * h)
+        rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+        enc = face_recognition.face_encodings(rgb)
 
-                    face = frame[max(0, y1):y2, max(0, x1):x2]
-                    label = "Desconocido"
+        if len(enc) == 0:
+            return {"found": True, "user": None, "confidence": 0}
 
-                    if face.size > 0 and self.known_embeddings:
-                        emb = self._dummy_embedding(face)
+        encoding = enc[0]
 
-                        sims = [
-                            float(np.dot(emb, k) /
-                                  (np.linalg.norm(emb) * np.linalg.norm(k) + 1e-8))
-                            for k in self.known_embeddings
-                        ]
-                        best_idx = int(np.argmax(sims))
-                        best_sim = sims[best_idx]
+        if len(self.known_encodings) == 0:
+            return {"found": True, "user": None, "confidence": 0}
 
-                        if best_sim > 0.7:   # umbral provisional
-                            label = f"User {self.known_ids[best_idx]} ({best_sim:.2f})"
+        distances = face_recognition.face_distance(self.known_encodings, encoding)
+        idx = np.argmin(distances)
+        dist = distances[idx]
 
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, label, (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        confidence = float(1 - dist)
 
-            cv2.imshow("Recognition", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        if dist < 0.48:     # Umbral recomendado
+            return {
+                "found": True,
+                "user": self.known_users[idx],
+                "confidence": confidence
+            }
 
-        cap.release()
+        return {"found": True, "user": None, "confidence": confidence}
+
+    # ============================================================
+    # 🔹 Leer frame
+    # ============================================================
+    def read_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            return None
+        return cv2.flip(frame, 1)
+
+    # ============================================================
+    # 🔹 Cerrar cámara
+    # ============================================================
+    def release(self):
+        self.cap.release()
         cv2.destroyAllWindows()

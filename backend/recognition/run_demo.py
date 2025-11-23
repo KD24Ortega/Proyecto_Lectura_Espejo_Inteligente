@@ -1,10 +1,56 @@
-from .face_service import FaceService
+from backend.recognition.face_service import FaceRecognitionService
+import cv2
 
-if __name__ == "__main__":
-    service = FaceService()
+service = FaceRecognitionService()
 
-    # 1) Una vez: registrar tu cara con un ID de usuario (por ejemplo 1)
-    #service.register_user(user_id=1)
+print("Presiona R para registrar usuario")
+print("Presiona Q para salir")
 
-    # 2) Luego: comentar la línea anterior y probar reconocimiento:
-    service.recognize_loop()
+while True:
+    frame = service.read_frame()
+    if frame is None:
+        continue
+
+    key = cv2.waitKey(1)
+
+    if key == ord("q"):
+        break
+
+    if key == ord("r"):
+        name = input("Nombre del usuario: ")
+        res = service.register(name, frame)
+        print(res)
+
+    # reconocimiento en tiempo real
+    result = service.recognize(frame)
+    print(result)
+
+    # ========================================
+    # 🔹 DIBUJAR NOMBRE EN LA VENTANA
+    # ========================================
+    if result["found"] and result["user"] is not None:
+        cv2.putText(
+            frame,
+            f"{result['user']} ({result['confidence']:.2f})",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA
+        )
+    elif result["found"] and result["user"] is None:
+        cv2.putText(
+            frame,
+            "Desconocido",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA
+        )
+
+    cv2.imshow("Demo", frame)
+
+service.release()
