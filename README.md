@@ -1,6 +1,6 @@
 *PASOS DE INSTALACION Y USO*
 
-Antes de todo, seguir los pasos de la siguiente pagina para instalar DLIB: https://omes-va.com/como-instalar-dlib-en-windows-python
+**NOTA:** Antes de todo, seguir los pasos de la siguiente pagina para instalar DLIB: https://omes-va.com/como-instalar-dlib-en-windows-python
 
 1. Instalar requirements.txt
    pip install -r ./utils/requirements.txt
