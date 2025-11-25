@@ -9,4 +9,4 @@ cmake
 face-recognition
 mediapipe==0.10.14
 python-multipart
-"pydantic[email]"
+pydantic[email]

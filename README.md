@@ -1,9 +1,11 @@
-*PASOS DE INSTALACION Y USO*
+***PASOS DE INSTALACION Y USO***
+
+**Version de Python:** 3.10.11
 
 **NOTA:** Antes de todo, seguir los pasos de la siguiente pagina para instalar DLIB: https://omes-va.com/como-instalar-dlib-en-windows-python
 
 1. Instalar requirements.txt
-   pip install -r ./utils/requirements.txt
+   pip install -r .\utils\requirements.txt
 2. Abrir la terminal y poner el siguiente comando:
    uvicorn backend.main:app --reload
 3. Una vez que de este mensaje:
