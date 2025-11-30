@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Smart Mirror</title>
+    <link rel="stylesheet" href="/static/styles/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1>🔐 Administrador</h1>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                <div id="error-message" class="error-message"></div>
+            </form>
+            <p class="text-center"><a href="/">← Volver al login de usuarios</a></p>
+        </div>
+    </div>
+    <script src="/static/admin/admin.js"></script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 from collections import defaultdict
 from datetime import datetime, timedelta
+from backend.trends.trend_service import analyze_trends
 
 # -----------------------------
 # IMPORTS DE TU PROYECTO
@@ -22,6 +23,9 @@ from backend.assessments.phq_gad_service import (
 )
 
 from backend.recognition.face_service import FaceRecognitionService
+from backend.auth import hash_password, verify_password, create_access_token, decode_access_token
+from backend.db.init_admin import init_super_admin
+
 
 # -----------------------------
 # RATE LIMITING DIFERENCIADO
@@ -75,6 +79,9 @@ def check_rate_limit(client_ip: str, endpoint_type: str = "default"):
 app = FastAPI(title="Smart Mirror Backend")
 Base.metadata.create_all(bind=engine)
 
+# 🔥 INICIALIZAR SUPER ADMINISTRADOR AUTOMÁTICAMENTE
+init_super_admin()
+
 # 🔥 SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
@@ -100,7 +107,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,  # ✅ Solo orígenes específicos
     allow_credentials=True,
-    allow_methods=["GET", "POST"],  # ✅ Solo métodos necesarios
+    allow_methods=["GET", "POST", "DELETE"],  # ✅ Solo métodos necesarios
     allow_headers=["Content-Type", "Authorization"],  # ✅ Solo headers necesarios
     max_age=600,  # Cache de preflight requests por 10 minutos
 )
@@ -147,14 +154,27 @@ class UserRegisterRequest(BaseModel):
         if not v or len(v) < 2:
             raise ValueError('El nombre completo debe tener al menos 2 caracteres')
         return v
+
+
+class AdminLoginRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=6, max_length=100)
     
-    @validator('gender')
-    def validate_gender(cls, v):
-        if v is None:
-            return v
-        allowed = ['m', 'f', 'otro', 'no_decir']
-        if v not in allowed:
-            raise ValueError(f'Género debe ser uno de: {", ".join(allowed)}')
+    @validator('username')
+    def validate_username(cls, v):
+        v = v.strip().lower()
+        if not v:
+            raise ValueError('El nombre de usuario no puede estar vacío')
+        return v
+
+class AdminChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=6, max_length=100)
+    new_password: str = Field(min_length=6, max_length=100)
+    
+    @validator('new_password')  # ← Mantén solo este
+    def validate_new_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('La nueva contraseña debe tener al menos 8 caracteres')
         return v
     
 # ============================================================
@@ -163,6 +183,104 @@ class UserRegisterRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+# ============================================================
+#  LOGIN ADMINISTRADOR
+# ============================================================
+@app.post("/admin/login")
+async def admin_login(credentials: AdminLoginRequest, db: Session = Depends(get_db)):
+    """
+    Login de administrador con usuario y contraseña
+    """
+    # Buscar admin por username
+    admin = db.query(models.User).filter(
+        models.User.username == credentials.username,
+        models.User.is_admin == True
+    ).first()
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos"
+        )
+    
+    # Verificar contraseña
+    if not verify_password(credentials.password, admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos"
+        )
+    
+    # Crear token JWT
+    access_token = create_access_token(
+        data={
+            "user_id": admin.id,
+            "username": admin.username,
+            "is_admin": True
+        }
+    )
+    
+    # Crear sesión
+    session = models.SessionLog(
+        user_id=admin.id,
+        username=admin.username,
+        method="password",
+        is_active=True
+    )
+    db.add(session)
+    db.commit()
+    
+    return {
+        "success": True,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": admin.id,
+            "username": admin.username,
+            "full_name": admin.full_name,
+            "is_admin": True
+        }
+    }
+
+
+@app.post("/admin/change-password")
+async def admin_change_password(
+    request: AdminChangePasswordRequest,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Cambiar contraseña del administrador
+    """
+    # Buscar admin
+    admin = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.is_admin == True
+    ).first()
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado"
+        )
+    
+    # Verificar contraseña actual
+    if not verify_password(request.old_password, admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Contraseña actual incorrecta"
+        )
+    
+    # Actualizar contraseña
+    admin.password_hash = hash_password(request.new_password)
+    admin.updated_at = datetime.utcnow()
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Contraseña actualizada correctamente"
+    }
+
 
 
 # ============================================================
@@ -310,13 +428,13 @@ async def recognize_face_check(request: Request, file: UploadFile = File(...)):
     Usado para monitoreo continuo de presencia.
     """
     # Rate limiting PERMISIVO para monitoreo (60 req/min)
-    if request.client and hasattr(request.client, 'host'):
-        client_ip = request.client.host
-        if not check_rate_limit(client_ip, endpoint_type="monitoring"):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Demasiadas peticiones de monitoreo. Espera un momento."
-            )
+    # if request.client and hasattr(request.client, 'host'):
+    #     client_ip = request.client.host
+    #     if not check_rate_limit(client_ip, endpoint_type="monitoring"):
+    #         raise HTTPException(
+    #             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    #             detail="Demasiadas peticiones de monitoreo. Espera un momento."
+    #         )
     
     # Validar MIME
     if file.content_type not in ["image/jpeg", "image/png"]:
@@ -426,13 +544,13 @@ async def recognize_face(request: Request, file: UploadFile = File(...), db: Ses
     DEPRECADO: Usar /face/recognize/check y /session/start en su lugar.
     """
     # Rate limiting ESTRICTO para autenticación (10 req/min)
-    if request.client and hasattr(request.client, 'host'):
-        client_ip = request.client.host
-        if not check_rate_limit(client_ip, endpoint_type="auth"):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Demasiados intentos de login. Espera un momento."
-            )
+    # if request.client and hasattr(request.client, 'host'):
+    #     client_ip = request.client.host
+    #     if not check_rate_limit(client_ip, endpoint_type="auth"):
+    #         raise HTTPException(
+    #             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    #             detail="Demasiados intentos de login. Espera un momento."
+    #         )
     
     # Validar MIME
     if file.content_type not in ["image/jpeg", "image/png"]:
@@ -589,3 +707,174 @@ def dev_sessions(db: Session = Depends(get_db)):
 @app.get("/dev/assessments")
 def dev_assessments(db: Session = Depends(get_db)):
     return db.query(models.Assessment).all()
+
+# ============================================================
+# ENDPOINTS DE SUPER ADMINISTRADOR
+# ============================================================
+
+@app.get("/admin/dashboard")
+async def admin_dashboard(user_id: int, db: Session = Depends(get_db)):
+    """Panel de administrador - verificar autenticación"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    
+    total_users = db.query(models.User).filter(models.User.is_admin == False).count()
+    
+    # Solo sesiones de usuarios normales (método facial)
+    total_sessions = db.query(models.SessionLog).filter(
+        models.SessionLog.method == "face"
+    ).count()
+    
+    # Solo evaluaciones de usuarios no-admin
+    total_assessments = db.query(models.Assessment).join(models.User).filter(
+        models.User.is_admin == False
+    ).count()
+    
+    # Solo sesiones activas de usuarios normales
+    active_sessions = db.query(models.SessionLog).filter(
+        models.SessionLog.is_active == True,
+        models.SessionLog.method == "face"
+    ).count()
+    
+    return {
+        "total_users": total_users,
+        "total_sessions": total_sessions,
+        "total_assessments": total_assessments,
+        "active_sessions": active_sessions
+    }
+
+
+@app.get("/admin/users")
+async def admin_get_all_users(user_id: int, db: Session = Depends(get_db)):
+    """Listar todos los usuarios (solo admin)"""
+    admin = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    
+    users = db.query(models.User).filter(models.User.is_admin == False).all()
+    
+    return [{
+        "id": u.id,
+        "full_name": u.full_name,
+        "age": u.age,
+        "gender": u.gender,
+        "email": u.email,
+        "created_at": u.created_at,
+        "total_assessments": len(u.assessments),
+        "total_sessions": len(u.sessions)
+    } for u in users]
+
+
+@app.get("/admin/user/{target_user_id}")
+async def admin_get_user_details(target_user_id: int, user_id: int, db: Session = Depends(get_db)):
+    """Ver detalles completos de un usuario"""
+    admin = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    
+    user = db.query(models.User).filter(models.User.id == target_user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return {
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "age": user.age,
+            "gender": user.gender,
+            "email": user.email,
+            "created_at": user.created_at
+        },
+        "assessments": [{
+            "id": a.id,
+            "type": a.type,
+            "score": a.score,
+            "severity": a.severity,
+            "created_at": a.created_at
+        } for a in user.assessments],
+        "sessions": [{
+            "id": s.id,
+            "login": s.timestamp_login,
+            "logout": s.timestamp_logout,
+            "is_active": s.is_active
+        } for s in user.sessions],
+        "voice_analyses": [{
+            "id": v.id,
+            "risk_level": v.risk_level,
+            "created_at": v.created_at
+        } for v in user.voice_analyses] if hasattr(user, 'voice_analyses') else [],
+        "smartwatch_data": [{
+            "id": s.id,
+            "hrv": s.hrv_rmssd,
+            "steps": s.steps,
+            "sleep": s.sleep_minutes,
+            "recorded_at": s.recorded_at
+        } for s in user.smartwatch_data] if hasattr(user, 'smartwatch_data') else [],
+        "trends": [{
+            "id": t.id,
+            "multimodal_score": t.multimodal_score,
+            "status": t.status,
+            "created_at": t.created_at
+        } for t in user.trends] if hasattr(user, 'trends') else []
+    }
+
+
+@app.delete("/admin/user/{target_user_id}")
+async def admin_delete_user(target_user_id: int, user_id: int, db: Session = Depends(get_db)):
+    """Eliminar usuario (solo admin)"""
+    admin = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    
+    user = db.query(models.User).filter(models.User.id == target_user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if user.is_admin:
+        raise HTTPException(status_code=403, detail="No se puede eliminar a un administrador")
+    
+    # 🔥 ELIMINAR ENCODING FACIAL
+    try:
+        face_service.remove_encoding(user.full_name)
+    except Exception as e:
+        print(f"⚠️ No se pudo eliminar encoding: {e}")
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"success": True, "message": f"Usuario {user.full_name} eliminado"}
+# Agregar después del último endpoint
+@app.get("/trends/analyze/{user_id}")
+async def get_user_trends(user_id: int, days: int = 30, db: Session = Depends(get_db)):
+    """Analizar tendencias de un usuario"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    trends = analyze_trends(db, user_id, days)
+    return trends
+
+
+@app.get("/trends/history/{user_id}")
+async def get_trends_history(user_id: int, db: Session = Depends(get_db)):
+    """Obtener historial de análisis de tendencias"""
+    trends = db.query(models.TrendAnalysis).filter(
+        models.TrendAnalysis.user_id == user_id
+    ).order_by(models.TrendAnalysis.created_at.desc()).limit(10).all()
+    
+    return [{
+        "id": t.id,
+        "phq9_trend": t.phq9_trend,
+        "gad7_trend": t.gad7_trend,
+        "multimodal_score": t.multimodal_score,
+        "status": t.status,
+        "created_at": t.created_at
+    } for t in trends]

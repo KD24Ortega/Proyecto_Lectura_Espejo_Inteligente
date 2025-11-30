@@ -10,3 +10,7 @@ face-recognition
 mediapipe==0.10.14
 python-multipart
 pydantic[email]
+psycopg2-binary
+alembic
+bcrypt
+pyjwt

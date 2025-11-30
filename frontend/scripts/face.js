@@ -346,6 +346,11 @@ async function endSession() {
 // MONITOREO DE PRESENCIA
 // ===============================
 async function checkPresence() {
+    // Pausar monitoreo si está viendo otras páginas
+    if (localStorage.getItem('pause_monitoring') === 'true') {
+        return;
+    }
+
     try {
         const blob = await captureFrame();
         
@@ -387,30 +392,28 @@ async function checkPresence() {
             return;
         }
 
-        // Verificar timeout
-        const timeSince = Date.now() - lastDetectionTime;
-        
-        if (timeSince >= SESSION_TIMEOUT) {
-            console.log("⏱️ Timeout - cerrando sesión");
-            alert("Sesión cerrada: no se detectó tu presencia por más de 10 segundos");
-            await endSession();
-        } else {
-            const remaining = Math.ceil((SESSION_TIMEOUT - timeSince) / 1000);
-            console.log(`⚠️ No detectado (${remaining}s)`);
+        // Verificar timeout - DESACTIVADO
+        // const timeSince = Date.now() - lastDetectionTime;
+        // if (timeSince >= SESSION_TIMEOUT) {
+        //     console.log("⏱️ Timeout - cerrando sesión");
+        //     alert("Sesión cerrada: no se detectó tu presencia por más de 10 segundos");
+        //     await endSession();
+        // } else {
+        //     const remaining = Math.ceil((SESSION_TIMEOUT - timeSince) / 1000);
+        //     console.log(`⚠️ No detectado (${remaining}s)`);
             
-            const indicator = document.getElementById("presenceIndicator");
-            if (indicator) {
-                indicator.textContent = `⚠ Sin presencia (${remaining}s)`;
-                indicator.className = "presence-indicator presence-warning";
-            }
-        }
+        //     const indicator = document.getElementById("presenceIndicator");
+        //     if (indicator) {
+        //         indicator.textContent = `⚠ Sin presencia (${remaining}s)`;
+        //         indicator.className = "presence-indicator presence-warning";
+        //     }
+        // }
     } catch (error) {
         if (error.name === 'AbortError') {
             console.error("Timeout en monitoreo de presencia");
         } else {
             console.error("Error en checkPresence:", error);
         }
-        // No cerrar sesión por errores de red temporales
     }
 }
 

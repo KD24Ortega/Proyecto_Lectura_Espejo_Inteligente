@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Tendencias</title>
+    <link rel="stylesheet" href="/static/styles/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Análisis de Tendencias</h1>
+        <a href="/static/user/index.html" onclick="enableMonitoring()">← Volver</a>
+        
+        <div id="status-card" class="stat-card"></div>
+        
+        <div class="charts-container">
+            <canvas id="phq9Chart"></canvas>
+            <canvas id="gad7Chart"></canvas>
+        </div>
+        
+        <div id="recommendations"></div>
+    </div>
+    
+    <script>
+        // Pausar monitoreo de cámara
+        localStorage.setItem('pause_monitoring', 'true');
+        
+        function enableMonitoring() {
+            localStorage.removeItem('pause_monitoring');
+        }
+    </script>
+    <script src="/static/scripts/trends.js"></script>
+</body>
+</html>

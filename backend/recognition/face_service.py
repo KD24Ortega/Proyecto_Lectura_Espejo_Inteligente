@@ -229,3 +229,16 @@ class FaceRecognitionService:
     def release(self):
         self.cap.release()
         cv2.destroyAllWindows()
+        
+        
+    def remove_encoding(self, name):
+        """Eliminar encoding de un usuario"""
+        if name in self.known_users:  # ← Cambiar known_names por known_users
+            idx = self.known_users.index(name)  # ← Cambiar
+            del self.known_users[idx]  # ← Cambiar
+            del self.known_encodings[idx]
+            self._save_encodings()
+            print(f"✓ Encoding de {name} eliminado")
+            return True
+        print(f"⚠️ Encoding de {name} no encontrado")
+        return False
