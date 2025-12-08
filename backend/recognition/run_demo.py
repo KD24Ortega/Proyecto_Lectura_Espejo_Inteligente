@@ -1,4 +1,4 @@
-from backend.recognition.face_service import FaceRecognitionService
+from face_service import FaceRecognitionService
 import cv2
 
 service = FaceRecognitionService()

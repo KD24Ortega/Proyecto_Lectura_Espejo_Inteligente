@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,6 +9,10 @@ import cv2
 from collections import defaultdict
 from datetime import datetime, timedelta
 from backend.trends.trend_service import analyze_trends
+
+from backend.voice.voice_analysis_service import analyze_voice
+from backend.voice.transcription_service import TranscriptionService
+from backend.voice.tts_service import TTSService
 
 # -----------------------------
 # IMPORTS DE TU PROYECTO
@@ -25,6 +29,11 @@ from backend.assessments.phq_gad_service import (
 from backend.recognition.face_service import FaceRecognitionService
 from backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from backend.db.init_admin import init_super_admin
+
+from backend.webrtc.webrtc_service import (
+    handle_webrtc_offer,
+    presence_state
+)
 
 
 # -----------------------------
@@ -83,24 +92,28 @@ Base.metadata.create_all(bind=engine)
 init_super_admin()
 
 # 🔥 SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+#app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # 🔥 RUTA RAÍZ - Servir login.html
 @app.get("/")
 async def root():
-    return FileResponse("frontend/account/login.html")
-
+    return {
+        "message": "Smart Mirror API",
+        "version": "2.0",
+        "frontend": "React app running on http://localhost:5173",
+        "docs": "http://127.0.0.1:8000/docs"
+    }
 # -----------------------------
 # CORS - CONFIGURACIÓN SEGURA
 # -----------------------------
 # Lista de orígenes permitidos
 ALLOWED_ORIGINS = [
-    "http://localhost:8000",      # Servidor local FastAPI
-    "http://127.0.0.1:8000",      # IP local
-    "http://localhost:5500",      # Live Server (por si lo usas)
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
     "http://127.0.0.1:5500",
-    # Agrega aquí tu dominio de producción cuando lo despliegues
-    # "https://tudominio.com",
+    "http://localhost:5173",      # ← React (Vite)
+    "http://127.0.0.1:5173",      # ← React (Vite)
 ]
 
 app.add_middleware(
@@ -116,6 +129,14 @@ app.add_middleware(
 # INICIALIZAR RECONOCIMIENTO FACIAL
 # -----------------------------
 face_service = FaceRecognitionService()
+
+try:
+    transcription_service = TranscriptionService()
+    tts_service = TTSService()
+except Exception as e:
+    print(f"⚠️ No se pudo inicializar servicios de voz: {e}")
+    transcription_service = None
+    tts_service = None
 
 # -----------------------------
 # MODELOS CON VALIDACIÓN
@@ -288,16 +309,18 @@ async def admin_change_password(
 # ============================================================
 @app.post("/face/register")
 async def register_face(
-    full_name: str,
-    age: Optional[int] = None,
-    gender: Optional[str] = None,
-    email: Optional[str] = None,
     file: UploadFile = File(...),
+    full_name: str = Form(...),
+    age: Optional[int] = Form(None),
+    gender: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
     Registra rostro + guarda usuario con datos completos en DB.
     """
+    from fastapi import Form  # ← Asegúrate de tener este import al inicio
+    
     # Validaciones
     full_name = full_name.strip()
     if not full_name or len(full_name) < 2:
@@ -418,61 +441,103 @@ async def register_face(
 
     return result
 
+# ============================================================
+#  REGISTRO DE USUARIO (SOLO DATOS)
+# ============================================================
+@app.post("/users/register")
+async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)):
+    """
+    Registra un nuevo usuario en la base de datos (sin rostro)
+    El rostro se registra después con /face/register
+    """
+    try:
+        # Verificar si el email ya existe (si se proporciona)
+        if user.email:
+            existing_user = db.query(models.User).filter(
+                models.User.email == user.email
+            ).first()
+            if existing_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El email ya está registrado"
+                )
+        
+        # Verificar si el nombre ya existe
+        existing_name = db.query(models.User).filter(
+            models.User.full_name.ilike(user.full_name)
+        ).first()
+        if existing_name:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El usuario '{user.full_name}' ya está registrado"
+            )
+        
+        # Generar username único basado en el nombre
+        base_username = user.full_name.lower().replace(" ", "_")
+        username = base_username
+        counter = 1
+        
+        # Verificar que el username sea único
+        while db.query(models.User).filter(models.User.username == username).first():
+            username = f"{base_username}_{counter}"
+            counter += 1
+        
+        # Crear usuario
+        new_user = models.User(
+            full_name=user.full_name,
+            username=username,
+            age=user.age,
+            gender=user.gender,
+            email=user.email,
+            is_admin=False
+        )
+        
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        return {
+            "success": True,
+            "message": "Usuario registrado exitosamente",
+            "user_id": new_user.id,
+            "username": new_user.username,
+            "full_name": new_user.full_name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al registrar usuario: {str(e)}"
+        )
+
 # ==============================================
 # 📌 Reconocimiento facial SIN crear sesión (para chequeo de presencia)
 # ==============================================
 @app.post("/face/recognize/check")
 async def recognize_face_check(request: Request, file: UploadFile = File(...)):
     """
-    Reconoce el rostro pero NO crea sesión en DB.
-    Usado para monitoreo continuo de presencia.
+    Proxy al reconocimiento ANTIGUO que sí funciona.
     """
-    # Rate limiting PERMISIVO para monitoreo (60 req/min)
-    # if request.client and hasattr(request.client, 'host'):
-    #     client_ip = request.client.host
-    #     if not check_rate_limit(client_ip, endpoint_type="monitoring"):
-    #         raise HTTPException(
-    #             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    #             detail="Demasiadas peticiones de monitoreo. Espera un momento."
-    #         )
-    
     # Validar MIME
-    if file.content_type not in ["image/jpeg", "image/png"]:
+    if not file.content_type or not file.content_type.startswith("image/"):
         return {"found": False, "user": None, "confidence": 0}
 
-    # Leer bytes del archivo
     file_bytes = await file.read()
-
     if len(file_bytes) < 5000:
         return {"found": False, "user": None, "confidence": 0}
 
-    # Convertir a NumPy
     np_img = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
 
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    # Reconocimiento facial
+    # 🔥 USAR directamente el método ANTIGUO
     result = face_service.recognize(np_img)
 
-    # No rostro
-    if not result["found"]:
-        return result
-
-    # No reconocido
-    if result["user"] is None:
-        return {
-            "found": True,
-            "user": None,
-            "confidence": result["confidence"]
-        }
-
-    # Usuario reconocido
-    return {
-        "found": True,
-        "user": result["user"],
-        "confidence": result["confidence"]
-    }
+    return result
     
 
 # ==============================================
@@ -878,3 +943,174 @@ async def get_trends_history(user_id: int, db: Session = Depends(get_db)):
         "status": t.status,
         "created_at": t.created_at
     } for t in trends]
+    
+    
+# Agregar endpoints al final del archivo
+
+@app.post("/voice/analyze")
+async def analyze_user_voice(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Analizar características de voz de un usuario"""
+    
+    # Leer audio
+    audio_bytes = await file.read()
+    
+    # Analizar
+    analysis = analyze_voice(audio_bytes)
+    
+    # Guardar en DB
+    voice_analysis = models.VoiceAnalysis(
+        user_id=user_id,
+        pitch_mean=analysis["pitch_mean"],
+        pitch_std=analysis["pitch_std"],
+        energy_mean=analysis["energy_mean"],
+        speech_rate=analysis["speech_rate"],
+        pause_duration=analysis["pause_duration"],
+        emotional_variability=analysis["emotional_variability"],
+        risk_level=analysis["risk_level"]
+    )
+    db.add(voice_analysis)
+    db.commit()
+    
+    return analysis
+
+
+@app.post("/voice/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """Transcribir audio a texto"""
+    
+    if not transcription_service:
+        raise HTTPException(status_code=500, detail="Servicio de transcripción no disponible")
+    
+    audio_bytes = await file.read()
+    result = transcription_service.transcribe(audio_bytes)
+    
+    return result
+
+
+@app.post("/voice/map-response")
+async def map_voice_response(text: str):
+    """Mapear respuesta de voz a puntuación 0-3"""
+    
+    if not transcription_service:
+        raise HTTPException(status_code=500, detail="Servicio no disponible")
+    
+    score = transcription_service.map_response_to_score(text)
+    
+    return {"text": text, "score": score}
+
+
+@app.get("/voice/speak/{question_text}")
+async def speak_question(question_text: str):
+    if not tts_service:
+        raise HTTPException(status_code=500, detail="Servicio TTS no disponible")
+    
+    audio_bytes = tts_service.generate_audio_bytes(question_text)
+    
+    from fastapi.responses import Response
+    return Response(content=audio_bytes, media_type="audio/mpeg")
+
+# ============================================================
+# ENDPOINT PARA OBTENER USER_ID POR NOMBRE
+# ============================================================
+@app.get("/user/id-by-name")
+async def get_user_id_by_name(name: str, db: Session = Depends(get_db)):
+    """Obtener user_id buscando por nombre"""
+    user = db.query(models.User).filter(
+        models.User.full_name.ilike(f"%{name}%")
+    ).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return {
+        "user_id": user.id,
+        "full_name": user.full_name,
+        "email": user.email
+    }
+
+
+# ============================================================
+# ENDPOINT PARA OBTENER ÚLTIMOS SCORES DE USUARIO
+# ============================================================
+@app.get("/assessments/last/{user_id}")
+async def get_last_assessments(user_id: int, db: Session = Depends(get_db)):
+    """Obtener últimos scores PHQ-9 y GAD-7 de un usuario"""
+    
+    # Último PHQ-9
+    last_phq9 = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "phq9"
+    ).order_by(models.Assessment.created_at.desc()).first()
+    
+    # Último GAD-7
+    last_gad7 = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "gad7"
+    ).order_by(models.Assessment.created_at.desc()).first()
+    
+    return {
+        "phq9": {
+            "score": last_phq9.score if last_phq9 else None,
+            "severity": last_phq9.severity if last_phq9 else None,
+            "timestamp": last_phq9.created_at.isoformat() if last_phq9 else None
+        },
+        "gad7": {
+            "score": last_gad7.score if last_gad7 else None,
+            "severity": last_gad7.severity if last_gad7 else None,
+            "timestamp": last_gad7.created_at.isoformat() if last_gad7 else None
+        }
+    }
+
+from fastapi import Body
+
+# ==============================================
+# 📡 WebRTC: recibir OFFER y devolver ANSWER
+# ==============================================
+@app.post("/webrtc/offer")
+async def webrtc_offer(
+    data: dict = Body(...)
+):
+    """
+    Recibe la SDP offer desde el frontend y devuelve la SDP answer.
+    """
+    client_id = data.get("client_id")
+    offer_sdp = data.get("sdp")
+    offer_type = data.get("type")
+
+    if not client_id or not offer_sdp or not offer_type:
+        raise HTTPException(status_code=400, detail="Faltan campos en la oferta WebRTC")
+
+    answer = await handle_webrtc_offer(offer_sdp, offer_type, client_id)
+    return answer
+
+
+# ==============================================
+# 📊 Endpoint para consultar presencia por client_id
+# ==============================================
+@app.get("/presence/{client_id}")
+async def get_presence(client_id: str):
+    """
+    Devuelve el último estado de presencia para un client_id.
+    """
+    state = presence_state.get(client_id)
+
+    if not state:
+        return {
+            "found": False,
+            "user": None,
+            "confidence": 0.0,
+            "last_update": None
+        }
+
+    # Serializar datetime a string
+    last_update = state.get("last_update")
+    if last_update is not None:
+        last_update = last_update.isoformat()
+
+    return {
+        "found": state.get("found", False),
+        "user": state.get("user"),
+        "confidence": state.get("confidence", 0.0),
+        "last_update": last_update,
+        "error": state.get("error")  # opcional
+    }

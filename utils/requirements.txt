@@ -14,3 +14,11 @@ psycopg2-binary
 alembic
 bcrypt
 pyjwt
+vosk 
+librosa 
+soundfile 
+pyttsx3 
+SpeechRecognition
+gtts
+aiortc
+av

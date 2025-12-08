@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests con Voz</title>
+    <link rel="stylesheet" href="/static/styles/styles.css">
+    <link rel="stylesheet" href="/static/content/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Evaluaciones Psicométricas</h1>
+        <a href="/static/user/index.html">← Volver</a>
+        
+        <div class="test-selector">
+            <button onclick="startTest('phq9')" class="btn-primary">PHQ-9 (Depresión)</button>
+            <button onclick="startTest('gad7')" class="btn-primary">GAD-7 (Ansiedad)</button>
+        </div>
+        
+        <div id="test-container" class="hidden">
+            <h2 id="test-title"></h2>
+            
+            <div class="voice-mode-selector">
+                <label>
+                    <input type="radio" name="mode" value="click" checked> 
+                    👆 Responder con clic
+                </label>
+                <label>
+                    <input type="radio" name="mode" value="voice"> 
+                    🎤 Responder por voz
+                </label>
+            </div>
+            
+            <div id="question-container">
+                <div class="question-header">
+                    <h3 id="question-text"></h3>
+                    <button onclick="speakQuestion()" class="btn-secondary">🔊 Escuchar pregunta</button>
+                </div>
+                
+                <!-- Modo clic -->
+                <div id="click-options" class="options-grid">
+                    <button onclick="selectAnswer(0)" class="option-btn">0 - Nada</button>
+                    <button onclick="selectAnswer(1)" class="option-btn">1 - Varios días</button>
+                    <button onclick="selectAnswer(2)" class="option-btn">2 - Más de la mitad</button>
+                    <button onclick="selectAnswer(3)" class="option-btn">3 - Casi todos los días</button>
+                </div>
+                
+                <!-- Modo voz -->
+                <div id="voice-options" class="hidden">
+                    <button id="record-btn" onclick="toggleRecording()" class="btn-primary">🎤 Mantén presionado para hablar</button>
+                    <p id="transcription"></p>
+                    <div id="voice-confirm" class="hidden">
+                        <p>Tu respuesta: <strong id="detected-answer"></strong></p>
+                        <button onclick="confirmVoiceAnswer()" class="btn-primary">✓ Confirmar</button>
+                        <button onclick="retryVoice()" class="btn-secondary">🔄 Repetir</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress">
+                Pregunta <span id="current-q">1</span> de <span id="total-q">9</span>
+            </div>
+        </div>
+        
+        <div id="results" class="hidden">
+            <h2>Resultados</h2>
+            <div id="score-display"></div>
+            <div id="voice-analysis"></div>
+        </div>
+    </div>
+    
+    <script src="/static/scripts/assessments-voice.js"></script>
+    <script src="/static/content/bootstrap/js/bootstrap.min.js"></script>
+</body>
+</html>

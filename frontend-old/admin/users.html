@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Admin</title>
+    <link rel="stylesheet" href="/static/styles/styles.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <h2>Smart Mirror - Admin</h2>
+        <div>
+            <a href="/static/admin/dashboard.html" class="btn-secondary">← Dashboard</a>
+            <button onclick="logout()" class="btn-secondary">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>👥 Gestión de Usuarios</h1>
+        
+        <div id="users-list"></div>
+    </div>
+
+    <script src="/static/admin/admin.js"></script>
+    <script>
+        checkAuth();
+        loadUsers();
+    </script>
+</body>
+</html>

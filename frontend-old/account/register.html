@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Facial</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h2 {
+            margin-bottom: 30px;
+        }
+        #video {
+            border: 3px solid #00bfff;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #00bfff;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            box-sizing: border-box;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0099cc;
+            background: white;
+        }
+        .required {
+            color: #ff6b6b;
+        }
+        button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: #00bfff;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: black;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #0099cc;
+            transform: scale(1.05);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            color: #00bfff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>📸 Registro Facial</h2>
+
+        <video id="video" width="480" height="360" autoplay></video>
+
+        <div class="form-group">
+            <label>Nombre Completo <span class="required">*</span></label>
+            <input id="fullName" type="text" placeholder="Ej: Juan Pérez" required>
+        </div>
+
+        <div class="form-group">
+            <label>Edad</label>
+            <input id="age" type="number" placeholder="Ej: 25" min="1" max="120">
+        </div>
+
+        <div class="form-group">
+            <label>Género</label>
+            <select id="gender">
+                <option value="">Seleccionar...</option>
+                <option value="m">Masculino</option>
+                <option value="f">Femenino</option>
+                <option value="otro">Otro</option>
+                <option value="no_decir">Prefiero no decirlo</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input id="email" type="email" placeholder="ejemplo@correo.com">
+        </div>
+
+        <button id="registerBtn" onclick="capture()">Registrar Usuario</button>
+        
+        <a href="/static/account/login.html" class="back-link">← Volver al login</a>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000";
+        const video = document.getElementById('video');
+        const registerBtn = document.getElementById('registerBtn');
+
+        // Activar cámara
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert("Error accediendo a la cámara: " + err);
+            });
+
+        // Capturar foto y registrar
+        async function capture() {
+            const fullName = document.getElementById("fullName").value.trim();
+            const age = document.getElementById("age").value;
+            const gender = document.getElementById("gender").value;
+            const email = document.getElementById("email").value.trim();
+
+            // Validación básica
+            if (!fullName || fullName.length < 2) {
+                alert("Por favor ingresa tu nombre completo (mínimo 2 caracteres).");
+                return;
+            }
+
+            if (age && (age < 1 || age > 120)) {
+                alert("La edad debe estar entre 1 y 120 años.");
+                return;
+            }
+
+            // Deshabilitar botón mientras procesa
+            registerBtn.disabled = true;
+            registerBtn.textContent = "Procesando...";
+
+            try {
+                // Crear canvas para capturar el frame
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convertir a BLOB
+                canvas.toBlob(async (blob) => {
+                    const formData = new FormData();
+                    formData.append("file", blob, "capture.jpg");
+
+                    // Construir URL con parámetros
+                    let url = `${API}/face/register?full_name=${encodeURIComponent(fullName)}`;
+                    
+                    if (age) url += `&age=${age}`;
+                    if (gender) url += `&gender=${encodeURIComponent(gender)}`;
+                    if (email) url += `&email=${encodeURIComponent(email)}`;
+
+                    const response = await fetch(url, {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        alert(`¡Usuario registrado exitosamente!\n\nBienvenido ${result.full_name}`);
+                        window.location.href = "/static/account/login.html";
+                    } else {
+                        alert("Error: " + (result.detail || result.message || "Error desconocido"));
+                        registerBtn.disabled = false;
+                        registerBtn.textContent = "Registrar Usuario";
+                    }
+
+                }, "image/jpeg", 0.95);
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error al procesar: " + error.message);
+                registerBtn.disabled = false;
+                registerBtn.textContent = "Registrar Usuario";
+            }
+        }
+    </script>
+
+</body>
+</html>
