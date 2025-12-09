@@ -160,9 +160,7 @@ function Results() {
         
         {/* Numero 1: Titulo de completado */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-full mb-4">
-            <span className="text-3xl text-white font-bold">1</span>
-          </div>
+          
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
             ¡BIEN!
           </h1>

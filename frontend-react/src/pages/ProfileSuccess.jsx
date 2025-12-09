@@ -1,107 +1,249 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function ProfileSuccess() {
-
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState("");
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Cargar datos guardados desde Register
   useEffect(() => {
+    const userName = localStorage.getItem("user_name");
+    const userAge = localStorage.getItem("user_age");
+    const userEmail = localStorage.getItem("user_email");
+    const userPhoto = localStorage.getItem("user_photo");
 
-    setName(localStorage.getItem("user_name") || "Usuario");
-    setAge(localStorage.getItem("user_age") || "");
-    setPhoto(localStorage.getItem("user_photo") || "");
+    // Validar que existan datos
+    if (!userName) {
+      console.warn('⚠️ No hay datos de usuario, redirigiendo a registro');
+      navigate('/register');
+      return;
+    }
 
-  }, []);
+    setName(userName);
+    setAge(userAge || "");
+    setEmail(userEmail || "");
+    setPhoto(userPhoto || "");
+
+    // Mostrar confetti
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 3000);
+
+  }, [navigate]);
+
+  const handleStartNow = () => {
+    console.log('🚀 Iniciando primera evaluación PHQ-9');
+    navigate("/phq9");
+  };
+
+  const handleLater = () => {
+    console.log('⏸️ Usuario pospone evaluación, yendo a home');
+    navigate("/home");
+  };
 
   return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center px-4 relative overflow-hidden">
 
-    <div className="min-h-screen bg-[#f4f7fc] flex items-center justify-center px-4">
+      {/* Confetti animado */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {[...Array(50)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute text-2xl"
+              initial={{
+                x: Math.random() * window.innerWidth,
+                y: -20,
+                rotate: 0,
+                opacity: 1
+              }}
+              animate={{
+                y: window.innerHeight + 20,
+                rotate: 360,
+                opacity: 0
+              }}
+              transition={{
+                duration: 2 + Math.random() * 2,
+                ease: "linear",
+                delay: Math.random() * 0.5
+              }}
+            >
+              {['🎉', '✨', '🎊', '⭐', '💫'][Math.floor(Math.random() * 5)]}
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 text-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8 text-center"
+      >
 
-        {/* --- TITULO --- */}
-        <h1 className="text-3xl font-bold text-gray-900">
-          ¡Perfil creado!
-        </h1>
+        {/* Icono de éxito animado */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg"
+        >
+          <span className="text-5xl text-white">✓</span>
+        </motion.div>
 
-        <p className="text-gray-500 text-lg mt-2">
-          Tu asistente de bienestar está listo
-        </p>
+        {/* Título */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-3"
+        >
+          ¡Perfil creado exitosamente!
+        </motion.h1>
 
-        {/* --- TARJETA PERFIL --- */}
-        <div className="mt-8 border-2 border-blue-500 rounded-2xl p-6 flex flex-col items-center">
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-gray-600 text-lg mb-8"
+        >
+          Tu asistente de bienestar está listo para cuidarte
+        </motion.p>
 
-          {/* FOTO */}
-          <div className="w-28 h-28 rounded-full border-4 border-blue-500 overflow-hidden mb-3 bg-gray-200">
+        {/* Tarjeta de perfil */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border-2 border-blue-200"
+        >
 
-            {photo && (
-              <img
-                src={photo}
-                alt="Perfil"
-                className="w-full h-full object-cover"
-              />
-            )}
-
+          {/* Foto de perfil */}
+          <div className="relative w-32 h-32 mx-auto mb-4">
+            <div className="w-full h-full rounded-full border-4 border-blue-500 overflow-hidden bg-gradient-to-br from-blue-200 to-purple-200 shadow-xl">
+              {photo ? (
+                <img
+                  src={photo}
+                  alt="Perfil"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl text-blue-600">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            
+            {/* Badge verificado */}
+            <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+              <span className="text-2xl">✓</span>
+            </div>
           </div>
 
-          {/* DATOS */}
-          <h2 className="text-2xl font-semibold text-gray-800">
+          {/* Datos del usuario */}
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
             {name}
           </h2>
 
-          {age && (
-            <p className="text-gray-500">
-              {age} años
-            </p>
-          )}
-
-          {/* BADGE */}
-          <div className="mt-4 px-4 py-2 rounded-full bg-blue-100 text-blue-600 flex items-center font-semibold">
-            ✨ Perfil personalizado listo
+          <div className="flex flex-col gap-2 text-gray-600">
+            {age && (
+              <p className="flex items-center justify-center gap-2">
+                <span>🎂</span>
+                <span>{age} años</span>
+              </p>
+            )}
+            {email && (
+              <p className="flex items-center justify-center gap-2">
+                <span>📧</span>
+                <span className="text-sm">{email}</span>
+              </p>
+            )}
           </div>
 
-        </div>
+          {/* Badge de estado */}
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-md">
+            <span>✨</span>
+            <span>Perfil verificado</span>
+          </div>
 
-        {/* --- PREGUNTA --- */}
-        <h3 className="mt-8 text-xl text-gray-700">
-          ¿Quieres comenzar tu primera evaluación?
-        </h3>
+        </motion.div>
 
-        {/* --- BOTONES --- */}
-        <div className="mt-6 flex gap-4 justify-center">
-
-          <button
-            onClick={() => navigate("/home")}
-            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-300 transition"
-          >
-            Más tarde
-          </button>
-
-          <button
-            onClick={() => navigate("/evaluation")}
-            className="px-6 py-3 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition"
-          >
-            ✨ Empezar ahora
-          </button>
-
-        </div>
-
-        {/* --- VOLVER --- */}
-        <button
-          onClick={() => navigate("/register")}
-          className="mt-6 text-gray-400 hover:text-gray-600 transition"
+        {/* Pregunta */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mb-6"
         >
-          ← Volver a editar
-        </button>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            ¿Quieres comenzar tu primera evaluación?
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Te tomará solo 5 minutos y nos ayudará a entender cómo te sientes
+          </p>
+        </motion.div>
 
-      </div>
+        {/* Botones */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="flex flex-col sm:flex-row gap-4"
+        >
+
+          <button
+            onClick={handleLater}
+            className="flex-1 px-6 py-4 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition border-2 border-gray-200 hover:border-gray-300"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <span>⏸️</span>
+              <span>Más tarde</span>
+            </span>
+          </button>
+
+          <button
+            onClick={handleStartNow}
+            className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <span>🚀</span>
+              <span>Empezar ahora</span>
+            </span>
+          </button>
+
+        </motion.div>
+
+        {/* Info adicional */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+        >
+          <p className="text-sm text-gray-700">
+            💡 <strong>¿Por qué es importante?</strong>
+            <br />
+            Las evaluaciones nos ayudan a monitorear tu bienestar emocional y ofrecerte el mejor apoyo personalizado.
+          </p>
+        </motion.div>
+
+        {/* Footer con mensaje motivacional */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="mt-6 text-gray-500 text-sm"
+        >
+          Estamos aquí para apoyarte en cada paso 💙
+        </motion.p>
+
+      </motion.div>
 
     </div>
-
   );
 }

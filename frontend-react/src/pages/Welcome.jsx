@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Camera from '../components/Camera';
@@ -19,7 +19,7 @@ const statusMessages = [
 // -------------------------------------
 // ROBOT
 // -------------------------------------
-const Robot = ({ isVisible, userName, navigate }) => (
+const Robot = ({ isVisible, userName, isNewUser, navigate }) => (
   <div
     className={`flex flex-col items-center transition-all duration-700
       ${isVisible
@@ -32,8 +32,16 @@ const Robot = ({ isVisible, userName, navigate }) => (
     <div className="robot-icon w-32 h-32 relative scale-125">
       <div className="w-20 h-20 bg-white rounded-lg absolute top-0 left-1/2 -translate-x-1/2 shadow-xl border-4 border-gray-100/50">
         <div className="flex space-x-2 justify-center mt-3">
-          <div className="w-4 h-4 bg-cyan-400 rounded-full animate-pulse shadow-md shadow-cyan-500/50"></div>
-          <div className="w-4 h-4 bg-cyan-400 rounded-full animate-pulse shadow-md shadow-cyan-500/50"></div>
+          <div className={`w-4 h-4 rounded-full animate-pulse shadow-md ${
+            userName ? 'bg-green-400 shadow-green-500/50' : 
+            isNewUser ? 'bg-yellow-400 shadow-yellow-500/50' :
+            'bg-cyan-400 shadow-cyan-500/50'
+          }`}></div>
+          <div className={`w-4 h-4 rounded-full animate-pulse shadow-md ${
+            userName ? 'bg-green-400 shadow-green-500/50' : 
+            isNewUser ? 'bg-yellow-400 shadow-yellow-500/50' :
+            'bg-cyan-400 shadow-cyan-500/50'
+          }`}></div>
         </div>
         <div className="w-8 h-2 bg-gray-700 rounded-b-full absolute bottom-2 left-1/2 -translate-x-1/2"></div>
       </div>
@@ -54,25 +62,43 @@ const Robot = ({ isVisible, userName, navigate }) => (
     {/* Mensajes */}
     <div className="mt-10 text-center">
       {userName ? (
-        <>
-          <p className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
-            ✅ ¡Bienvenido, {userName}!
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <p className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent mb-2">
+            ✅ ¡Bienvenido de nuevo, {userName}!
           </p>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600">
             Redirigiendo a tu dashboard…
           </p>
-        </>
+        </motion.div>
+      ) : isNewUser ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <p className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent mb-2">
+            👋 ¡Hola! Parece que eres nuevo
+          </p>
+          <p className="text-gray-600 mb-4">
+            Vamos a registrarte en el sistema…
+          </p>
+        </motion.div>
       ) : (
         <>
-          <p className="text-2xl font-semibold text-gray-800 mb-6">
+          <p className="text-2xl font-semibold text-gray-800 mb-4">
             Colócate frente a la cámara
+          </p>
+          <p className="text-gray-600 mb-6">
+            El reconocimiento facial se activará automáticamente
           </p>
 
           <button
             onClick={() => navigate('/register')}
             className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-semibold shadow-lg hover:scale-105 transition-all duration-300"
           >
-            ✨ ¿Primera vez? Regístrate aquí
+            ✨ ¿Primera vez? Regístrate manualmente
           </button>
         </>
       )}
@@ -89,7 +115,22 @@ export default function Welcome() {
   const [step, setStep] = useState(1);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [userName, setUserName] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [error, setError] = useState("");
+  
+  const recognitionAttempts = useRef(0);
+  const maxAttempts = 30; // 30 intentos antes de mostrar error
+
+  // ---------------- LIMPIAR SESIÓN ANTERIOR ----------------
+  useEffect(() => {
+    // Limpiar sesión anterior al entrar a Welcome
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('last_recognition');
+    
+    console.log('🔄 Welcome: Sesión anterior limpiada');
+  }, []);
 
   // ---------------- PASOS ----------------
   useEffect(() => {
@@ -119,11 +160,22 @@ export default function Welcome() {
 
   // ---------------- RECONOCIMIENTO FACIAL ----------------
   const handleCapture = async (frameBase64) => {
-    if (isRecognizing || step < 4 || userName) return;
+    // Validaciones
+    if (isRecognizing || step < 4 || userName || isNewUser) return;
+    
+    // Límite de intentos
+    if (recognitionAttempts.current >= maxAttempts) {
+      if (!error) {
+        setError('No se pudo detectar tu rostro. Por favor, regístrate manualmente.');
+      }
+      return;
+    }
 
     setIsRecognizing(true);
+    recognitionAttempts.current += 1;
 
     try {
+      // Convertir base64 a blob
       const base64Data = frameBase64.split(',')[1];
       const binaryData = atob(base64Data);
 
@@ -137,41 +189,87 @@ export default function Welcome() {
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
+      console.log(`🔍 Intento de reconocimiento ${recognitionAttempts.current}/${maxAttempts}`);
+
       const response = await api.post('/face/recognize/check', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 5000 // 5 segundos timeout
       });
 
       const { found, user } = response.data;
 
+      // ✅ CASO 1: Usuario reconocido (found=true, user=nombre)
       if (found && user) {
-        // ✅ NUEVO: Obtener user_id desde el backend
+        console.log('✅ Usuario reconocido:', user);
+        
         try {
+          // Obtener user_id desde el backend
           const userResponse = await api.get(`/user/id-by-name?name=${encodeURIComponent(user)}`);
           const userId = userResponse.data.user_id;
           
-          // ✅ NUEVO: Guardar user_id Y nombre
-          localStorage.setItem('user_id', userId);
+          console.log('✅ User ID obtenido:', userId);
+          
+          // Guardar en localStorage
+          localStorage.setItem('user_id', userId.toString());
           localStorage.setItem('user_name', user);
           localStorage.setItem('last_recognition', new Date().toISOString());
           
           setUserName(user);
 
-          // Iniciar sesión en DB (opcional)
-          await api.post('/session/start', { username: user });
+          // Iniciar sesión en DB
+          try {
+            await api.post('/session/start', { 
+              user_id: userId,
+              username: user 
+            });
+            console.log('✅ Sesión iniciada en DB');
+          } catch (sessionError) {
+            console.warn('⚠️ Error al iniciar sesión en DB:', sessionError);
+            // No bloqueamos el flujo si falla esto
+          }
 
-          setTimeout(() => navigate('/home'), 1000);
+          // Redirigir después de 1.5 segundos
+          setTimeout(() => {
+            console.log('🚀 Redirigiendo a /home');
+            navigate('/home');
+          }, 1500);
           
-        } catch (error) {
-          console.error('Error al obtener user_id:', error);
-          alert('Error: Usuario no encontrado en la base de datos');
+        } catch (userIdError) {
+          console.error('❌ Error al obtener user_id:', userIdError);
+          setError('Error al cargar tu perfil. Intenta nuevamente.');
+          
+          // Limpiar y permitir reintentar
+          setTimeout(() => {
+            setUserName('');
+            setError('');
+            recognitionAttempts.current = 0;
+          }, 3000);
         }
       }
+      // ⚠️ CASO 2: Rostro detectado pero no registrado (found=true, user=null/undefined)
       else if (found && !user) {
-        setTimeout(() => navigate('/register'), 1500);
+        console.log('⚠️ Rostro detectado pero no registrado');
+        setIsNewUser(true);
+
+        // Redirigir a registro después de 1.5 segundos
+        setTimeout(() => {
+          console.log('🚀 Redirigiendo a /register (usuario nuevo)');
+          navigate('/register');
+        }, 1500);
+      }
+      // ⏸️ CASO 3: No se detectó rostro (found=false)
+      else {
+        // Silencioso, seguir intentando
+        console.log('⏸️ No se detectó rostro, reintentando...');
       }
 
     } catch (error) {
-      console.error('Error en reconocimiento:', error);
+      console.error('❌ Error en reconocimiento:', error);
+      
+      // No mostrar error en cada intento fallido, solo al límite
+      if (recognitionAttempts.current >= maxAttempts) {
+        setError('Error de conexión con el servidor. Intenta registrarte manualmente.');
+      }
     } finally {
       setIsRecognizing(false);
     }
@@ -180,19 +278,28 @@ export default function Welcome() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col items-center justify-between px-4 sm:px-10 py-10 overflow-hidden">
 
+      {/* Botón Admin */}
+      {/* Versión alternativa con más estilo */}
       <button
         onClick={() => navigate('/admin/login')}
-        className="fixed top-4 right-4 z-50 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all hover:scale-110"
+        className="fixed top-6 right-6 z-50 group"
         title="Panel Administrativo"
       >
-        🛡️
+        <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-full shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center">
+          <span className="text-2xl group-hover:rotate-12 transition-transform duration-300">🛡️</span>
+        </div>
+        
+        {/* Tooltip mejorado */}
+        <div className="absolute top-full right-0 mt-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          Panel Administrativo
+        </div>
       </button>
 
-      {/* CAMARA */}
+      {/* CAMARA (oculta pero activa) */}
       <div className="hidden">
         <Camera
           onCapture={handleCapture}
-          isActive={step >= 4 && !userName}
+          isActive={step >= 4 && !userName && !isNewUser}
         />
       </div>
 
@@ -202,7 +309,7 @@ export default function Welcome() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center pt-16"
       >
-        <h1 className="text-[56px] text-[#1a1a1a] mb-4">
+        <h1 className="text-[56px] text-[#1a1a1a] mb-4 font-bold">
           ¡Bienvenido!
         </h1>
         <p className="text-[28px] text-[#4a5568]">
@@ -253,7 +360,7 @@ export default function Welcome() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
+          className="flex-grow flex items-center justify-center mb-10"
         >
           <motion.div
             animate={{ y: [0, -10, 0] }}
@@ -262,10 +369,35 @@ export default function Welcome() {
             <Robot
               isVisible={true}
               userName={userName}
+              isNewUser={isNewUser}
               navigate={navigate}
             />
           </motion.div>
         </motion.div>
+      )}
+
+      {/* Mensaje de error */}
+      {error && step >= 4 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-50 border-2 border-red-300 rounded-lg p-4 shadow-lg max-w-md"
+        >
+          <p className="text-red-700 text-center font-medium">{error}</p>
+          <button
+            onClick={() => navigate('/register')}
+            className="mt-3 w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+          >
+            Ir a registro manual
+          </button>
+        </motion.div>
+      )}
+
+      {/* Indicador de intentos (solo en desarrollo) */}
+      {process.env.NODE_ENV === 'development' && step >= 4 && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded-lg text-xs">
+          Intentos: {recognitionAttempts.current}/{maxAttempts}
+        </div>
       )}
 
     </div>
