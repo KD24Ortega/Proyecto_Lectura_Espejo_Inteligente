@@ -22,3 +22,4 @@ SpeechRecognition
 gtts
 aiortc
 av
+resend

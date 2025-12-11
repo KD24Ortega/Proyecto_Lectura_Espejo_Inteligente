@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import api from '../services/api';
 
 function AdminUsers() {
@@ -158,19 +160,142 @@ function AdminUsers() {
 
   const handleDownloadReport = async (user) => {
     try {
-      alert(`Descargando reporte de ${user.full_name}...`);
-      // Implementar descarga de PDF aquí
+
+      const adminId =
+        localStorage.getItem("admin_id") ||
+        sessionStorage.getItem("admin_id");
+
+      // Obtener información COMPLETA del usuario
+      const res = await api.get(
+        `/admin/user/${user.id}?user_id=${adminId}`
+      );
+
+      const data = res.data;
+
+      const profile = data.user;
+      const assessments = data.assessments || [];
+
+      const lastPhq9 = assessments
+        .filter(a => a.type === "phq9")
+        .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+      const lastGad7 = assessments
+        .filter(a => a.type === "gad7")
+        .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+      //--------------------------------------------------------------------
+      // CREACIÓN DEL PDF
+      //--------------------------------------------------------------------
+
+      const doc = new jsPDF("p","mm","a4");
+
+      // ---------------- HEADER ----------------
+      doc.setFontSize(18);
+      doc.text("SMART MIRROR - REPORTE CLÍNICO",105,15,{align:"center"});
+
+      doc.setFontSize(10);
+      doc.text(`Fecha: ${new Date().toLocaleDateString()}`,105,22,{align:"center"});
+      doc.line(10,26,200,26);
+
+      // ---------------- DATOS PERSONALES ----------------
+      doc.setFontSize(14);
+      doc.text("Datos del Usuario",14,35);
+
+      autoTable(doc,{
+        startY:40,
+        head:[["Campo","Detalle"]],
+        body:[
+          ["Nombre", profile.full_name],
+          ["Edad", profile.age ?? "N/A"],
+          ["Género", profile.gender ?? "N/A"],
+          ["Email", profile.email ?? "N/A"],
+          ["ID Usuario", profile.id],
+          ["Registrado", new Date(profile.created_at).toLocaleDateString("es-ES")]
+        ]
+      });
+
+      //----------------- ESTADO ACTUAL ------------------
+      const y2 = doc.lastAutoTable.finalY + 10;
+
+      doc.text("Estado Actual",14,y2);
+
+      autoTable(doc,{
+        startY:y2+4,
+        head:[["Métrica","Valor"]],
+        body:[
+          ["PHQ-9", lastPhq9 ? `${lastPhq9.score} (${lastPhq9.severity})` : "Sin datos"],
+          ["GAD-7", lastGad7 ? `${lastGad7.score} (${lastGad7.severity})` : "Sin datos"]
+        ]
+      });
+
+      //----------------- HISTORIAL ------------------
+      if(assessments.length > 0){
+
+        const y3 = doc.lastAutoTable.finalY + 10;
+
+        doc.text("Historial de Evaluaciones",14,y3);
+
+        autoTable(doc,{
+          startY:y3+4,
+          head:[["Fecha","Test","Score","Severidad"]],
+          body: assessments.map(a=>[
+            new Date(a.created_at).toLocaleDateString("es-ES"),
+            a.type.toUpperCase(),
+            a.score,
+            a.severity
+          ])
+        });
+
+      }
+
+      //----------------- FOOTER ------------------
+      const pageHeight = doc.internal.pageSize.height;
+
+      doc.setFontSize(9);
+      doc.text(
+        "Documento generado automáticamente por Smart Mirror",
+        105,
+        pageHeight - 12,
+        { align:"center" }
+      );
+
+      //----------------- DESCARGA ------------------
+      const safeName = profile.full_name.replace(/\s+/g,"_");
+
+      doc.save(`reporte_${safeName}.pdf`);
+
     } catch (error) {
-      console.error('Error al descargar:', error);
-      alert('Error al descargar el reporte');
+      console.error("Error al generar PDF:", error);
+      alert("Ocurrió un error al generar el reporte.");
     }
   };
 
-  const handleSendEmail = (user) => {
-    if (user.email) {
-      window.location.href = `mailto:${user.email}?subject=Seguimiento - Espejo Inteligente`;
-    } else {
-      alert('Este usuario no tiene email registrado');
+  const handleSendEmail = async (user) => {
+    try {
+      const adminId =
+        localStorage.getItem("admin_id") ||
+        sessionStorage.getItem("admin_id");
+
+      const message = `
+  Hola ${user.full_name},
+
+  Estamos realizando un seguimiento de tus resultados recientes en PHQ-9 y GAD-7.
+  Si necesitas apoyo adicional, no dudes en comunicarte con nosotros.
+
+  Atentamente,
+  Equipo del Espejo Inteligente.
+  `;
+
+      const res = await api.post("/notifications/email", {
+        user_id: user.id,   // 👈 EXACTAMENTE LO QUE ESPERA EL BACKEND
+        message: message    // 👈 EXACTAMENTE LO QUE ESPERA EL BACKEND
+      });
+
+      alert("Correo enviado correctamente ✔️");
+
+    } catch (error) {
+      console.error("Error enviando correo:", error);
+      alert("Error enviando correo.");
     }
   };
 

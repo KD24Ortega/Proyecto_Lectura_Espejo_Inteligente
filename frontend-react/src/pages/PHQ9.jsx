@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import FaceMonitor from '../components/FaceMonitor'; // ← Al inicio
+import FaceMonitor from '../components/FaceMonitor';
 
 function PHQ9() {
   const navigate = useNavigate();
@@ -21,6 +22,19 @@ function PHQ9() {
   const [showVoiceConfirm, setShowVoiceConfirm] = useState(false);
   const [detectedAnswer, setDetectedAnswer] = useState(null);
   
+  // Estados de modales
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    type: 'error',
+    title: '',
+    message: '',
+    onConfirm: null,
+    showCancel: false
+  });
+  
+  // Estado para salir
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  
   const recognitionRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +42,96 @@ function PHQ9() {
     initSpeechRecognition();
   }, []);
 
+  // ============================================
+  // COMPONENTE MODAL REUTILIZABLE
+  // ============================================
+  const Modal = ({ type, title, message, onConfirm, onClose, showCancel = false }) => {
+    const icons = {
+      error: '❌',
+      warning: '⚠️',
+      info: '💡',
+      success: '✅'
+    };
+
+    const colorClasses = {
+      error: {
+        title: 'text-red-600',
+        button: 'bg-red-600 hover:bg-red-700'
+      },
+      warning: {
+        title: 'text-yellow-600',
+        button: 'bg-yellow-600 hover:bg-yellow-700'
+      },
+      info: {
+        title: 'text-blue-600',
+        button: 'bg-blue-600 hover:bg-blue-700'
+      },
+      success: {
+        title: 'text-green-600',
+        button: 'bg-green-600 hover:bg-green-700'
+      }
+    };
+
+    const colors = colorClasses[type];
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+        >
+          <div className="text-center">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: 'spring' }}
+              className="mb-4 text-6xl"
+            >
+              {icons[type]}
+            </motion.div>
+            {title && (
+              <h3 className={`text-2xl font-bold ${colors.title} mb-3`}>
+                {title}
+              </h3>
+            )}
+            <p className="text-gray-600 mb-6 leading-relaxed">{message}</p>
+            
+            <div className="flex gap-3 justify-center">
+              {showCancel && (
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:scale-105"
+                >
+                  Cancelar
+                </button>
+              )}
+              <button
+                onClick={onConfirm || onClose}
+                className={`px-6 py-3 ${colors.button} text-white rounded-xl font-semibold transition-all shadow-lg hover:scale-105`}
+              >
+                {showCancel ? 'Confirmar' : 'Aceptar'}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
+  const showModalMessage = (config) => {
+    setModalConfig(config);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+  };
+
+  // ============================================
+  // CARGA DE PREGUNTAS
+  // ============================================
   const loadQuestions = async () => {
     try {
       setIsLoading(true);
@@ -37,11 +141,22 @@ function PHQ9() {
       setIsLoading(false);
     } catch (error) {
       console.error('Error al cargar preguntas:', error);
-      alert('Error al cargar el test');
       setIsLoading(false);
+      showModalMessage({
+        type: 'error',
+        title: 'Error de conexión',
+        message: 'No se pudieron cargar las preguntas del test. Por favor, verifica tu conexión e intenta nuevamente.',
+        onConfirm: () => {
+          closeModal();
+          navigate('/home');
+        }
+      });
     }
   };
 
+  // ============================================
+  // RECONOCIMIENTO DE VOZ
+  // ============================================
   const initSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -58,25 +173,31 @@ function PHQ9() {
 
       recognitionRef.current.onresult = async (event) => {
         const transcript = event.results[0][0].transcript;
-        setVoiceTranscript(`Escuche: "${transcript}"`);
+        setVoiceTranscript(`Escuché: "${transcript}"`);
         
         try {
           const response = await api.post(`/voice/map-response?text=${encodeURIComponent(transcript)}`);
           const score = response.data.score;
           
-          const answerLabels = ['Ningun dia', 'Varios dias', 'Mas de la mitad de los dias', 'Casi todos los dias'];
+          const answerLabels = ['Ningún día', 'Varios días', 'Más de la mitad de los días', 'Casi todos los días'];
           setDetectedAnswer({ score, label: answerLabels[score] });
           setShowVoiceConfirm(true);
         } catch (error) {
           console.error('Error al mapear respuesta:', error);
-          setVoiceTranscript('No entendi. Intenta de nuevo.');
+          setVoiceTranscript('No entendí. Intenta de nuevo.');
+          setIsListening(false);
         }
       };
 
       recognitionRef.current.onerror = (event) => {
         console.error('Error de reconocimiento:', event.error);
         setIsListening(false);
-        setVoiceTranscript('Error al escuchar. Intenta de nuevo.');
+        
+        if (event.error === 'not-allowed' || event.error === 'no-speech') {
+          setVoiceTranscript('No se detectó audio. Intenta de nuevo.');
+        } else {
+          setVoiceTranscript('Error al escuchar. Intenta de nuevo.');
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -86,43 +207,77 @@ function PHQ9() {
   };
 
   const speakQuestion = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      
-      const questionText = `Pregunta ${currentQuestion + 1} de ${questions.length}. Durante las ultimas 2 semanas, con que frecuencia has sentido: ${questions[currentQuestion]}`;
-      
-      const utterance = new SpeechSynthesisUtterance(questionText);
-      utterance.lang = 'es-ES';
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      
-      window.speechSynthesis.speak(utterance);
-    } else {
-      alert('Tu navegador no soporta sintesis de voz');
+    if (!('speechSynthesis' in window)) {
+      showModalMessage({
+        type: 'warning',
+        title: 'Función no disponible',
+        message: 'Tu navegador no soporta síntesis de voz. Por favor, responde haciendo clic en las opciones.',
+        onConfirm: closeModal
+      });
+      return;
     }
+
+    window.speechSynthesis.cancel();
+    
+    const questionText = `Pregunta ${currentQuestion + 1} de ${questions.length}. Durante las últimas dos semanas, ¿con qué frecuencia has sentido: ${questions[currentQuestion]}?`;
+    
+    const utterance = new SpeechSynthesisUtterance(questionText);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      showModalMessage({
+        type: 'error',
+        title: 'Error de audio',
+        message: 'Hubo un problema con la síntesis de voz. Por favor, lee la pregunta.',
+        onConfirm: closeModal
+      });
+    };
+    
+    window.speechSynthesis.speak(utterance);
   };
 
   const startVoiceRecognition = () => {
     if (!recognitionRef.current) {
-      alert('Tu navegador no soporta reconocimiento de voz');
+      showModalMessage({
+        type: 'warning',
+        title: 'Función no disponible',
+        message: 'Tu navegador no soporta reconocimiento de voz. Por favor, responde haciendo clic en las opciones.',
+        onConfirm: closeModal
+      });
       return;
     }
 
     try {
+      setVoiceTranscript('');
       recognitionRef.current.start();
     } catch (error) {
       console.error('Error al iniciar reconocimiento:', error);
+      showModalMessage({
+        type: 'error',
+        title: 'Error de micrófono',
+        message: 'No se pudo iniciar el reconocimiento de voz. Verifica los permisos de tu micrófono.',
+        onConfirm: closeModal
+      });
     }
   };
 
+  // ============================================
+  // MANEJO DE RESPUESTAS
+  // ============================================
   const handleClickAnswer = (value) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = value;
     setAnswers(newAnswers);
+    
+    // Resetear voz al seleccionar manualmente
+    setVoiceTranscript('');
+    setShowVoiceConfirm(false);
+    setDetectedAnswer(null);
   };
 
   const confirmVoiceAnswer = () => {
@@ -142,9 +297,17 @@ function PHQ9() {
     setDetectedAnswer(null);
   };
 
+  // ============================================
+  // NAVEGACIÓN
+  // ============================================
   const handleNext = () => {
     if (answers[currentQuestion] === null) {
-      alert('Por favor selecciona una respuesta');
+      showModalMessage({
+        type: 'warning',
+        title: 'Respuesta requerida',
+        message: 'Por favor, selecciona una respuesta antes de continuar.',
+        onConfirm: closeModal
+      });
       return;
     }
 
@@ -167,6 +330,13 @@ function PHQ9() {
     }
   };
 
+  const handleExit = () => {
+    setShowExitConfirm(true);
+  };
+
+  // ============================================
+  // ENVÍO DEL TEST
+  // ============================================
   const submitTest = async () => {
     try {
       const userId = localStorage.getItem('user_id') || 1;
@@ -181,7 +351,7 @@ function PHQ9() {
       localStorage.setItem('last_phq9_score', response.data.score);
       localStorage.setItem('last_phq9_severity', response.data.severity);
 
-      // Navegar a resultados con state
+      // Navegar a resultados
       navigate('/results', { 
         state: { 
           type: 'phq9',
@@ -191,87 +361,151 @@ function PHQ9() {
       });
     } catch (error) {
       console.error('Error al enviar test:', error);
-      alert('Error al procesar tus respuestas. Intenta de nuevo.');
+      showModalMessage({
+        type: 'error',
+        title: 'Error al enviar',
+        message: 'No se pudieron procesar tus respuestas. Por favor, verifica tu conexión e intenta nuevamente.',
+        onConfirm: closeModal
+      });
     }
   };
 
+  // ============================================
+  // LOADING
+  // ============================================
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <div className="text-2xl font-semibold text-gray-700">Cargando test...</div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            <motion.div
+              className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            />
+          </div>
+          <p className="text-2xl font-semibold text-gray-700">Cargando test...</p>
+        </motion.div>
       </div>
     );
   }
 
   const progress = ((currentQuestion + 1) / questions.length) * 100;
   const answerOptions = [
-    { value: 0, label: 'Ningun dia', emoji: '😊' },
-    { value: 1, label: 'Varios dias', emoji: '😐' },
-    { value: 2, label: 'Mas de la mitad de los dias', emoji: '😟' },
-    { value: 3, label: 'Casi todos los dias', emoji: '😢' }
+    { value: 0, label: 'Ningún día', emoji: '😊', color: 'from-green-400 to-emerald-500' },
+    { value: 1, label: 'Varios días', emoji: '😐', color: 'from-blue-400 to-cyan-500' },
+    { value: 2, label: 'Más de la mitad de los días', emoji: '😟', color: 'from-yellow-400 to-orange-500' },
+    { value: 3, label: 'Casi todos los días', emoji: '😢', color: 'from-red-400 to-pink-500' }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-6">
-        {/* ✅ Monitor durante el test */}
+      {/* Monitor de presencia */}
       <FaceMonitor isActive={true} />
+
+      {/* Modales */}
+      <AnimatePresence>
+        {showModal && (
+          <Modal
+            {...modalConfig}
+            onClose={closeModal}
+          />
+        )}
+        
+        {showExitConfirm && (
+          <Modal
+            type="warning"
+            title="¿Salir del test?"
+            message="Si sales ahora, perderás tu progreso actual. ¿Estás seguro de que quieres salir?"
+            showCancel={true}
+            onConfirm={() => navigate('/home')}
+            onClose={() => setShowExitConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="max-w-2xl mx-auto">
         
-        {/* Header - Numero 1 del diseño */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => navigate('/home')}
-            className="text-gray-600 hover:text-gray-800 font-medium flex items-center gap-2 transition-colors"
+            onClick={handleExit}
+            className="text-gray-600 hover:text-gray-800 font-medium flex items-center gap-2 transition-colors hover:scale-105"
           >
-            <span className="text-xl">×</span>
+            <span className="text-2xl">←</span>
             <span>Salir</span>
           </button>
           
-          <div className="bg-red-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-lg">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-lg"
+          >
             PHQ-9
-          </div>
+          </motion.div>
         </div>
 
         {/* Card principal */}
-        <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl shadow-2xl p-6 md:p-8"
+        >
           
-          {/* Numero 2: Indicador de Progreso */}
+          {/* Indicador de Progreso */}
           <div className="mb-8">
-            {/* Texto y porcentaje */}
             <div className="flex justify-between items-center mb-3">
               <span className="text-base font-semibold text-gray-700">
                 Pregunta {currentQuestion + 1} de {questions.length}
               </span>
+              <span className="text-sm font-medium text-purple-600">
+                {Math.round(progress)}%
+              </span>
             </div>
             
             {/* Barra de progreso */}
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-3">
-              <div 
-                className="bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              ></div>
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-3 overflow-hidden">
+              <motion.div 
+                className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
             </div>
             
             {/* Puntos indicadores */}
             <div className="flex justify-between gap-1">
               {questions.map((_, index) => (
-                <div 
+                <motion.div 
                   key={index}
-                  className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${
+                  className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
                     index < currentQuestion ? 'bg-green-500' :
-                    index === currentQuestion ? 'bg-blue-500' : 
+                    index === currentQuestion ? 'bg-blue-500 shadow-lg' : 
                     'bg-gray-300'
                   }`}
-                ></div>
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                />
               ))}
             </div>
           </div>
 
-          {/* Numero 3: Pregunta del Test con boton de voz */}
-          <div className="mb-8">
-            <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
-              <p className="text-sm text-gray-600 mb-3">
-                Durante las ultimas 2 semanas, con que frecuencia has sentido...
+          {/* Pregunta del Test */}
+          <motion.div
+            key={currentQuestion}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="mb-8"
+          >
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-5 border-2 border-blue-100">
+              <p className="text-sm text-gray-600 mb-3 font-medium">
+                Durante las últimas dos semanas, ¿con qué frecuencia has sentido...?
               </p>
               
               <div className="flex items-start gap-3">
@@ -286,8 +520,8 @@ function PHQ9() {
                   disabled={isSpeaking}
                   className={`flex-shrink-0 p-3 rounded-full transition-all ${
                     isSpeaking 
-                      ? 'bg-blue-300 scale-110' 
-                      : 'bg-blue-100 hover:bg-blue-200 hover:scale-110'
+                      ? 'bg-blue-400 scale-110 animate-pulse' 
+                      : 'bg-blue-500 hover:bg-blue-600 hover:scale-110 shadow-md'
                   }`}
                   title="Escuchar pregunta"
                 >
@@ -295,17 +529,20 @@ function PHQ9() {
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Numero 4: Opciones de Respuesta */}
+          {/* Opciones de Respuesta */}
           <div className="space-y-3 mb-6">
-            {answerOptions.map((option) => (
-              <button
+            {answerOptions.map((option, index) => (
+              <motion.button
                 key={option.value}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
                 onClick={() => handleClickAnswer(option.value)}
                 className={`w-full p-4 rounded-xl border-2 transition-all duration-300 flex items-center justify-between group ${
                   answers[currentQuestion] === option.value
-                    ? 'border-blue-500 bg-blue-50 shadow-md scale-[1.02]'
+                    ? 'border-blue-500 bg-gradient-to-r ' + option.color + ' text-white shadow-lg scale-[1.02]'
                     : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 hover:scale-[1.01]'
                 }`}
               >
@@ -313,7 +550,7 @@ function PHQ9() {
                   <span className="text-3xl">{option.emoji}</span>
                   <span className={`font-semibold ${
                     answers[currentQuestion] === option.value 
-                      ? 'text-blue-700' 
+                      ? 'text-white' 
                       : 'text-gray-700'
                   }`}>
                     {option.label}
@@ -321,79 +558,97 @@ function PHQ9() {
                 </div>
                 <div className={`text-2xl font-bold ${
                   answers[currentQuestion] === option.value 
-                    ? 'text-blue-600' 
+                    ? 'text-white' 
                     : 'text-gray-400 group-hover:text-gray-600'
                 }`}>
                   {option.value}
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
 
-          {/* Numero 5: Respuesta por Voz */}
+          {/* Respuesta por Voz */}
           <div className="mb-8">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border-2 border-purple-200">
               
-              {!showVoiceConfirm ? (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">🎙️</span>
-                      <p className="text-sm font-bold text-purple-900">
-                        O responde con tu voz
+              <AnimatePresence mode="wait">
+                {!showVoiceConfirm ? (
+                  <motion.div
+                    key="listen"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-between gap-4"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xl">🎙️</span>
+                        <p className="text-sm font-bold text-purple-900">
+                          O responde con tu voz
+                        </p>
+                      </div>
+                      <p className="text-xs text-purple-700 mb-2">
+                        Di: "cero", "uno", "dos" o "tres"
+                      </p>
+                      {voiceTranscript && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-sm text-purple-800 italic bg-white/60 px-3 py-2 rounded-lg"
+                        >
+                          {voiceTranscript}
+                        </motion.p>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={startVoiceRecognition}
+                      disabled={isListening}
+                      className={`flex-shrink-0 p-4 rounded-full transition-all shadow-lg ${
+                        isListening
+                          ? 'bg-red-500 animate-pulse scale-110'
+                          : 'bg-purple-500 hover:bg-purple-600 hover:scale-110'
+                      } text-white`}
+                    >
+                      <span className="text-2xl">{isListening ? '🎤' : '🎙️'}</span>
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="confirm"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="space-y-4"
+                  >
+                    <div className="bg-white/80 rounded-xl p-4 border-2 border-purple-300">
+                      <p className="text-sm text-gray-600 mb-2">Tu respuesta detectada:</p>
+                      <p className="text-lg font-bold text-purple-900">
+                        {detectedAnswer.score} - {detectedAnswer.label}
                       </p>
                     </div>
-                    <p className="text-xs text-purple-700 mb-2">
-                      Di: cero, uno, dos o tres
-                    </p>
-                    {voiceTranscript && !showVoiceConfirm && (
-                      <p className="text-sm text-purple-800 italic bg-white/50 px-3 py-2 rounded-lg">
-                        {voiceTranscript}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <button
-                    onClick={startVoiceRecognition}
-                    disabled={isListening}
-                    className={`flex-shrink-0 p-4 rounded-full transition-all shadow-lg ${
-                      isListening
-                        ? 'bg-red-500 animate-pulse scale-110'
-                        : 'bg-purple-500 hover:bg-purple-600 hover:scale-110'
-                    } text-white`}
-                  >
-                    <span className="text-2xl">{isListening ? '🎤' : '🎙️'}</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-white/70 rounded-xl p-4">
-                    <p className="text-sm text-gray-600 mb-2">Tu respuesta detectada:</p>
-                    <p className="text-lg font-bold text-purple-900">
-                      {detectedAnswer.score} - {detectedAnswer.label}
-                    </p>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={confirmVoiceAnswer}
-                      className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <span>✓</span> Confirmar
-                    </button>
-                    <button
-                      onClick={retryVoice}
-                      className="flex-1 px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <span>🔄</span> Repetir
-                    </button>
-                  </div>
-                </div>
-              )}
+                    
+                    <div className="flex gap-3">
+                      <button
+                        onClick={confirmVoiceAnswer}
+                        className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                      >
+                        <span>✓</span> Confirmar
+                      </button>
+                      <button
+                        onClick={retryVoice}
+                        className="flex-1 px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                      >
+                        <span>🔄</span> Repetir
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
-          {/* Numeros 6 y 7: Botones de Navegacion */}
+          {/* Botones de Navegación */}
           <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <button
               onClick={handlePrevious}
@@ -401,7 +656,7 @@ function PHQ9() {
               className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
                 currentQuestion === 0
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:shadow-md'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:shadow-md hover:scale-105'
               }`}
             >
               <span>←</span> Anterior
@@ -421,7 +676,7 @@ function PHQ9() {
             </button>
           </div>
 
-        </div>
+        </motion.div>
 
       </div>
     </div>

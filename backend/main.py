@@ -35,6 +35,12 @@ from backend.webrtc.webrtc_service import (
     presence_state
 )
 
+# -----------------------------
+# SERVICIO EMAIL
+# -----------------------------
+import resend
+
+resend.api_key = "re_361pUwcN_LsC1uhDKeUm9QiJqd4HnmENE"
 
 # -----------------------------
 # RATE LIMITING DIFERENCIADO
@@ -545,29 +551,36 @@ async def recognize_face_check(request: Request, file: UploadFile = File(...)):
 # ==============================================
 @app.post("/session/start")
 async def start_session(payload: SessionStartRequest, db: Session = Depends(get_db)):
-    """
-    Inicia una sesión de usuario (solo se llama una vez al hacer login).
-    """
     username = payload.username
 
-    # Buscar usuario en DB (case-insensitive)
+    # Buscar usuario
     user_obj = db.query(models.User).filter(
-        models.User.full_name.ilike(username)  # 🔥 CAMBIO: ilike en lugar de ==
+        models.User.full_name.ilike(username)
     ).first()
 
     if not user_obj:
         return {"success": False, "error": "Usuario no encontrado"}
 
-    # Crear sesión
+    # 🔥 CERRAR TODAS LAS SESIONES ACTIVAS PREVIAS
+    db.query(models.SessionLog).filter(
+        models.SessionLog.user_id == user_obj.id,
+        models.SessionLog.is_active == True
+    ).update({
+        models.SessionLog.is_active: False,
+        models.SessionLog.timestamp_logout: datetime.utcnow()
+    })
+    db.commit()
+
+    # 🔥 CREAR NUEVA SESIÓN
     session = models.SessionLog(
         user_id=user_obj.id,
-        username=user_obj.full_name,  # 🔥 Usar el nombre exacto de la DB
+        username=user_obj.full_name,
         method="face",
-        is_active=True
+        is_active=True,
+        timestamp_login=datetime.utcnow()
     )
     db.add(session)
     db.commit()
-    db.refresh(session)
 
     return {
         "success": True,
@@ -813,24 +826,87 @@ async def admin_dashboard(user_id: int, db: Session = Depends(get_db)):
 
 @app.get("/admin/users")
 async def admin_get_all_users(user_id: int, db: Session = Depends(get_db)):
-    """Listar todos los usuarios (solo admin)"""
-    admin = db.query(models.User).filter(models.User.id == user_id).first()
+    """Listar todos los usuarios con sus últimos PHQ-9 y GAD-7 (solo admin)"""
     
+    admin = db.query(models.User).filter(models.User.id == user_id).first()
+
     if not admin or not admin.is_admin:
         raise HTTPException(status_code=403, detail="Acceso denegado")
-    
+
     users = db.query(models.User).filter(models.User.is_admin == False).all()
-    
-    return [{
-        "id": u.id,
-        "full_name": u.full_name,
-        "age": u.age,
-        "gender": u.gender,
-        "email": u.email,
-        "created_at": u.created_at,
-        "total_assessments": len(u.assessments),
-        "total_sessions": len(u.sessions)
-    } for u in users]
+
+    response = []
+
+    for u in users:
+
+        # -----------------------------
+        # 🔥 Obtener último PHQ-9
+        # -----------------------------
+        last_phq9 = (
+            db.query(models.Assessment)
+            .filter(
+                models.Assessment.user_id == u.id,
+                models.Assessment.type == "phq9"
+            )
+            .order_by(models.Assessment.created_at.desc())
+            .first()
+        )
+
+        if last_phq9:
+            latest_phq9 = last_phq9.score
+            latest_phq9_severity = last_phq9.severity
+            latest_phq9_date = last_phq9.created_at.isoformat()
+        else:
+            latest_phq9 = None
+            latest_phq9_severity = None
+            latest_phq9_date = None
+
+        # -----------------------------
+        # 🔥 Obtener último GAD-7
+        # -----------------------------
+        last_gad7 = (
+            db.query(models.Assessment)
+            .filter(
+                models.Assessment.user_id == u.id,
+                models.Assessment.type == "gad7"
+            )
+            .order_by(models.Assessment.created_at.desc())
+            .first()
+        )
+
+        if last_gad7:
+            latest_gad7 = last_gad7.score
+            latest_gad7_severity = last_gad7.severity
+            latest_gad7_date = last_gad7.created_at.isoformat()
+        else:
+            latest_gad7 = None
+            latest_gad7_severity = None
+            latest_gad7_date = None
+
+        # -----------------------------
+        # 🔥 Construir respuesta del usuario
+        # -----------------------------
+        response.append({
+            "id": u.id,
+            "full_name": u.full_name,
+            "age": u.age,
+            "gender": u.gender,
+            "email": u.email,
+            "created_at": u.created_at,
+            "total_assessments": len(u.assessments),
+            "total_sessions": len(u.sessions),
+
+            # Últimos resultados
+            "latest_phq9": latest_phq9,
+            "latest_phq9_severity": latest_phq9_severity,
+            "latest_phq9_date": latest_phq9_date,
+
+            "latest_gad7": latest_gad7,
+            "latest_gad7_severity": latest_gad7_severity,
+            "latest_gad7_date": latest_gad7_date
+        })
+
+    return response
 
 
 @app.get("/admin/user/{target_user_id}")
@@ -1114,3 +1190,109 @@ async def get_presence(client_id: str):
         "last_update": last_update,
         "error": state.get("error")  # opcional
     }
+
+
+# ============================================================
+#  ENVÍO DE NOTIFICACIONES POR EMAIL
+# ============================================================
+
+class EmailRequest(BaseModel):
+    user_id: int
+    message: str
+
+
+@app.post("/notifications/email")
+async def send_notification_email(
+    payload: EmailRequest,
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.id == payload.user_id).first()
+
+    if not user or not user.email:
+        raise HTTPException(status_code=404, detail="Usuario sin email registrado")
+
+    # Convertimos saltos de línea antes de usar f-string
+    html_message = payload.message.replace("\n", "<br>")
+
+    try:
+        resend.Emails.send({
+            "from": "Smart Mirror <onboarding@resend.dev>",
+            "to": [user.email],
+            "subject": "Seguimiento Clínico - Smart Mirror",
+            "html": f"""
+                <h3>Notificación Smart Mirror</h3>
+                <p>{html_message}</p>
+            """
+        })
+
+        return { "success": True, "email": user.email }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+#============================================================
+#  ESTADÍSTICAS DIARIAS PARA DASHBOARD ADMIN
+#============================================================
+
+@app.get("/admin/stats/history")
+async def admin_stats_history(
+    user_id: int,
+    days: int = 30,
+    db: Session = Depends(get_db)
+):
+    """
+    Estadísticas reales diarias para el dashboard.
+    """
+    # Validar admin
+    admin = db.query(models.User).filter(models.User.id == user_id).first()
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    today = datetime.utcnow().date()
+    start_date = today - timedelta(days=days - 1)
+
+    # =============== USUARIOS NUEVOS ===============
+    new_users = db.query(models.User).filter(
+        models.User.created_at >= start_date,
+        models.User.is_admin == False
+    ).all()
+
+    users_by_day = {}
+    for u in new_users:
+        day = u.created_at.date()
+        users_by_day[day] = users_by_day.get(day, 0) + 1
+
+    # =============== ASSESSMENTS ===============
+    assessments = db.query(models.Assessment).join(models.User).filter(
+        models.Assessment.created_at >= start_date,
+        models.User.is_admin == False
+    ).all()
+
+    assessments_by_day = {}
+    alerts_by_day = {}
+
+    for a in assessments:
+        day = a.created_at.date()
+
+        # Conteo general
+        assessments_by_day[day] = assessments_by_day.get(day, 0) + 1
+        
+        # Alertas críticas → PHQ9>=15 o GAD7>=15
+        if a.score >= 15:
+            alerts_by_day[day] = alerts_by_day.get(day, 0) + 1
+
+    # Construir datos día por día
+    history = []
+
+    for i in range(days):
+        day = start_date + timedelta(days=i)
+        history.append({
+            "date": day.isoformat(),
+            "users": users_by_day.get(day, 0),
+            "assessments": assessments_by_day.get(day, 0),
+            "alerts": alerts_by_day.get(day, 0)
+        })
+
+    return {"days": days, "history": history}

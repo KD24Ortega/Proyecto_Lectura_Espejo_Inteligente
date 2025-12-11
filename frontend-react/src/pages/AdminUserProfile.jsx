@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import api from '../services/api';
+import html2canvas from "html2canvas";
 
 function AdminUserProfile() {
   const navigate = useNavigate();
@@ -13,6 +16,7 @@ function AdminUserProfile() {
   const [timeRange, setTimeRange] = useState(8); // 4, 8, 12 semanas
   const [showNotes, setShowNotes] = useState(false);
   const [note, setNote] = useState('');
+  const chartRef = useRef(null);
 
   useEffect(() => {
     checkAuth();
@@ -33,21 +37,47 @@ function AdminUserProfile() {
 
   const loadUserProfile = async () => {
     try {
-      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-      const response = await api.get(`/admin/user/${userId}?user_id=${adminId}`);
-      setUser(response.data);
+      const adminId =
+        localStorage.getItem('admin_id') ||
+        sessionStorage.getItem('admin_id');
+
+      // 1️⃣ Cargar perfil base
+      const response = await api.get(
+        `/admin/user/${userId}?user_id=${adminId}`
+      );
+
+      // 2️⃣ Obtener últimos scores reales
+      const lastResponse = await api.get(
+        `/assessments/last/${userId}`
+      );
+
+      // 3️⃣ Unificar estructura esperada por el PDF
+      setUser({
+        ...response.data,
+        trend_summary: {
+          phq9_last: lastResponse.data.phq9.score,
+          gad7_last: lastResponse.data.gad7.score,
+          phq9_trend: lastResponse.data.phq9.severity,
+          gad7_trend: lastResponse.data.gad7.severity,
+          status:
+            lastResponse.data.phq9.score >= 15 ||
+            lastResponse.data.gad7.score >= 15
+              ? "severo"
+              : lastResponse.data.phq9.score >= 10 ||
+                lastResponse.data.gad7.score >= 10
+              ? "moderado"
+              : "leve"
+        }
+      });
+
     } catch (error) {
       console.error('Error al cargar perfil:', error);
-      if (error.response?.status === 403) {
-        navigate('/admin/login');
-      } else if (error.response?.status === 404) {
-        alert('Usuario no encontrado');
-        navigate('/admin/users');
-      }
+      navigate('/admin/login');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -69,34 +99,160 @@ function AdminUserProfile() {
   };
 
   const handleExportPDF = async () => {
-    try {
-      alert('Generando PDF...');
-      // Simular descarga
-      const pdfContent = `
-        REPORTE DE USUARIO - ${user.user.full_name}
-        =====================================
-        ID: ${user.user.id}
-        Edad: ${user.user.age} años
-        Email: ${user.user.email}
-        
-        ÚLTIMA EVALUACIÓN:
-        PHQ-9: ${lastPhq9?.score || 'N/A'}
-        GAD-7: ${lastGad7?.score || 'N/A'}
-        
-        Total de evaluaciones: ${totalEvaluations}
-      `;
-      
-      const blob = new Blob([pdfContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `reporte_${user.user.full_name}_${new Date().toISOString().split('T')[0]}.txt`;
-      a.click();
-      
-      alert('Reporte descargado exitosamente');
-    } catch (error) {
-      alert('Error al exportar PDF');
+    if (!user || !user.user) return;
+
+    const profile = user.user;
+    const assessments = user.assessments || [];
+
+    if (!assessments.length) {
+      alert("Este usuario aún no posee evaluaciones registradas.");
+      return;
     }
+
+    // ===============================
+    // PROMEDIOS REALES
+    // ===============================
+
+    const phq9 = assessments.filter(a => a.type === "phq9");
+    const gad7 = assessments.filter(a => a.type === "gad7");
+
+    const avg = (arr) =>
+      arr.length ? (arr.reduce((s,a)=>s+a.score,0)/arr.length).toFixed(1) : null;
+
+    const phq9_avg = avg(phq9);
+    const gad7_avg = avg(gad7);
+
+    // ===============================
+    // NORMALIZACIÓN 0–100
+    // ===============================
+
+    const normPHQ9 = phq9_avg ? (phq9_avg / 27) * 100 : 0;
+    const normGAD7 = gad7_avg ? (gad7_avg / 21) * 100 : 0;
+
+    const emotionalIndex = ((normPHQ9 + normGAD7) / 2).toFixed(1);
+
+    let status = "Estable";
+    if (emotionalIndex >= 60) status = "Severo";
+    else if (emotionalIndex >= 40) status = "Moderado";
+    else if (emotionalIndex >= 20) status = "Leve";
+
+    // ===============================
+    // CAPTURA DE GRÁFICA
+    // ===============================
+
+    let chartImage = null;
+
+    if (chartRef?.current) {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2
+      });
+      chartImage = canvas.toDataURL("image/png");
+    }
+
+    // ===============================
+    // PDF
+    // ===============================
+
+    const doc = new jsPDF("p", "mm", "a4");
+
+    // HEADER
+    doc.setFontSize(18);
+    doc.text("SMART MIRROR - REPORTE CLÍNICO", 105, 15, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" });
+    doc.line(10, 26, 200, 26);
+
+    // -------------------------------
+    // DATOS DEL PACIENTE
+    // -------------------------------
+
+    doc.setFontSize(14);
+    doc.text("Datos del Paciente", 14, 35);
+
+    autoTable(doc,{
+      startY: 40,
+      head:[["Campo","Detalle"]],
+      body:[
+        ["Nombre", profile.full_name],
+        ["Edad", profile.age ?? "N/A"],
+        ["Género", profile.gender ?? "N/A"],
+        ["Email", profile.email ?? "N/A"],
+        ["ID Usuario", profile.id]
+      ]
+    });
+
+    // -------------------------------
+    // ESTADO EMOCIONAL
+    // -------------------------------
+
+    const y2 = doc.lastAutoTable.finalY + 10;
+
+    doc.text("Estado Emocional (Promedios)", 14, y2);
+
+    autoTable(doc,{
+      startY: y2 + 4,
+      head:[["Métrica","Resultado"]],
+      body:[
+        ["PHQ-9 Promedio", phq9_avg ?? "Sin datos"],
+        ["GAD-7 Promedio", gad7_avg ?? "Sin datos"],
+        ["Índice emocional", `${emotionalIndex} / 100`],
+        ["Clasificación", status]
+      ]
+    });
+
+    // -------------------------------
+    // HISTORIAL
+    // -------------------------------
+
+    const y3 = doc.lastAutoTable.finalY + 10;
+
+    doc.text("Historial de Evaluaciones",14,y3);
+
+    autoTable(doc,{
+      startY:y3+4,
+      head:[["Fecha","Test","Score","Severidad"]],
+      body: assessments.map(a=>[
+        new Date(a.created_at).toLocaleDateString("es-ES"),
+        a.type.toUpperCase(),
+        a.score,
+        a.severity
+      ])
+    });
+
+    // -------------------------------
+    // PÁGINA CON GRÁFICA
+    // -------------------------------
+
+    if (chartImage) {
+
+      doc.addPage();
+
+      doc.text("Gráfica de evolución clínica",105,15,{align:"center"});
+
+      doc.addImage(chartImage,"PNG",10,20,190,100);
+    }
+
+    // -------------------------------
+    // FOOTER
+    // -------------------------------
+
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setFontSize(9);
+    doc.text(
+      "Documento generado automáticamente por Smart Mirror",
+      105,
+      pageHeight - 12,
+      { align:"center" }
+    );
+
+    // -------------------------------
+    // DESCARGA
+    // -------------------------------
+
+    const safeName = profile.full_name.replace(/\s+/g,"_");
+    doc.save(`reporte_${safeName}.pdf`);
   };
 
   const handleExportCSV = () => {
@@ -125,25 +281,48 @@ function AdminUserProfile() {
     }
   };
 
-  const handleSendNotification = () => {
-    if (user.user.email) {
-      const subject = encodeURIComponent('Seguimiento - Espejo Inteligente');
-      const body = encodeURIComponent(`Estimado/a ${user.user.full_name},\n\nNos comunicamos desde el equipo de Espejo Inteligente para hacer seguimiento de tu bienestar...\n\nSaludos,\n${adminName}`);
-      window.location.href = `mailto:${user.user.email}?subject=${subject}&body=${body}`;
-    } else {
-      alert('Este usuario no tiene email registrado');
-    }
-  };
+  const handleSendNotification = async () => {
+    try {
 
-  const handleGenerateCode = () => {
-    const code = `ESP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    
-    // Copiar al portapapeles
-    navigator.clipboard.writeText(code).then(() => {
-      alert(`Código de derivación generado y copiado:\n\n${code}\n\nEste código ha sido copiado al portapapeles.`);
-    }).catch(() => {
-      alert(`Código de derivación generado:\n\n${code}\n\n(No se pudo copiar automáticamente)`);
-    });
+      if (!user?.user?.email) {
+        alert("Este usuario no tiene correo registrado");
+        return;
+      }
+
+      const message = `
+  Estimado/a ${user.user.full_name},
+
+  Nos comunicamos desde el sistema Smart Mirror para dar seguimiento a su bienestar emocional.
+
+  Resultados más recientes:
+
+  PHQ-9: ${lastPhq9?.score ?? "N/A"}
+  GAD-7: ${lastGad7?.score ?? "N/A"}
+
+  Recomendación:
+  ${lastPhq9?.score >= 15 || lastGad7?.score >= 15
+    ? "Requiere evaluación profesional prioritaria."
+    : lastPhq9?.score >= 10 || lastGad7?.score >= 10
+        ? "Se sugiere monitoreo clínico."
+        : "Estado estable."}
+
+  Saludos,
+  Equipo Smart Mirror
+
+  Administrador: ${adminName}
+  `;
+
+      await api.post("/notifications/email",{
+        user_id: user.user.id,
+        message
+      });
+
+      alert("📧 Correo enviado correctamente");
+
+    } catch (error) {
+      console.error("Error enviando correo:", error);
+      alert("❌ No se pudo enviar la notificación.");
+    }
   };
 
   const handleDeleteUser = async () => {
@@ -608,6 +787,7 @@ function AdminUserProfile() {
 
           {/* Gráfica INTERACTIVA */}
           <div 
+            ref={chartRef}
             className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
             onMouseLeave={() => setHoveredPoint(null)}
           >
@@ -815,14 +995,6 @@ function AdminUserProfile() {
             >
               <span className="text-3xl">📧</span>
               <span className="text-sm font-medium text-gray-700 text-center">Enviar Notificación</span>
-            </button>
-
-            <button
-              onClick={handleGenerateCode}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-yellow-500 hover:bg-yellow-50 transition transform hover:scale-105"
-            >
-              <span className="text-3xl">🔗</span>
-              <span className="text-sm font-medium text-gray-700 text-center">Generar Código Derivación</span>
             </button>
 
             <button

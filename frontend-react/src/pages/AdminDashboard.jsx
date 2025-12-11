@@ -8,8 +8,9 @@ function AdminDashboard() {
     total_users: 0,
     total_assessments: 0,
     active_sessions: 0,
-    average_scores: { phq9: 0, gad7: 0 }
+    total_sessions: 0
   });
+
   const [chartData, setChartData] = useState([]);
   const [recentUsers, setRecentUsers] = useState([]);
   const [criticalAlerts, setCriticalAlerts] = useState([]);
@@ -25,7 +26,6 @@ function AdminDashboard() {
     checkAuth();
     loadDashboardData();
 
-    // Auto-refresh cada 30 segundos si está activado
     let interval;
     if (autoRefresh) {
       interval = setInterval(() => {
@@ -41,42 +41,42 @@ function AdminDashboard() {
   const checkAuth = () => {
     const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
     const adminNameStored = localStorage.getItem('admin_name') || sessionStorage.getItem('admin_name');
-    
+
     if (!adminId) {
       navigate('/admin/login');
       return;
     }
-    
+
     setAdminName(adminNameStored || 'Administrador');
   };
 
   const loadDashboardData = async () => {
     try {
       const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-      
-      // Cargar estadísticas generales
+
+      // === Estadísticas reales ===
       const statsResponse = await api.get(`/admin/dashboard?user_id=${adminId}`);
       setStats(statsResponse.data);
-      
-      // Cargar usuarios
+
+      // === Usuarios completos ===
       const usersResponse = await api.get(`/admin/users?user_id=${adminId}`);
-      
-      // Usuarios recientes (últimos 5)
+
+      // Usuarios recientes
       const recent = usersResponse.data
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 5);
       setRecentUsers(recent);
-      
-      // Alertas críticas (PHQ-9 >= 15 o GAD-7 >= 15)
-      const critical = usersResponse.data.filter(u => 
+
+      // Alertas basadas en PHQ-9 y GAD-7 reales
+      const critical = usersResponse.data.filter(u =>
         (u.latest_phq9 >= 15 || u.latest_gad7 >= 15)
       ).slice(0, 3);
       setCriticalAlerts(critical);
-      
-      // Generar datos de gráfica
-      const mockChartData = generateMockChartData(timeRange);
-      setChartData(mockChartData);
-      
+
+      // === Gráfica (aún mock, backend no devuelve datos por día) ===
+      const mockData = generateMockChartData(timeRange);
+      setChartData(mockData);
+
     } catch (error) {
       console.error('Error al cargar dashboard:', error);
       if (error.response?.status === 403) {
@@ -92,9 +92,9 @@ function AdminDashboard() {
     for (let i = 0; i < days; i++) {
       data.push({
         day: i + 1,
-        evaluations: Math.floor(Math.random() * 10) + 15,
-        users: Math.floor(Math.random() * 5) + 3,
-        alerts: Math.floor(Math.random() * 3)
+        evaluations: Math.floor(Math.random() * 10) + 5,
+        users: Math.floor(Math.random() * 3),
+        alerts: Math.floor(Math.random() * 2),
       });
     }
     return data;
@@ -126,10 +126,10 @@ function AdminDashboard() {
   };
 
   const getMetricMax = () => {
-    if (selectedMetric === 'evaluations') return 28;
+    if (selectedMetric === 'evaluations') return 30;
     if (selectedMetric === 'users') return 10;
     if (selectedMetric === 'alerts') return 5;
-    return 28;
+    return 30;
   };
 
   if (isLoading) {
@@ -151,11 +151,12 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      
-      {/* Barra Lateral */}
+
+      {/* ======================================================
+           BARRA LATERAL 
+      ====================================================== */}
       <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
-        
-        {/* Logo */}
+
         <div className="p-6 border-b border-blue-700">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -168,7 +169,6 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* Menú */}
         <nav className="flex-1 p-4">
           <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 bg-blue-700 shadow-lg">
             <span>🏠</span>
@@ -200,10 +200,10 @@ function AdminDashboard() {
           </button>
         </nav>
 
-        {/* Auto-refresh toggle */}
         <div className="px-4 py-3 border-t border-blue-700">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm">Auto-actualizar</span>
+
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`w-12 h-6 rounded-full transition ${
@@ -215,12 +215,12 @@ function AdminDashboard() {
               }`}></div>
             </button>
           </div>
+
           <p className="text-xs text-blue-300">
             {autoRefresh ? 'Actualiza cada 30s' : 'Desactivado'}
           </p>
         </div>
 
-        {/* Usuario admin */}
         <div className="p-4 border-t border-blue-700">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
@@ -231,6 +231,7 @@ function AdminDashboard() {
               <p className="text-xs text-blue-300">Administrador</p>
             </div>
           </div>
+
           <button
             onClick={handleLogout}
             className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
@@ -240,10 +241,11 @@ function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Contenido Principal */}
+      {/* ======================================================
+           CONTENIDO PRINCIPAL
+      ====================================================== */}
       <main className="flex-1 p-8 overflow-y-auto">
-        
-        {/* Header */}
+
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-800">Panel de Control</h2>
@@ -251,9 +253,8 @@ function AdminDashboard() {
               Última actualización: {new Date().toLocaleTimeString('es-ES')}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            {/* Búsqueda funcional */}
             <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
@@ -266,18 +267,15 @@ function AdminDashboard() {
                 🔍
               </button>
             </form>
-            
-            {/* Botón refresh manual */}
+
             <button
               onClick={() => loadDashboardData()}
               className="p-2 bg-white rounded-lg shadow hover:shadow-lg transition"
-              title="Actualizar ahora"
             >
               <span className="text-2xl">🔄</span>
             </button>
 
-            {/* Notificaciones */}
-            <button 
+            <button
               onClick={() => navigate('/admin/alerts')}
               className="relative p-2 bg-white rounded-lg shadow hover:shadow-lg transition"
             >
@@ -289,7 +287,6 @@ function AdminDashboard() {
               )}
             </button>
 
-            {/* Perfil admin */}
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
               <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 {adminName.charAt(0).toUpperCase()}
@@ -299,10 +296,11 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* Cards de estadísticas CLICKEABLES */}
+        {/* ======================================================
+           CARDS PRINCIPALES
+        ====================================================== */}
         <div className="grid grid-cols-4 gap-6 mb-8">
-          
-          {/* Total Usuarios - CLICKEABLE */}
+
           <div 
             onClick={() => navigate('/admin/users')}
             className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition cursor-pointer group transform hover:-translate-y-1"
@@ -317,14 +315,11 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-blue-600 text-sm font-medium">
-                Click para ver todos
-              </p>
+              <p className="text-blue-600 text-sm font-medium">Click para ver todos</p>
               <span className="text-blue-600">→</span>
             </div>
           </div>
 
-          {/* Evaluaciones */}
           <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -335,12 +330,9 @@ function AdminDashboard() {
                 <span className="text-2xl">📋</span>
               </div>
             </div>
-            <p className="text-gray-600 text-sm">
-              Completadas en el sistema
-            </p>
+            <p className="text-gray-600 text-sm">Completadas en el sistema</p>
           </div>
 
-          {/* Alertas Críticas - CLICKEABLE */}
           <div 
             onClick={() => navigate('/admin/alerts')}
             className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition cursor-pointer group transform hover:-translate-y-1"
@@ -355,14 +347,11 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-red-600 text-sm font-medium">
-                Requieren atención
-              </p>
+              <p className="text-red-600 text-sm font-medium">Requieren atención</p>
               <span className="text-red-600">→</span>
             </div>
           </div>
 
-          {/* Sesiones Activas */}
           <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -378,14 +367,15 @@ function AdminDashboard() {
               <span>En línea ahora</span>
             </p>
           </div>
-
         </div>
 
-        {/* Sección de 2 columnas */}
+        {/* ======================================================
+           GRÁFICA (AÚN MOCK)
+        ====================================================== */}
         <div className="grid grid-cols-3 gap-6 mb-8">
-          
-          {/* Gráfica INTERACTIVA - 2 columnas */}
+
           <div className="col-span-2 bg-white rounded-2xl shadow-lg p-6">
+
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">
@@ -393,13 +383,11 @@ function AdminDashboard() {
                   {selectedMetric === 'users' && 'Nuevos Usuarios por Día'}
                   {selectedMetric === 'alerts' && 'Alertas por Día'}
                 </h3>
-                <p className="text-sm text-gray-600">
-                  Promedio: {avgMetric} por día
-                </p>
+                <p className="text-sm text-gray-600">Promedio: {avgMetric} por día</p>
               </div>
-              
+
               <div className="flex flex-col gap-2">
-                {/* Selector de métrica */}
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedMetric('evaluations')}
@@ -411,6 +399,7 @@ function AdminDashboard() {
                   >
                     Evaluaciones
                   </button>
+
                   <button
                     onClick={() => setSelectedMetric('users')}
                     className={`px-3 py-1 rounded-lg text-sm transition ${
@@ -421,6 +410,7 @@ function AdminDashboard() {
                   >
                     Usuarios
                   </button>
+
                   <button
                     onClick={() => setSelectedMetric('alerts')}
                     className={`px-3 py-1 rounded-lg text-sm transition ${
@@ -433,7 +423,6 @@ function AdminDashboard() {
                   </button>
                 </div>
 
-                {/* Selector de rango */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setTimeRange(7)}
@@ -445,6 +434,7 @@ function AdminDashboard() {
                   >
                     7 días
                   </button>
+
                   <button
                     onClick={() => setTimeRange(30)}
                     className={`px-3 py-1 rounded-lg text-sm transition ${
@@ -459,25 +449,22 @@ function AdminDashboard() {
               </div>
             </div>
 
-            {/* SVG Chart CON HOVER */}
+            {/* GRÁFICA SVG */}
             <div className="relative h-64 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6">
-              
-              {/* Eje Y */}
+
               <div className="absolute left-2 top-6 bottom-8 flex flex-col justify-between text-xs text-gray-600">
                 {[metricMax, Math.floor(metricMax * 0.75), Math.floor(metricMax * 0.5), Math.floor(metricMax * 0.25), 0].map((val, i) => (
                   <span key={i}>{val}</span>
                 ))}
               </div>
 
-              {/* Grid */}
               <div className="absolute left-12 right-4 top-6 bottom-8">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 25}%` }} />
                 ))}
               </div>
 
-              {/* Chart con HOVER */}
-              <div 
+              <div
                 className="absolute left-12 right-4 top-6 bottom-8"
                 onMouseLeave={() => setHoveredPoint(null)}
               >
@@ -487,11 +474,11 @@ function AdminDashboard() {
                       <stop offset="0%" stopColor={
                         selectedMetric === 'evaluations' ? '#3b82f6' :
                         selectedMetric === 'users' ? '#10b981' : '#ef4444'
-                      } stopOpacity="0.3"/>
+                      } stopOpacity="0.3" />
                       <stop offset="100%" stopColor={
                         selectedMetric === 'evaluations' ? '#3b82f6' :
                         selectedMetric === 'users' ? '#10b981' : '#ef4444'
-                      } stopOpacity="0.05"/>
+                      } stopOpacity="0.05" />
                     </linearGradient>
                   </defs>
 
@@ -523,17 +510,17 @@ function AdminDashboard() {
                     const x = (i / Math.max(metricData.length - 1, 1)) * 100;
                     const y = 100 - (val / metricMax) * 100;
                     return (
-                      <circle 
-                        key={i} 
-                        cx={x} 
-                        cy={y} 
-                        r={hoveredPoint === i ? "2" : "1"} 
+                      <circle
+                        key={i}
+                        cx={x}
+                        cy={y}
+                        r={hoveredPoint === i ? 2 : 1}
                         fill={
                           selectedMetric === 'evaluations' ? '#3b82f6' :
                           selectedMetric === 'users' ? '#10b981' : '#ef4444'
                         }
-                        stroke="white" 
-                        strokeWidth="0.3" 
+                        stroke="white"
+                        strokeWidth="0.3"
                         vectorEffect="non-scaling-stroke"
                         className="cursor-pointer"
                         onMouseEnter={() => setHoveredPoint(i)}
@@ -542,9 +529,8 @@ function AdminDashboard() {
                   })}
                 </svg>
 
-                {/* Tooltip on hover */}
                 {hoveredPoint !== null && (
-                  <div 
+                  <div
                     className="absolute bg-white px-3 py-2 rounded-lg shadow-lg border-2 border-blue-500 pointer-events-none"
                     style={{
                       left: `${(hoveredPoint / Math.max(metricData.length - 1, 1)) * 100}%`,
@@ -562,7 +548,6 @@ function AdminDashboard() {
                 )}
               </div>
 
-              {/* Eje X */}
               <div className="absolute left-12 right-4 bottom-2 flex justify-between text-xs text-gray-600">
                 {timeRange === 7 ? (
                   ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((day, i) => (
@@ -577,7 +562,9 @@ function AdminDashboard() {
             </div>
           </div>
 
-          {/* Alertas Críticas CLICKEABLES - 1 columna */}
+          {/* ======================================================
+              ALERTAS CRÍTICAS
+          ====================================================== */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800">Alertas Críticas</h3>
@@ -585,11 +572,12 @@ function AdminDashboard() {
                 <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
               )}
             </div>
-            
+
             {criticalAlerts.length > 0 ? (
               <div className="space-y-3">
+
                 {criticalAlerts.map((user) => (
-                  <div 
+                  <div
                     key={user.id}
                     onClick={() => navigate(`/admin/user/${user.id}`)}
                     className="p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 cursor-pointer transition transform hover:scale-105"
@@ -601,14 +589,14 @@ function AdminDashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-800 text-sm truncate">{user.full_name}</p>
                         <p className="text-xs text-red-600">
-                          PHQ-9: {user.latest_phq9} | GAD-7: {user.latest_gad7}
+                          PHQ-9: {user.latest_phq9 ?? "—"} | GAD-7: {user.latest_gad7 ?? "—"}
                         </p>
                       </div>
                       <span className="text-red-600 text-lg">→</span>
                     </div>
                   </div>
                 ))}
-                
+
                 <button
                   onClick={() => navigate('/admin/alerts')}
                   className="w-full py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition font-medium"
@@ -624,10 +612,11 @@ function AdminDashboard() {
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Usuarios Recientes CLICKEABLES */}
+        {/* ======================================================
+           USUARIOS RECIENTES
+        ====================================================== */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-800">Usuarios Recientes</h3>
@@ -635,8 +624,7 @@ function AdminDashboard() {
               onClick={() => navigate('/admin/users')}
               className="text-blue-600 hover:underline text-sm font-medium flex items-center gap-1"
             >
-              Ver todos
-              <span>→</span>
+              Ver todos → 
             </button>
           </div>
 
@@ -664,7 +652,6 @@ function AdminDashboard() {
         </div>
 
       </main>
-
     </div>
   );
 }
