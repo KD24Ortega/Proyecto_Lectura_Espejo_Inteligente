@@ -246,7 +246,7 @@ function Results() {
         {testType === 'gad7' && (
           <div className="text-center">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/dashboard')}
               className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg"
             >
               ✓ Finalizar y ver Dashboard

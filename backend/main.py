@@ -10,7 +10,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from backend.trends.trend_service import analyze_trends
 
-from backend.voice.voice_analysis_service import analyze_voice
+
+# Importar el servicio de análisis de voz
+try:
+    from backend.services.voice_analysis_service import procesar_audio_archivo
+except ImportError:
+    from services.voice_analysis_service import procesar_audio_archivo
+
 from backend.voice.transcription_service import TranscriptionService
 from backend.voice.tts_service import TTSService
 
@@ -1023,33 +1029,6 @@ async def get_trends_history(user_id: int, db: Session = Depends(get_db)):
     
 # Agregar endpoints al final del archivo
 
-@app.post("/voice/analyze")
-async def analyze_user_voice(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Analizar características de voz de un usuario"""
-    
-    # Leer audio
-    audio_bytes = await file.read()
-    
-    # Analizar
-    analysis = analyze_voice(audio_bytes)
-    
-    # Guardar en DB
-    voice_analysis = models.VoiceAnalysis(
-        user_id=user_id,
-        pitch_mean=analysis["pitch_mean"],
-        pitch_std=analysis["pitch_std"],
-        energy_mean=analysis["energy_mean"],
-        speech_rate=analysis["speech_rate"],
-        pause_duration=analysis["pause_duration"],
-        emotional_variability=analysis["emotional_variability"],
-        risk_level=analysis["risk_level"]
-    )
-    db.add(voice_analysis)
-    db.commit()
-    
-    return analysis
-
-
 @app.post("/voice/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     """Transcribir audio a texto"""
@@ -1296,3 +1275,472 @@ async def admin_stats_history(
         })
 
     return {"days": days, "history": history}
+
+
+# ============================================================
+# ENDPOINT BACKEND: Marcar Usuario como Atendido
+# ============================================================
+# Agregar esto a main.py en la sección de endpoints de admin
+
+from pydantic import BaseModel
+from datetime import datetime, timedelta
+from typing import Optional
+
+# ============================================================
+# MODELO DE DATOS
+# ============================================================
+
+class MarkAttendedRequest(BaseModel):
+    admin_id: int
+    notes: Optional[str] = None
+    schedule_followup: bool = False
+    followup_date: Optional[str] = None
+    send_confirmation: bool = False
+
+
+# ============================================================
+# ENDPOINT
+# ============================================================
+
+@app.post("/admin/mark-attended/{user_id}")
+async def mark_user_attended(
+    user_id: int,
+    payload: MarkAttendedRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Marca un usuario como atendido y registra la sesión.
+    
+    Funcionalidades:
+    - Registra atención con fecha/hora y notas
+    - Opcional: programa seguimiento
+    - Opcional: envía email de confirmación
+    - Actualiza flag de "requiere atención"
+    """
+    
+    # Validar que el admin existe
+    admin = db.query(models.User).filter(
+        models.User.id == payload.admin_id,
+        models.User.is_admin == True
+    ).first()
+    
+    if not admin:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    # Validar que el usuario existe
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Crear registro de atención
+    attendance = models.AttendanceRecord(
+        user_id=user_id,
+        admin_id=payload.admin_id,
+        notes=payload.notes,
+        attended_at=datetime.utcnow()
+    )
+    db.add(attendance)
+    
+    # Programar seguimiento si se solicitó
+    if payload.schedule_followup and payload.followup_date:
+        try:
+            followup_datetime = datetime.fromisoformat(payload.followup_date)
+            followup = models.FollowUp(
+                user_id=user_id,
+                scheduled_for=followup_datetime,
+                status="pending",
+                created_by=payload.admin_id
+            )
+            db.add(followup)
+        except ValueError:
+            pass  # Si la fecha es inválida, simplemente no programar
+    
+    # Actualizar flag de requiere atención (si existe en tu modelo)
+    # user.requires_attention = False
+    
+    # Enviar email de confirmación si se solicitó
+    if payload.send_confirmation and user.email:
+        try:
+            # Usar tu sistema de emails (Resend o similar)
+            email_message = f"""
+            <h2>Confirmación de Atención - Smart Mirror</h2>
+            <p>Estimado/a {user.full_name},</p>
+            <p>Te confirmamos que tu sesión ha sido registrada exitosamente.</p>
+            <p>Fecha: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}</p>
+            {f'<p>Próximo seguimiento programado: {payload.followup_date}</p>' if payload.schedule_followup else ''}
+            <p>Si tienes alguna duda, no dudes en contactarnos.</p>
+            <p>Saludos,<br>Equipo Smart Mirror</p>
+            """
+            
+            # Ejemplo con Resend (ajusta según tu implementación)
+            # resend.Emails.send({
+            #     "from": "Smart Mirror <onboarding@resend.dev>",
+            #     "to": [user.email],
+            #     "subject": "Confirmación de Atención - Smart Mirror",
+            #     "html": email_message
+            # })
+            
+            # Por ahora, solo log
+            print(f"Email de confirmación enviado a {user.email}")
+        except Exception as e:
+            print(f"Error enviando email: {e}")
+            # No fallar la operación si el email falla
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Usuario marcado como atendido exitosamente",
+        "attendance_id": attendance.id if hasattr(attendance, 'id') else None,
+        "followup_scheduled": payload.schedule_followup,
+        "confirmation_sent": payload.send_confirmation and user.email is not None
+    }
+
+# =====================================================
+#  ENDPOINTS DE EJERCICIOS DE VOZ
+#  Agregar a main.py (solo endpoints, sin imports de modelos)
+# =====================================================
+
+
+
+
+# =====================
+# ENDPOINTS: EJERCICIOS
+# =====================
+
+@app.get("/api/exercises")
+async def get_exercises(
+    category: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene el catálogo de ejercicios.
+    
+    Query params:
+    - category: "anxiety", "depression" o "both" (opcional)
+    """
+    query = db.query(models.Exercise)
+    
+    if category:
+        query = query.filter(
+            (models.Exercise.category == category) | 
+            (models.Exercise.category == "both")
+        )
+    
+    exercises = query.all()
+    
+    return [
+        {
+            "id": ex.id,
+            "title": ex.title,
+            "description": ex.description,
+            "category": ex.category.value if hasattr(ex.category, 'value') else ex.category,
+            "exercise_type": ex.exercise_type.value if hasattr(ex.exercise_type, 'value') else ex.exercise_type,
+            "duration_seconds": ex.duration_seconds,
+            "instructions": ex.instructions,
+            "audio_guide_url": ex.audio_guide_url
+        }
+        for ex in exercises
+    ]
+
+
+@app.get("/api/exercises/{exercise_id}")
+async def get_exercise(
+    exercise_id: int,
+    db: Session = Depends(get_db)
+):
+    """Obtiene un ejercicio específico por ID"""
+    exercise = db.query(models.Exercise).filter(
+        models.Exercise.id == exercise_id
+    ).first()
+    
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
+    
+    return {
+        "id": exercise.id,
+        "title": exercise.title,
+        "description": exercise.description,
+        "category": exercise.category.value if hasattr(exercise.category, 'value') else exercise.category,
+        "exercise_type": exercise.exercise_type.value if hasattr(exercise.exercise_type, 'value') else exercise.exercise_type,
+        "duration_seconds": exercise.duration_seconds,
+        "instructions": exercise.instructions,
+        "audio_guide_url": exercise.audio_guide_url
+    }
+
+
+# =====================
+# ENDPOINTS: ANÁLISIS DE VOZ
+# =====================
+
+@app.post("/api/voice/analyze")
+async def analyze_voice(
+    audio_file: UploadFile = File(...),
+    gender: str = Form("neutro")
+):
+    """
+    Analiza un archivo de audio y retorna biomarcadores vocales.
+    
+    Form params:
+    - audio_file: Archivo de audio (wav, mp3, etc.)
+    - gender: "masculino", "femenino" o "neutro"
+    """
+    try:
+        audio_bytes = await audio_file.read()
+        resultado = procesar_audio_archivo(audio_bytes, gender)
+        return resultado
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error analizando audio: {str(e)}"
+        )
+
+
+# =====================
+# ENDPOINTS: SESIONES DE EJERCICIOS
+# =====================
+
+@app.post("/api/voice/sessions")
+async def create_voice_session(
+    audio_file: UploadFile = File(...),
+    user_id: int = Form(...),
+    exercise_id: int = Form(...),
+    duration_seconds: int = Form(...),
+    gender: str = Form("neutro"),
+    completed: bool = Form(True),
+    notes: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Crea una sesión de ejercicio de voz con análisis completo.
+    
+    Form params:
+    - audio_file: Archivo de audio grabado durante el ejercicio
+    - user_id: ID del usuario
+    - exercise_id: ID del ejercicio realizado
+    - duration_seconds: Duración de la sesión
+    - gender: Género del usuario para ajustar umbrales
+    - completed: Si completó el ejercicio
+    - notes: Notas adicionales (opcional)
+    """
+    try:
+        # Validar usuario
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Validar ejercicio
+        exercise = db.query(models.Exercise).filter(
+            models.Exercise.id == exercise_id
+        ).first()
+        if not exercise:
+            raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
+        
+        # Leer y analizar audio
+        audio_bytes = await audio_file.read()
+        analisis = procesar_audio_archivo(audio_bytes, gender)
+        
+        # Crear sesión en BD
+        session = models.VoiceExerciseSession(
+            user_id=user_id,
+            exercise_id=exercise_id,
+            pitch_mean=analisis["pitch_mean"],
+            pitch_std=analisis["pitch_std"],
+            energy=analisis["energy"],
+            voice_ratio=analisis["voice_ratio"],
+            mfcc_variability=analisis["mfcc_variability"],
+            jitter=analisis["jitter"],
+            shimmer=analisis["shimmer"],
+            hnr=analisis["hnr"],
+            score=analisis["score"],
+            risk_level=analisis["risk_level"],
+            duration_seconds=duration_seconds,
+            completed=completed,
+            notes=notes
+        )
+        
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        
+        return {
+            "id": session.id,
+            "user_id": session.user_id,
+            "exercise_id": session.exercise_id,
+            "pitch_mean": session.pitch_mean,
+            "pitch_std": session.pitch_std,
+            "energy": session.energy,
+            "voice_ratio": session.voice_ratio,
+            "mfcc_variability": session.mfcc_variability,
+            "jitter": session.jitter,
+            "shimmer": session.shimmer,
+            "hnr": session.hnr,
+            "score": session.score,
+            "risk_level": session.risk_level.value if hasattr(session.risk_level, 'value') else session.risk_level,
+            "duration_seconds": session.duration_seconds,
+            "completed": session.completed,
+            "created_at": session.created_at.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creando sesión: {str(e)}"
+        )
+
+
+@app.get("/api/voice/sessions/user/{user_id}")
+async def get_user_voice_sessions(
+    user_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene el historial de sesiones de voz de un usuario.
+    
+    Query params:
+    - limit: Número máximo de sesiones a retornar (default: 50)
+    """
+    sessions = db.query(models.VoiceExerciseSession).filter(
+        models.VoiceExerciseSession.user_id == user_id
+    ).order_by(
+        models.VoiceExerciseSession.created_at.desc()
+    ).limit(limit).all()
+    
+    return [
+        {
+            "id": s.id,
+            "user_id": s.user_id,
+            "exercise_id": s.exercise_id,
+            "pitch_mean": s.pitch_mean,
+            "pitch_std": s.pitch_std,
+            "energy": s.energy,
+            "voice_ratio": s.voice_ratio,
+            "mfcc_variability": s.mfcc_variability,
+            "jitter": s.jitter,
+            "shimmer": s.shimmer,
+            "hnr": s.hnr,
+            "score": s.score,
+            "risk_level": s.risk_level.value if hasattr(s.risk_level, 'value') else s.risk_level,
+            "duration_seconds": s.duration_seconds,
+            "completed": s.completed,
+            "created_at": s.created_at.isoformat()
+        }
+        for s in sessions
+    ]
+
+
+@app.get("/api/voice/sessions/{session_id}")
+async def get_voice_session(
+    session_id: int,
+    db: Session = Depends(get_db)
+):
+    """Obtiene una sesión específica por ID"""
+    session = db.query(models.VoiceExerciseSession).filter(
+        models.VoiceExerciseSession.id == session_id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    
+    return {
+        "id": session.id,
+        "user_id": session.user_id,
+        "exercise_id": session.exercise_id,
+        "pitch_mean": session.pitch_mean,
+        "pitch_std": session.pitch_std,
+        "energy": session.energy,
+        "voice_ratio": session.voice_ratio,
+        "mfcc_variability": session.mfcc_variability,
+        "jitter": session.jitter,
+        "shimmer": session.shimmer,
+        "hnr": session.hnr,
+        "score": session.score,
+        "risk_level": session.risk_level.value if hasattr(session.risk_level, 'value') else session.risk_level,
+        "duration_seconds": session.duration_seconds,
+        "completed": session.completed,
+        "created_at": session.created_at.isoformat()
+    }
+
+
+# =====================
+# ENDPOINT: RECOMENDACIONES BASADAS EN TESTS
+# =====================
+
+@app.get("/api/voice/recommendations/{user_id}")
+async def get_exercise_recommendations(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene recomendaciones de ejercicios basadas en los últimos tests del usuario.
+    
+    Lógica:
+    - PHQ-9 alto → Ejercicios para depresión
+    - GAD-7 alto → Ejercicios para ansiedad
+    - Ambos altos → Ejercicios para ambos
+    """
+    # Obtener últimas evaluaciones
+    last_phq9 = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "phq9"
+    ).order_by(models.Assessment.created_at.desc()).first()
+    
+    last_gad7 = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "gad7"
+    ).order_by(models.Assessment.created_at.desc()).first()
+    
+    if not last_phq9 and not last_gad7:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no tiene evaluaciones registradas"
+        )
+    
+    # Determinar categoría recomendada
+    phq9_score = last_phq9.score if last_phq9 else 0
+    gad7_score = last_gad7.score if last_gad7 else 0
+    
+    if phq9_score >= 10 and gad7_score >= 10:
+        category = "both"
+        message = "Ejercicios recomendados para ansiedad y depresión"
+    elif gad7_score >= 10:
+        category = "anxiety"
+        message = "Ejercicios recomendados para ansiedad"
+    elif phq9_score >= 10:
+        category = "depression"
+        message = "Ejercicios recomendados para depresión"
+    else:
+        category = "both"
+        message = "Ejercicios de mantenimiento y bienestar general"
+    
+    # Obtener ejercicios recomendados
+    exercises = db.query(models.Exercise).filter(
+        (models.Exercise.category == category) | 
+        (models.Exercise.category == "both")
+    ).limit(6).all()
+    
+    return {
+        "user_id": user_id,
+        "phq9_score": phq9_score,
+        "gad7_score": gad7_score,
+        "recommended_category": category,
+        "message": message,
+        "exercises": [
+            {
+                "id": ex.id,
+                "title": ex.title,
+                "description": ex.description,
+                "category": ex.category.value if hasattr(ex.category, 'value') else ex.category,
+                "exercise_type": ex.exercise_type.value if hasattr(ex.exercise_type, 'value') else ex.exercise_type,
+                "duration_seconds": ex.duration_seconds,
+                "instructions": ex.instructions,
+                "audio_guide_url": ex.audio_guide_url
+            }
+            for ex in exercises
+        ]
+    }

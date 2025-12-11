@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import api from '../services/api';
 import html2canvas from "html2canvas";
+import api from '../services/api';
 
 function AdminUserProfile() {
   const navigate = useNavigate();
   const { userId } = useParams();
   const [user, setUser] = useState(null);
+  const [trends, setTrends] = useState(null); // Análisis de tendencias avanzado
   const [adminName, setAdminName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -16,12 +17,30 @@ function AdminUserProfile() {
   const [timeRange, setTimeRange] = useState(8); // 4, 8, 12 semanas
   const [showNotes, setShowNotes] = useState(false);
   const [note, setNote] = useState('');
+  
+  // Estados para modales
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  const [showAttendedModal, setShowAttendedModal] = useState(false);
+  const [attendanceNotes, setAttendanceNotes] = useState('');
+  const [scheduleFollowup, setScheduleFollowup] = useState(true);
+  const [sendConfirmation, setSendConfirmation] = useState(true);
+  const [followupDate, setFollowupDate] = useState('');
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+  
+  // Ref para captura de gráfica
   const chartRef = useRef(null);
 
   useEffect(() => {
     checkAuth();
     loadUserProfile();
   }, [userId]);
+
+  useEffect(() => {
+    // Recargar trends cuando cambie el timeRange
+    if (user) {
+      loadTrendsAnalysis();
+    }
+  }, [timeRange]);
 
   const checkAuth = () => {
     const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
@@ -37,19 +56,13 @@ function AdminUserProfile() {
 
   const loadUserProfile = async () => {
     try {
-      const adminId =
-        localStorage.getItem('admin_id') ||
-        sessionStorage.getItem('admin_id');
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
 
       // 1️⃣ Cargar perfil base
-      const response = await api.get(
-        `/admin/user/${userId}?user_id=${adminId}`
-      );
+      const response = await api.get(`/admin/user/${userId}?user_id=${adminId}`);
 
       // 2️⃣ Obtener últimos scores reales
-      const lastResponse = await api.get(
-        `/assessments/last/${userId}`
-      );
+      const lastResponse = await api.get(`/assessments/last/${userId}`);
 
       // 3️⃣ Unificar estructura esperada por el PDF
       setUser({
@@ -69,15 +82,34 @@ function AdminUserProfile() {
               : "leve"
         }
       });
-
+      
+      // 4️⃣ Cargar análisis de tendencias avanzado
+      await loadTrendsAnalysis();
+      
     } catch (error) {
       console.error('Error al cargar perfil:', error);
-      navigate('/admin/login');
+      if (error.response?.status === 403) {
+        navigate('/admin/login');
+      } else if (error.response?.status === 404) {
+        alert('Usuario no encontrado');
+        navigate('/admin/users');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ← AGREGAR ESTA FUNCIÓN DESPUÉS DE loadUserProfile
+  const loadTrendsAnalysis = async () => {
+    try {
+      const days = timeRange * 7; // Convertir semanas a días
+      const response = await api.get(`/trends/analyze/${userId}?days=${days}`);
+      setTrends(response.data);
+    } catch (error) {
+      console.error('Error al cargar análisis de tendencias:', error);
+      // No bloquear la carga del perfil si falla el análisis
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -88,13 +120,48 @@ function AdminUserProfile() {
     navigate('/admin/login');
   };
 
-  const handleMarkAsAttended = async () => {
+  const handleViewRecommendations = () => {
+    setShowRecommendationsModal(true);
+  };
+
+  const handleMarkAsAttended = () => {
+    // Establecer fecha de seguimiento sugerida (1 semana desde hoy)
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    setFollowupDate(nextWeek.toISOString().split('T')[0]);
+    
+    setShowAttendedModal(true);
+  };
+
+  const submitAttendance = async () => {
     try {
-      // Aquí iría la llamada al backend para marcar como atendido
-      alert('Usuario marcado como atendido exitosamente');
-      loadUserProfile(); // Recargar datos
+      setIsSubmittingAttendance(true);
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+      
+      await api.post(`/admin/mark-attended/${userId}`, {
+        admin_id: parseInt(adminId),
+        notes: attendanceNotes,
+        schedule_followup: scheduleFollowup,
+        followup_date: scheduleFollowup ? followupDate : null,
+        send_confirmation: sendConfirmation
+      });
+      
+      // Cerrar modal y limpiar
+      setShowAttendedModal(false);
+      setAttendanceNotes('');
+      setScheduleFollowup(true);
+      setSendConfirmation(true);
+      
+      // Mostrar confirmación
+      alert('✅ Usuario marcado como atendido exitosamente');
+      
+      // Recargar perfil
+      loadUserProfile();
     } catch (error) {
-      alert('Error al marcar como atendido');
+      console.error('Error al marcar como atendido:', error);
+      alert('❌ Error al marcar como atendido. Por favor intenta nuevamente.');
+    } finally {
+      setIsSubmittingAttendance(false);
     }
   };
 
@@ -143,11 +210,15 @@ function AdminUserProfile() {
     let chartImage = null;
 
     if (chartRef?.current) {
-      const canvas = await html2canvas(chartRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2
-      });
-      chartImage = canvas.toDataURL("image/png");
+      try {
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: "#ffffff",
+          scale: 2
+        });
+        chartImage = canvas.toDataURL("image/png");
+      } catch (error) {
+        console.error("Error capturando gráfica:", error);
+      }
     }
 
     // ===============================
@@ -226,11 +297,8 @@ function AdminUserProfile() {
     // -------------------------------
 
     if (chartImage) {
-
       doc.addPage();
-
       doc.text("Gráfica de evolución clínica",105,15,{align:"center"});
-
       doc.addImage(chartImage,"PNG",10,20,190,100);
     }
 
@@ -283,36 +351,44 @@ function AdminUserProfile() {
 
   const handleSendNotification = async () => {
     try {
-
       if (!user?.user?.email) {
         alert("Este usuario no tiene correo registrado");
         return;
       }
 
+      // Obtener últimos scores (necesarios para el mensaje)
+      const lastPhq9Score = user.assessments
+        .filter(a => a.type === 'phq9')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]?.score;
+      
+      const lastGad7Score = user.assessments
+        .filter(a => a.type === 'gad7')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]?.score;
+
       const message = `
-  Estimado/a ${user.user.full_name},
+Estimado/a ${user.user.full_name},
 
-  Nos comunicamos desde el sistema Smart Mirror para dar seguimiento a su bienestar emocional.
+Nos comunicamos desde el sistema Smart Mirror para dar seguimiento a su bienestar emocional.
 
-  Resultados más recientes:
+Resultados más recientes:
 
-  PHQ-9: ${lastPhq9?.score ?? "N/A"}
-  GAD-7: ${lastGad7?.score ?? "N/A"}
+PHQ-9: ${lastPhq9Score ?? "N/A"}
+GAD-7: ${lastGad7Score ?? "N/A"}
 
-  Recomendación:
-  ${lastPhq9?.score >= 15 || lastGad7?.score >= 15
-    ? "Requiere evaluación profesional prioritaria."
-    : lastPhq9?.score >= 10 || lastGad7?.score >= 10
-        ? "Se sugiere monitoreo clínico."
-        : "Estado estable."}
+Recomendación:
+${lastPhq9Score >= 15 || lastGad7Score >= 15
+  ? "Requiere evaluación profesional prioritaria."
+  : lastPhq9Score >= 10 || lastGad7Score >= 10
+      ? "Se sugiere monitoreo clínico."
+      : "Estado estable."}
 
-  Saludos,
-  Equipo Smart Mirror
+Saludos,
+Equipo Smart Mirror
 
-  Administrador: ${adminName}
-  `;
+Administrador: ${adminName}
+`;
 
-      await api.post("/notifications/email",{
+      await api.post("/notifications/email", {
         user_id: user.user.id,
         message
       });
@@ -380,7 +456,7 @@ function AdminUserProfile() {
   };
 
   const calculateTrend = (history) => {
-    if (history.length < 2) return { text: 'Insuficientes datos', color: 'text-gray-600', icon: '—' };
+    if (history.length < 2) return { text: 'Insuficientes datos', color: 'text-gray-600', icon: '—', percent: 0 };
     
     const recent = history.slice(-3);
     const older = history.slice(0, Math.min(3, history.length - 3));
@@ -390,8 +466,18 @@ function AdminUserProfile() {
     
     const change = recentAvg - olderAvg;
     
-    if (change < -2) return { text: 'Mejorando', color: 'text-green-600', icon: '📈', percent: Math.abs(((change / olderAvg) * 100).toFixed(1)) };
-    if (change > 2) return { text: 'Empeorando', color: 'text-red-600', icon: '📉', percent: Math.abs(((change / olderAvg) * 100).toFixed(1)) };
+    // Calcular porcentaje de forma segura
+    let percent = 0;
+    if (olderAvg > 0) {
+      percent = Math.min(999, Math.abs((change / olderAvg) * 100)); // Limitar a 999%
+    } else if (change !== 0) {
+      // Si olderAvg es 0 pero hay cambio, usar cambio absoluto
+      percent = Math.min(999, Math.abs(change * 10)); // Multiplicador arbitrario
+    }
+    percent = parseFloat(percent.toFixed(1));
+    
+    if (change < -2) return { text: 'Mejorando', color: 'text-green-600', icon: '📈', percent };
+    if (change > 2) return { text: 'Empeorando', color: 'text-red-600', icon: '📉', percent };
     return { text: 'Estable', color: 'text-gray-600', icon: '➡️', percent: 0 };
   };
 
@@ -642,7 +728,7 @@ function AdminUserProfile() {
                       </p>
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => navigate(`/admin/user/${userId}/recommendations`)}
+                          onClick={handleViewRecommendations}
                           className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-lg text-sm hover:bg-orange-50 transition font-medium"
                         >
                           Ver recomendaciones
@@ -747,6 +833,276 @@ function AdminUserProfile() {
             </div>
           </div>
         </div>
+        
+        {/* Análisis Avanzado de Tendencias */}
+        {trends && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Análisis Avanzado de Tendencias</h3>
+              
+              {/* Indicador de tendencia general */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <span className="text-sm font-semibold text-gray-700">Tendencia General:</span>
+                <span className={`text-sm font-bold ${
+                  trends.insights.overall_trend === 'improving' ? 'text-green-600' :
+                  trends.insights.overall_trend === 'worsening' ? 'text-red-600' :
+                  'text-gray-600'
+                }`}>
+                  {trends.insights.overall_trend === 'improving' && '📈 Mejorando'}
+                  {trends.insights.overall_trend === 'worsening' && '📉 Empeorando'}
+                  {trends.insights.overall_trend === 'stable' && '➡️ Estable'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              
+              {/* PHQ-9 Avanzado */}
+              <div className="border-2 border-blue-200 rounded-xl p-5 bg-blue-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-blue-900">PHQ-9 (Depresión)</h4>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    trends.phq9.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                    trends.phq9.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    Confianza: {trends.phq9.confidence === 'high' ? 'Alta' : trends.phq9.confidence === 'medium' ? 'Media' : 'Baja'}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Volatilidad:</span>
+                    <span className={`font-semibold ${
+                      trends.phq9.volatility > 5 ? 'text-red-600' :
+                      trends.phq9.volatility > 3 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {trends.phq9.volatility.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Consistencia:</span>
+                    <span className={`font-semibold ${
+                      trends.phq9.consistency === 'high' ? 'text-green-600' :
+                      trends.phq9.consistency === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {trends.phq9.consistency === 'high' ? 'Alta' :
+                       trends.phq9.consistency === 'medium' ? 'Media' : 'Baja'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">R² (Precisión):</span>
+                    <span className="font-semibold text-gray-800">
+                      {(trends.phq9.r_squared * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Promedio:</span>
+                    <span className="font-semibold text-gray-800">
+                      {trends.phq9.average.toFixed(1)} / 27
+                    </span>
+                  </div>
+                  
+                  {trends.phq9.rapid_changes.has_rapid_changes && (
+                    <div className="mt-3 p-2 bg-orange-100 border border-orange-300 rounded">
+                      <p className="text-xs text-orange-800 font-semibold">
+                        ⚠️ {trends.phq9.rapid_changes.count} cambio(s) rápido(s) detectado(s)
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Distribución de severidad */}
+                {trends.phq9.distribution && Object.keys(trends.phq9.distribution).length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-600 mb-2 font-semibold">Distribución de Severidad:</p>
+                    <div className="flex gap-1 h-4 rounded overflow-hidden">
+                      {trends.phq9.distribution.minimal > 0 && (
+                        <div 
+                          className="bg-green-500" 
+                          style={{width: `${trends.phq9.distribution.minimal}%`}}
+                          title={`Mínima: ${trends.phq9.distribution.minimal}%`}
+                        />
+                      )}
+                      {trends.phq9.distribution.mild > 0 && (
+                        <div 
+                          className="bg-blue-500" 
+                          style={{width: `${trends.phq9.distribution.mild}%`}}
+                          title={`Leve: ${trends.phq9.distribution.mild}%`}
+                        />
+                      )}
+                      {trends.phq9.distribution.moderate > 0 && (
+                        <div 
+                          className="bg-orange-500" 
+                          style={{width: `${trends.phq9.distribution.moderate}%`}}
+                          title={`Moderada: ${trends.phq9.distribution.moderate}%`}
+                        />
+                      )}
+                      {trends.phq9.distribution.severe > 0 && (
+                        <div 
+                          className="bg-red-500" 
+                          style={{width: `${trends.phq9.distribution.severe}%`}}
+                          title={`Severa: ${trends.phq9.distribution.severe}%`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>✓ Mínima: {trends.phq9.distribution.minimal}%</span>
+                      <span>⚠️ Severa: {trends.phq9.distribution.severe}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* GAD-7 Avanzado */}
+              <div className="border-2 border-purple-200 rounded-xl p-5 bg-purple-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-purple-900">GAD-7 (Ansiedad)</h4>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    trends.gad7.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                    trends.gad7.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    Confianza: {trends.gad7.confidence === 'high' ? 'Alta' : trends.gad7.confidence === 'medium' ? 'Media' : 'Baja'}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Volatilidad:</span>
+                    <span className={`font-semibold ${
+                      trends.gad7.volatility > 5 ? 'text-red-600' :
+                      trends.gad7.volatility > 3 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {trends.gad7.volatility.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Consistencia:</span>
+                    <span className={`font-semibold ${
+                      trends.gad7.consistency === 'high' ? 'text-green-600' :
+                      trends.gad7.consistency === 'medium' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {trends.gad7.consistency === 'high' ? 'Alta' :
+                       trends.gad7.consistency === 'medium' ? 'Media' : 'Baja'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">R² (Precisión):</span>
+                    <span className="font-semibold text-gray-800">
+                      {(trends.gad7.r_squared * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Promedio:</span>
+                    <span className="font-semibold text-gray-800">
+                      {trends.gad7.average.toFixed(1)} / 21
+                    </span>
+                  </div>
+                  
+                  {trends.gad7.rapid_changes.has_rapid_changes && (
+                    <div className="mt-3 p-2 bg-orange-100 border border-orange-300 rounded">
+                      <p className="text-xs text-orange-800 font-semibold">
+                        ⚠️ {trends.gad7.rapid_changes.count} cambio(s) rápido(s) detectado(s)
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Distribución de severidad */}
+                {trends.gad7.distribution && Object.keys(trends.gad7.distribution).length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-600 mb-2 font-semibold">Distribución de Severidad:</p>
+                    <div className="flex gap-1 h-4 rounded overflow-hidden">
+                      {trends.gad7.distribution.minimal > 0 && (
+                        <div 
+                          className="bg-green-500" 
+                          style={{width: `${trends.gad7.distribution.minimal}%`}}
+                          title={`Mínima: ${trends.gad7.distribution.minimal}%`}
+                        />
+                      )}
+                      {trends.gad7.distribution.mild > 0 && (
+                        <div 
+                          className="bg-blue-500" 
+                          style={{width: `${trends.gad7.distribution.mild}%`}}
+                          title={`Leve: ${trends.gad7.distribution.mild}%`}
+                        />
+                      )}
+                      {trends.gad7.distribution.moderate > 0 && (
+                        <div 
+                          className="bg-orange-500" 
+                          style={{width: `${trends.gad7.distribution.moderate}%`}}
+                          title={`Moderada: ${trends.gad7.distribution.moderate}%`}
+                        />
+                      )}
+                      {trends.gad7.distribution.severe > 0 && (
+                        <div 
+                          className="bg-red-500" 
+                          style={{width: `${trends.gad7.distribution.severe}%`}}
+                          title={`Severa: ${trends.gad7.distribution.severe}%`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>✓ Mínima: {trends.gad7.distribution.minimal}%</span>
+                      <span>⚠️ Severa: {trends.gad7.distribution.severe}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Recomendaciones y Alertas */}
+            {(trends.insights.alerts.length > 0 || trends.insights.recommendations.length > 0) && (
+              <div className="grid grid-cols-2 gap-4">
+                
+                {/* Alertas */}
+                {trends.insights.alerts.length > 0 && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                    <h4 className="font-bold text-red-900 mb-3 flex items-center gap-2">
+                      <span>🚨</span> Alertas Críticas
+                    </h4>
+                    <ul className="space-y-2">
+                      {trends.insights.alerts.map((alert, idx) => (
+                        <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
+                          <span className="text-red-500 font-bold">•</span>
+                          <span>{alert}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Recomendaciones */}
+                {trends.insights.recommendations.length > 0 && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                    <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                      <span>💡</span> Recomendaciones
+                    </h4>
+                    <ul className="space-y-2">
+                      {trends.insights.recommendations.map((rec, idx) => (
+                        <li key={idx} className="text-sm text-blue-800 flex items-start gap-2">
+                          <span className="text-blue-500 font-bold">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Historial INTERACTIVO */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
@@ -787,7 +1143,6 @@ function AdminUserProfile() {
 
           {/* Gráfica INTERACTIVA */}
           <div 
-            ref={chartRef}
             className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
             onMouseLeave={() => setHoveredPoint(null)}
           >
@@ -972,7 +1327,7 @@ function AdminUserProfile() {
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4">Acciones</h3>
           
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <button
               onClick={handleExportPDF}
               className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition transform hover:scale-105"
@@ -1008,6 +1363,271 @@ function AdminUserProfile() {
         </div>
 
       </main>
+
+      {/* Modal de Recomendaciones */}
+      {showRecommendationsModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">💡 Recomendaciones para {user?.user.full_name}</h2>
+                <button 
+                  onClick={() => setShowRecommendationsModal(false)}
+                  className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Recomendaciones automáticas (de trends) */}
+              {trends?.insights && (trends.insights.recommendations.length > 0 || trends.insights.alerts.length > 0) ? (
+                <>
+                  {/* Alertas críticas */}
+                  {trends.insights.alerts.length > 0 && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
+                      <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2 text-lg">
+                        <span className="text-2xl">🚨</span> Alertas Críticas
+                      </h3>
+                      <ul className="space-y-3">
+                        {trends.insights.alerts.map((alert, idx) => (
+                          <li key={idx} className="text-sm text-red-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                            <span className="text-red-500 font-bold text-lg">•</span>
+                            <span className="flex-1">{alert}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Recomendaciones del sistema */}
+                  {trends.insights.recommendations.length > 0 && (
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+                      <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2 text-lg">
+                        <span className="text-2xl">📊</span> Según Análisis de Tendencias
+                      </h3>
+                      <ul className="space-y-3">
+                        {trends.insights.recommendations.map((rec, idx) => (
+                          <li key={idx} className="text-sm text-blue-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                            <span className="text-blue-500 font-bold text-lg">•</span>
+                            <span className="flex-1">{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : null}
+              
+              {/* Recomendaciones clínicas estándar */}
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
+                <h3 className="font-bold text-purple-900 mb-3 flex items-center gap-2 text-lg">
+                  <span className="text-2xl">🏥</span> Protocolo Clínico Estándar
+                </h3>
+                <ul className="space-y-3">
+                  {lastPhq9?.score >= 20 || lastGad7?.score >= 15 ? (
+                    <>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Evaluación profesional urgente requerida</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Considerar derivación a psiquiatría o psicología clínica</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Contacto dentro de las próximas 24-48 horas</span>
+                      </li>
+                    </>
+                  ) : lastPhq9?.score >= 15 || lastGad7?.score >= 10 ? (
+                    <>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Sesión de seguimiento en 1-2 semanas</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Evaluación semanal con PHQ-9 y GAD-7</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Considerar intervención terapéutica estructurada</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Continuar con monitoreo regular cada 2-4 semanas</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Promover hábitos saludables y autocuidado</span>
+                      </li>
+                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
+                        <span className="text-purple-500 font-bold text-lg">•</span>
+                        <span className="flex-1">Reforzar estrategias de afrontamiento positivas</span>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+              
+              {/* Acciones rápidas */}
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5">
+                <h3 className="font-bold text-green-900 mb-3 flex items-center gap-2 text-lg">
+                  <span className="text-2xl">✅</span> Acciones Sugeridas
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => {
+                      setShowRecommendationsModal(false);
+                      handleMarkAsAttended();
+                    }}
+                    className="bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium"
+                  >
+                    📅 Marcar como atendido
+                  </button>
+                  <button 
+                    onClick={handleSendNotification}
+                    className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium"
+                  >
+                    📧 Enviar email con recursos
+                  </button>
+                  <button 
+                    onClick={handleExportPDF}
+                    className="bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition font-medium"
+                  >
+                    📄 Generar reporte PDF
+                  </button>
+                  <button 
+                    onClick={() => setShowRecommendationsModal(false)}
+                    className="bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition font-medium"
+                  >
+                    🔙 Volver al perfil
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Marcar como Atendido */}
+      {showAttendedModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">✅ Marcar como Atendido</h2>
+                <button 
+                  onClick={() => setShowAttendedModal(false)}
+                  className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
+                  disabled={isSubmittingAttendance}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              {/* Info del usuario */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
+                <p className="font-bold text-lg text-gray-800">{user?.user.full_name}</p>
+                <p className="text-sm text-gray-500">
+                  {new Date().toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+              
+              {/* Notas de la sesión */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Notas de la Sesión (Opcional)
+                </label>
+                <textarea 
+                  value={attendanceNotes}
+                  onChange={(e) => setAttendanceNotes(e.target.value)}
+                  placeholder="Describe brevemente la sesión, intervenciones realizadas, observaciones importantes..."
+                  className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  rows="4"
+                  disabled={isSubmittingAttendance}
+                />
+              </div>
+              
+              {/* Opciones adicionales */}
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition">
+                  <input 
+                    type="checkbox" 
+                    checked={scheduleFollowup}
+                    onChange={(e) => setScheduleFollowup(e.target.checked)}
+                    className="mt-1 w-5 h-5 text-blue-600"
+                    disabled={isSubmittingAttendance}
+                  />
+                  <div className="flex-1">
+                    <span className="font-semibold text-gray-800">Programar seguimiento</span>
+                    {scheduleFollowup && (
+                      <input 
+                        type="date"
+                        value={followupDate}
+                        onChange={(e) => setFollowupDate(e.target.value)}
+                        className="mt-2 w-full border border-blue-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={isSubmittingAttendance}
+                      />
+                    )}
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:bg-green-100 transition">
+                  <input 
+                    type="checkbox" 
+                    checked={sendConfirmation}
+                    onChange={(e) => setSendConfirmation(e.target.checked)}
+                    className="w-5 h-5 text-green-600"
+                    disabled={isSubmittingAttendance}
+                  />
+                  <span className="font-semibold text-gray-800">Enviar email de confirmación al paciente</span>
+                </label>
+              </div>
+              
+              {/* Botones de acción */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  onClick={() => setShowAttendedModal(false)}
+                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+                  disabled={isSubmittingAttendance}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={submitAttendance}
+                  className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={isSubmittingAttendance}
+                >
+                  {isSubmittingAttendance ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Registrando...
+                    </>
+                  ) : (
+                    <>✓ Confirmar Atención</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

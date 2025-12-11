@@ -1,7 +1,34 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text, JSON, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
+import enum
+
+# ==========================================
+# ENUMS PARA EJERCICIOS DE VOZ
+# ==========================================
+
+class ExerciseType(enum.Enum):
+    """Tipo de ejercicio"""
+    BREATHING = "breathing"
+    MEDITATION = "meditation"
+    VOCALIZATION = "vocalization"
+    RELAXATION = "relaxation"
+
+
+class ExerciseCategory(enum.Enum):
+    """Categoría del ejercicio"""
+    ANXIETY = "anxiety"
+    DEPRESSION = "depression"
+    BOTH = "both"
+
+
+class VoiceRiskLevel(enum.Enum):
+    """Nivel de riesgo vocal"""
+    LOW = "bajo"
+    MODERATE = "moderado"
+    HIGH = "alto"
+
 
 # ==========================================
 # USUARIOS Y ADMINISTRADORES
@@ -11,8 +38,8 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(100), nullable=False, index=True)
-    username = Column(String(50), unique=True, nullable=True, index=True)  # Para admin login
-    password_hash = Column(String(255), nullable=True)  # Para admin login (bcrypt)
+    username = Column(String(50), unique=True, nullable=True, index=True)
+    password_hash = Column(String(255), nullable=True)
     age = Column(Integer, nullable=True)
     gender = Column(String(20), nullable=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
@@ -20,11 +47,19 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relaciones
     assessments = relationship("Assessment", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("SessionLog", back_populates="user", cascade="all, delete-orphan")
-    voice_analyses = relationship("VoiceAnalysis", back_populates="user", cascade="all, delete-orphan")
-    smartwatch_data = relationship("SmartwatchData", back_populates="user", cascade="all, delete-orphan")
     trends = relationship("TrendAnalysis", back_populates="user", cascade="all, delete-orphan")
+    
+    # Nuevas relaciones para ejercicios de voz
+    voice_sessions = relationship("VoiceExerciseSession", back_populates="user", cascade="all, delete-orphan")
+    
+    # Relaciones para atención administrativa
+    attendance_records_as_user = relationship("AttendanceRecord", foreign_keys="AttendanceRecord.user_id", back_populates="user")
+    attendance_records_as_admin = relationship("AttendanceRecord", foreign_keys="AttendanceRecord.admin_id", back_populates="admin")
+    followups_as_user = relationship("FollowUp", foreign_keys="FollowUp.user_id", back_populates="user")
+    followups_as_creator = relationship("FollowUp", foreign_keys="FollowUp.created_by", back_populates="creator")
 
 
 # ==========================================
@@ -38,7 +73,7 @@ class Assessment(Base):
     type = Column(String(20), nullable=False, index=True)  # 'phq9' o 'gad7'
     score = Column(Integer, nullable=False)
     severity = Column(String(50), nullable=False)
-    responses = Column(JSON, nullable=True)  # Guardar respuestas individuales
+    responses = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     
     user = relationship("User", back_populates="assessments")
@@ -62,56 +97,6 @@ class SessionLog(Base):
 
 
 # ==========================================
-# ANÁLISIS DE VOZ
-# ==========================================
-class VoiceAnalysis(Base):
-    __tablename__ = "voice_analyses"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    pitch_mean = Column(Float, nullable=True)
-    pitch_std = Column(Float, nullable=True)
-    energy_mean = Column(Float, nullable=True)
-    speech_rate = Column(Float, nullable=True)
-    pause_duration = Column(Float, nullable=True)
-    emotional_variability = Column(Float, nullable=True)
-    risk_level = Column(String(20), nullable=True)  # 'bajo', 'moderado', 'alto'
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    
-    user = relationship("User", back_populates="voice_analyses")
-
-
-# ==========================================
-# DATOS DE SMARTWATCH
-# ==========================================
-class SmartwatchData(Base):
-    __tablename__ = "smartwatch_data"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    
-    # HRV
-    hrv_rmssd = Column(Float, nullable=True)
-    
-    # Frecuencia cardíaca
-    heart_rate_resting = Column(Integer, nullable=True)
-    heart_rate_mean = Column(Integer, nullable=True)
-    
-    # Actividad
-    steps = Column(Integer, nullable=True)
-    active_minutes = Column(Integer, nullable=True)
-    
-    # Sueño
-    sleep_minutes = Column(Integer, nullable=True)
-    sleep_efficiency = Column(Float, nullable=True)
-    deep_sleep_minutes = Column(Integer, nullable=True)
-    
-    recorded_at = Column(DateTime, default=datetime.utcnow, index=True)
-    
-    user = relationship("User", back_populates="smartwatch_data")
-
-
-# ==========================================
 # ANÁLISIS DE TENDENCIAS
 # ==========================================
 class TrendAnalysis(Base):
@@ -121,14 +106,14 @@ class TrendAnalysis(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Tendencias PHQ-9/GAD-7
-    phq9_trend = Column(String(20), nullable=True)  # 'improving', 'stable', 'worsening'
+    phq9_trend = Column(String(20), nullable=True)
     phq9_slope = Column(Float, nullable=True)
     gad7_trend = Column(String(20), nullable=True)
     gad7_slope = Column(Float, nullable=True)
     
     # Score multimodal (0-100)
     multimodal_score = Column(Float, nullable=True)
-    status = Column(String(20), nullable=True)  # 'excellent', 'good', 'moderate', 'concerning', 'critical'
+    status = Column(String(20), nullable=True)
     
     # Componentes
     tests_score = Column(Float, nullable=True)
@@ -138,3 +123,102 @@ class TrendAnalysis(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     
     user = relationship("User", back_populates="trends")
+
+
+# ==========================================
+# EJERCICIOS DE VOZ - CATÁLOGO
+# ==========================================
+class Exercise(Base):
+    __tablename__ = "exercises"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Enum(ExerciseCategory), nullable=False, index=True)
+    exercise_type = Column(Enum(ExerciseType), nullable=False)
+    duration_seconds = Column(Integer, nullable=False)
+    instructions = Column(Text, nullable=True)
+    audio_guide_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relación con sesiones
+    sessions = relationship("VoiceExerciseSession", back_populates="exercise")
+
+
+# ==========================================
+# SESIONES DE EJERCICIOS DE VOZ
+# ==========================================
+class VoiceExerciseSession(Base):
+    __tablename__ = "voice_exercise_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=False, index=True)
+    
+    # Datos del análisis de voz
+    pitch_mean = Column(Float, nullable=True)
+    pitch_std = Column(Float, nullable=True)
+    energy = Column(Float, nullable=True)
+    voice_ratio = Column(Float, nullable=True)
+    mfcc_variability = Column(Float, nullable=True)
+    jitter = Column(Float, nullable=True)
+    shimmer = Column(Float, nullable=True)
+    hnr = Column(Float, nullable=True)
+    score = Column(Float, nullable=True)
+    risk_level = Column(Enum(VoiceRiskLevel), nullable=True, index=True)
+    
+    # Metadatos de la sesión
+    duration_seconds = Column(Integer, nullable=True)
+    completed = Column(Boolean, default=False, index=True)
+    notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relaciones
+    user = relationship("User", back_populates="voice_sessions")
+    exercise = relationship("Exercise", back_populates="sessions")
+
+
+# ==========================================
+# REGISTROS DE ATENCIÓN ADMINISTRATIVA
+# ==========================================
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    notes = Column(Text, nullable=True)
+    attended_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relaciones
+    user = relationship("User", foreign_keys=[user_id], back_populates="attendance_records_as_user")
+    admin = relationship("User", foreign_keys=[admin_id], back_populates="attendance_records_as_admin")
+
+
+# ==========================================
+# SEGUIMIENTOS PROGRAMADOS
+# ==========================================
+class FollowUp(Base):
+    __tablename__ = "follow_ups"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    scheduled_for = Column(DateTime, nullable=False, index=True)
+    status = Column(String(20), default="pending", index=True)  # pending, completed, cancelled
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    notes = Column(Text, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relaciones
+    user = relationship("User", foreign_keys=[user_id], back_populates="followups_as_user")
+    creator = relationship("User", foreign_keys=[created_by], back_populates="followups_as_creator")
+
+
+# ==========================================
+# TABLAS ELIMINADAS (YA NO SE USAN)
+# ==========================================
+# ❌ VoiceAnalysis - Reemplazada por VoiceExerciseSession
+# ❌ SmartwatchData - No se implementó smartwatch

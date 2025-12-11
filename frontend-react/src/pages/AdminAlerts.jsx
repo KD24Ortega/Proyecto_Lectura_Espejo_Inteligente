@@ -389,7 +389,7 @@ function AdminAlerts() {
           </div>
 
           <div className="flex gap-2">
-            <button
+            {/* <button
               onClick={() => {
                 loadAlerts();
                 setLastUpdate(new Date());
@@ -398,15 +398,15 @@ function AdminAlerts() {
             >
               <span>🔄</span>
               <span>Actualizar</span>
-            </button>
+            </button> */}
 
-            <button
+            {/* <button
               onClick={() => handleBulkAction('export')}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
             >
               <span>📥</span>
               <span>Exportar Todo</span>
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -574,12 +574,12 @@ function AdminAlerts() {
               >
                 📧 Contactar Todos
               </button>
-              <button
+              {/* <button
                 onClick={() => handleBulkAction('export')}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
               >
                 📥 Exportar
-              </button>
+              </button> */}
               <button
                 onClick={() => handleBulkAction('mark')}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"

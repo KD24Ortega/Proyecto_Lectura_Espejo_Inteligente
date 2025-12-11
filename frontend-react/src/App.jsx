@@ -12,6 +12,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminUserProfile from './pages/AdminUserProfile';
 import AdminAlerts from './pages/AdminAlerts';
+import AnxietyExercises from './pages/Anxietyexercises';
+import DepressionExercises from './pages/Depressionexercises';
+import BreathingVocalization from './pages/Breathingvocalization';
 
 function App() {
   return (
@@ -30,6 +33,9 @@ function App() {
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/user/:userId" element={<AdminUserProfile />} />
         <Route path="/admin/alerts" element={<AdminAlerts />} />
+        <Route path="/exercises/anxiety" element={<AnxietyExercises />} />
+        <Route path="/exercises/depression" element={<DepressionExercises />} />
+        <Route path="/exercise/breathing-vocalization" element={<BreathingVocalization />} />
         {/* <Route path="/dashboard" element={<Dashboard />} /> */}
         {/* <Route path="/evaluation/:type" element={<Evaluation />} /> */}
       </Routes>

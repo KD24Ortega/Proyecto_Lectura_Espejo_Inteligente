@@ -457,21 +457,21 @@ function AdminUsers() {
               <span>Actualizar</span>
             </button>
 
-            <button
+            {/* <button
               onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
               className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
             >
               <span>{viewMode === 'table' ? '📊' : '📋'}</span>
               <span>{viewMode === 'table' ? 'Vista Grid' : 'Vista Tabla'}</span>
-            </button>
+            </button> */}
 
-            <button
+            {/* <button
               onClick={() => handleBulkAction('export')}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
             >
               <span>📥</span>
               <span>Exportar Todo</span>
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -583,7 +583,7 @@ function AdminUsers() {
               <span className="font-semibold text-blue-900">{selectedUsers.length} usuario(s) seleccionado(s)</span>
             </div>
             <div className="flex gap-2">
-              <button
+              {/* <button
                 onClick={() => handleBulkAction('email')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
               >
@@ -600,7 +600,7 @@ function AdminUsers() {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
               >
                 🗑️ Eliminar
-              </button>
+              </button> */}
             </div>
           </div>
         )}
