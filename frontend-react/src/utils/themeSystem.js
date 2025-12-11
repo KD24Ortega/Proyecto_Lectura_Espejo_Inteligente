@@ -80,7 +80,7 @@ export const themes = {
       accent: 'text-green-600',
       button: 'from-green-500 to-cyan-500'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',
+    music: 'https://cdn.pixabay.com/audio/2022/10/01/audio_784b40f9f6.mp3',
     tools: ['Consejos de bienestar', 'Meditación preventiva'],
     emergency: false
   },
@@ -94,7 +94,7 @@ export const themes = {
       accent: 'text-blue-600',
       button: 'from-blue-400 to-blue-500'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-slowmotion.mp3',
+    music: 'https://cdn.pixabay.com/audio/2021/08/19/audio_a817080ba3.mp3',
     tools: ['Respiración básica', 'Gratitud', 'Autocuidado'],
     emergency: false
   },
@@ -108,7 +108,7 @@ export const themes = {
       accent: 'text-blue-700',
       button: 'from-blue-500 to-blue-600'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-deepblue.mp3',
+    music: 'https://cdn.pixabay.com/audio/2022/03/09/audio_5ffca7b9d1.mp3',
     tools: ['Mindfulness', 'Respiración 4-7-8', 'Técnicas de grounding'],
     emergency: false
   },
@@ -122,7 +122,7 @@ export const themes = {
       accent: 'text-indigo-600',
       button: 'from-indigo-500 to-blue-600'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-clearday.mp3',
+    music: 'https://cdn.pixabay.com/audio/2025/07/17/audio_5925f8939b.mp3',
     tools: ['Meditación', 'Relajación', 'Activación conductual'],
     emergency: false
   },
@@ -136,7 +136,7 @@ export const themes = {
       accent: 'text-indigo-700',
       button: 'from-indigo-600 to-blue-700'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-pianomoment.mp3',
+    music: 'https://cdn.pixabay.com/audio/2023/11/17/audio_e7cee3c166.mp3',
     tools: ['Mindfulness completo', 'Autocuidado intensivo'],
     emergency: false
   },
@@ -150,7 +150,7 @@ export const themes = {
       accent: 'text-orange-600',
       button: 'from-orange-500 to-red-500'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',
+    music: 'https://cdn.pixabay.com/audio/2021/08/27/audio_f52b2b0ead.mp3',
     tools: ['PFA', 'Respiración guiada', 'Técnicas de emergencia'],
     emergency: true
   },
@@ -164,7 +164,7 @@ export const themes = {
       accent: 'text-orange-600',
       button: 'from-orange-500 to-red-500'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-slowmotion.mp3',
+    music: 'https://cdn.pixabay.com/audio/2024/03/25/audio_b94d4bae8c.mp3',
     tools: ['PFA intensivo', 'Contacto de emergencia'],
     emergency: true
   },
@@ -178,10 +178,10 @@ export const themes = {
       accent: 'text-red-700',
       button: 'from-red-600 to-red-700'
     },
-    music: 'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',
-    tools: ['🚨 LÍNEA 952', 'PFA Emergencia'],
+    music: null,
+    tools: ['🚨 LÍNEA 171 opción 6', 'PFA Emergencia'],
     emergency: true,
-    emergencyNumber: '952'
+    emergencyNumber: '171 opción 6'
   }
 };
 
