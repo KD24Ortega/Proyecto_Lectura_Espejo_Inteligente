@@ -1,70 +1,34 @@
-"""
-Script para crear super administrador
-Ejecutar: python -m backend.db.create_admin
-"""
-from backend.db.database import SessionLocal, engine, Base
-from backend.db.models import User
-from backend.recognition.face_service import FaceRecognitionService
-import cv2
+from backend.db.database import SessionLocal
+from backend.db import models
+from backend.auth import hash_password
 
-def create_super_admin():
-    # Crear todas las tablas
-    Base.metadata.create_all(bind=engine)
-    
+def init_super_admin():
     db = SessionLocal()
-    
-    # Verificar si ya existe un admin
-    existing_admin = db.query(User).filter(User.is_admin == True).first()
-    
-    if existing_admin:
-        print(f"❌ Ya existe un administrador: {existing_admin.full_name}")
-        db.close()
-        return
-    
-    # Crear admin
-    admin = User(
-        full_name="Administrador",
-        is_admin=True,
-        email="admin@smartmirror.com"
-    )
-    
-    db.add(admin)
-    db.commit()
-    db.refresh(admin)
-    
-    print(f"✅ Super administrador creado: {admin.full_name} (ID: {admin.id})")
-    
-    # Registrar rostro del admin
-    print("\n📸 Ahora registra el rostro del administrador...")
-    print("Presiona ESPACIO para capturar, ESC para salir")
-    
-    face_service = FaceRecognitionService()
-    cap = cv2.VideoCapture(0)
-    
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        
-        cv2.imshow('Registrar Admin', frame)
-        
-        key = cv2.waitKey(1) & 0xFF
-        
-        if key == ord(' '):  # ESPACIO
-            result = face_service.register("Administrador", frame)
-            if result["success"]:
-                print(f"✅ {result['message']}")
-                break
-            else:
-                print(f"❌ {result['message']}")
-        
-        elif key == 27:  # ESC
-            print("❌ Cancelado")
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
-    db.close()
 
-if __name__ == "__main__":
-    create_super_admin()
+    try:
+        # Verificar si existe un super admin
+        admin = db.query(models.User).filter(models.User.is_admin == True).first()
+        
+        if admin:
+            print("🟢 Super admin ya existe:", admin.username)
+            return
+        
+        # Crear super admin
+        new_admin = models.User(
+            full_name="Administrador",
+            username="admin",
+            email="admin@mirror.com",
+            password_hash=hash_password("admin123"),
+            is_admin=True
+        )
+        
+        db.add(new_admin)
+        db.commit()
+        
+        print("🔥 Super admin creado correctamente: usuario=admin, pass=admin123")
+    
+    except Exception as e:
+        print("❌ Error creando el super admin:", e)
+    
+    finally:
+        db.close()
