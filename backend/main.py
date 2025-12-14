@@ -32,6 +32,7 @@ from backend.assessments.phq_gad_service import (
     phq9_score, gad7_score
 )
 
+
 from backend.recognition.face_service import FaceRecognitionService
 from backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from backend.db.init_admin import init_super_admin
@@ -140,7 +141,8 @@ app.add_middleware(
 # -----------------------------
 # INICIALIZAR RECONOCIMIENTO FACIAL
 # -----------------------------
-face_service = FaceRecognitionService()
+def get_face_service(db: Session = Depends(get_db)) -> FaceRecognitionService:
+    return FaceRecognitionService(db)
 
 try:
     transcription_service = TranscriptionService()
@@ -317,7 +319,7 @@ async def admin_change_password(
 
 
 # ============================================================
-#  REGISTRO FACIAL
+#  REGISTRO FACIAL (DB) - SIN pickle
 # ============================================================
 @app.post("/face/register")
 async def register_face(
@@ -326,115 +328,55 @@ async def register_face(
     age: Optional[int] = Form(None),
     gender: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    face_service: FaceRecognitionService = Depends(get_face_service),
 ):
-    """
-    Registra rostro + guarda usuario con datos completos en DB.
-    """
-    from fastapi import Form  # ← Asegúrate de tener este import al inicio
-    
     # Validaciones
     full_name = full_name.strip()
     if not full_name or len(full_name) < 2:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre completo debe tener al menos 2 caracteres"
-        )
-    
+        raise HTTPException(status_code=400, detail="El nombre completo debe tener al menos 2 caracteres")
     if len(full_name) > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre completo es demasiado largo (máximo 100 caracteres)"
-        )
-    
-    # Validar edad
+        raise HTTPException(status_code=400, detail="El nombre completo es demasiado largo (máximo 100 caracteres)")
+
     if age is not None and (age < 1 or age > 120):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La edad debe estar entre 1 y 120 años"
-        )
-    
-    # Validar género
+        raise HTTPException(status_code=400, detail="La edad debe estar entre 1 y 120 años")
+
     if gender is not None:
-        allowed_genders = ['m', 'f', 'otro', 'no_decir']
+        allowed_genders = ["m", "f", "otro", "no_decir"]
         if gender not in allowed_genders:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Género debe ser uno de: {', '.join(allowed_genders)}"
-            )
-    
-    # Validar email
+            raise HTTPException(status_code=400, detail=f"Género debe ser uno de: {', '.join(allowed_genders)}")
+
     if email:
         email = email.lower().strip()
         import re
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if not re.match(pattern, email):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email inválido"
-            )
-        
-        # Verificar si el email ya existe
-        existing_email = db.query(models.User).filter(
-            models.User.email == email
-        ).first()
+            raise HTTPException(status_code=400, detail="Email inválido")
+
+        existing_email = db.query(models.User).filter(models.User.email == email).first()
         if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Este email ya está registrado"
-            )
-    
-    # Validar tipo de archivo
+            raise HTTPException(status_code=409, detail="Este email ya está registrado")
+
     if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo se aceptan imágenes JPEG o PNG"
-        )
-    
-    # Leer y validar imagen
+        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes JPEG o PNG")
+
     contents = await file.read()
     if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="La imagen es demasiado grande (máximo 5MB)"
-        )
-    
+        raise HTTPException(status_code=413, detail="La imagen es demasiado grande (máximo 5MB)")
     if len(contents) < 1000:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La imagen es demasiado pequeña"
-        )
-    
+        raise HTTPException(status_code=400, detail="La imagen es demasiado pequeña")
+
     npimg = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
-
     if frame is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo procesar la imagen"
-        )
+        raise HTTPException(status_code=400, detail="No se pudo procesar la imagen")
 
-    # Verificar si el usuario ya existe
-    existing_user = db.query(models.User).filter(
-        models.User.full_name.ilike(full_name)
-    ).first()
-    
+    # Verificar si el usuario ya existe (por nombre)
+    existing_user = db.query(models.User).filter(models.User.full_name.ilike(full_name)).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"El usuario '{full_name}' ya está registrado"
-        )
+        raise HTTPException(status_code=409, detail=f"El usuario '{full_name}' ya está registrado")
 
-    # Registrar encoding facial
-    result = face_service.register(full_name, frame)
-
-    if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("message", "No se pudo registrar el rostro")
-        )
-
-    # Crear usuario con todos los datos
+    # 1) Crear usuario primero
     user = models.User(
         full_name=full_name,
         age=age,
@@ -445,13 +387,23 @@ async def register_face(
     db.commit()
     db.refresh(user)
 
-    result["user_id"] = user.id
-    result["full_name"] = user.full_name
-    result["age"] = user.age
-    result["gender"] = user.gender
-    result["email"] = user.email
+    # 2) Registrar encoding con user.id
+    result = face_service.register(user.id, frame)
 
-    return result
+    if not result.get("success"):
+        # Rollback lógico: borrar usuario si no se pudo registrar el rostro
+        db.delete(user)
+        db.commit()
+        raise HTTPException(status_code=400, detail=result.get("message", "No se pudo registrar el rostro"))
+
+    return {
+        **result,
+        "user_id": user.id,
+        "full_name": user.full_name,
+        "age": user.age,
+        "gender": user.gender,
+        "email": user.email
+    }
 
 # ============================================================
 #  REGISTRO DE USUARIO (SOLO DATOS)
@@ -526,14 +478,14 @@ async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)
         )
 
 # ==============================================
-# 📌 Reconocimiento facial SIN crear sesión (para chequeo de presencia)
+# 📌 Reconocimiento facial SIN crear sesión (chequeo presencia)
 # ==============================================
 @app.post("/face/recognize/check")
-async def recognize_face_check(request: Request, file: UploadFile = File(...)):
-    """
-    Proxy al reconocimiento ANTIGUO que sí funciona.
-    """
-    # Validar MIME
+async def recognize_face_check(
+    request: Request,
+    file: UploadFile = File(...),
+    face_service: FaceRecognitionService = Depends(get_face_service),
+):
     if not file.content_type or not file.content_type.startswith("image/"):
         return {"found": False, "user": None, "confidence": 0}
 
@@ -542,15 +494,10 @@ async def recognize_face_check(request: Request, file: UploadFile = File(...)):
         return {"found": False, "user": None, "confidence": 0}
 
     np_img = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
-
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    # 🔥 USAR directamente el método ANTIGUO
-    result = face_service.recognize(np_img)
-
-    return result
-    
+    return face_service.recognize(np_img)
 
 # ==============================================
 # 📌 MANEJO DE SESIONES
@@ -619,79 +566,66 @@ async def end_session(session_id: int, db: Session = Depends(get_db)):
     }
 
 # ==============================================
-# 📌 Reconocimiento facial ANTIGUO (mantener por compatibilidad)
+# 📌 Reconocimiento facial (login) + creación de sesión
 # ==============================================
 @app.post("/face/recognize")
-async def recognize_face(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    Reconocimiento facial con creación de sesión (para login).
-    DEPRECADO: Usar /face/recognize/check y /session/start en su lugar.
-    """
-    # Rate limiting ESTRICTO para autenticación (10 req/min)
-    # if request.client and hasattr(request.client, 'host'):
+async def recognize_face(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    face_service: FaceRecognitionService = Depends(get_face_service),
+):
+    # (Opcional) rate limit
+    # if request.client and hasattr(request.client, "host"):
     #     client_ip = request.client.host
     #     if not check_rate_limit(client_ip, endpoint_type="auth"):
-    #         raise HTTPException(
-    #             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    #             detail="Demasiados intentos de login. Espera un momento."
-    #         )
-    
-    # Validar MIME
-    if file.content_type not in ["image/jpeg", "image/png"]:
+    #         raise HTTPException(status_code=429, detail="Demasiados intentos de login. Espera un momento.")
+
+    if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         return {"found": False, "user": None, "confidence": 0}
 
-    # Leer bytes del archivo
     file_bytes = await file.read()
-
     if len(file_bytes) < 5000:
         return {"found": False, "user": None, "confidence": 0}
 
-    # Convertir a NumPy
     np_img = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
-
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    # Reconocimiento facial
     result = face_service.recognize(np_img)
 
-    if not result["found"]:
+    if not result.get("found"):
         return result
 
-    if result["user"] is None:
+    if result.get("user") is None:
         return {
             "found": True,
             "user": None,
-            "confidence": result["confidence"],
+            "confidence": result.get("confidence", 0),
             "new_user": True
         }
 
-    # Usuario reconocido
     username = result["user"]
 
-    # Buscar usuario en DB
-    user_obj = db.query(models.User).filter(
-        models.User.full_name == username
-    ).first()
-
+    user_obj = db.query(models.User).filter(models.User.full_name == username).first()
     user_id = user_obj.id if user_obj else None
 
-    # Registrar sesión
     session = models.SessionLog(
         user_id=user_id,
         username=username,
-        method="face"
+        method="face",
+        is_active=True,
+        timestamp_login=datetime.utcnow()
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    # 🔥 ASEGURARSE DE DEVOLVER user_id
     return {
         "found": True,
         "user": username,
-        "user_id": user_id,  # 🔥 IMPORTANTE
-        "confidence": result["confidence"],
+        "user_id": user_id,
+        "confidence": result.get("confidence", 0),
         "session_id": session.id,
         "login_complete": True
     }
@@ -753,31 +687,26 @@ def gad7_submit(
 
     return {"id": assessment.id, **result}
 
+# ============================================================
+#  REGISTRO FACIAL LIVE (captura cámara del servidor)
+#  (si tu servidor NO tiene cámara, esto fallará)
+# ============================================================
 @app.post("/face/register/live")
-def register_face_live(username: str, db: Session = Depends(get_db)):
+def register_face_live(
+    user_id: int = Form(...),
+    db: Session = Depends(get_db),
+    face_service: FaceRecognitionService = Depends(get_face_service),
+):
+    cap = cv2.VideoCapture(0)
+    try:
+        ok, frame = cap.read()
+        if not ok or frame is None:
+            return {"success": False, "message": "No se pudo acceder a la cámara"}
 
-    # Capturar frame desde cámara del servidor
-    frame = face_service.read_frame()
-
-    if frame is None:
-        return {"success": False, "message": "No se pudo acceder a la cámara"}
-
-    # Registrar encoding facial
-    result = face_service.register(username, frame)
-
-    # Si no se pudo registrar
-    if not result["success"]:
+        result = face_service.register(user_id, frame)
         return result
-
-    # Guardar usuario en la base de datos
-    user = models.User(full_name=username)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    result["user_id"] = user.id
-
-    return result
+    finally:
+        cap.release()
 
 
 @app.get("/dev/users")
@@ -972,31 +901,29 @@ async def admin_get_user_details(target_user_id: int, user_id: int, db: Session 
 
 
 @app.delete("/admin/user/{target_user_id}")
-async def admin_delete_user(target_user_id: int, user_id: int, db: Session = Depends(get_db)):
-    """Eliminar usuario (solo admin)"""
+async def admin_delete_user(
+    target_user_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+):
     admin = db.query(models.User).filter(models.User.id == user_id).first()
-    
     if not admin or not admin.is_admin:
         raise HTTPException(status_code=403, detail="Acceso denegado")
-    
+
     user = db.query(models.User).filter(models.User.id == target_user_id).first()
-    
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
+
     if user.is_admin:
         raise HTTPException(status_code=403, detail="No se puede eliminar a un administrador")
-    
-    # 🔥 ELIMINAR ENCODING FACIAL
-    try:
-        face_service.remove_encoding(user.full_name)
-    except Exception as e:
-        print(f"⚠️ No se pudo eliminar encoding: {e}")
-    
+
+    # ✅ En DB, face_encodings debe borrarse por ON DELETE CASCADE
     db.delete(user)
     db.commit()
-    
+
     return {"success": True, "message": f"Usuario {user.full_name} eliminado"}
+
+
 # Agregar después del último endpoint
 @app.get("/trends/analyze/{user_id}")
 async def get_user_trends(user_id: int, days: int = 30, db: Session = Depends(get_db)):
@@ -1909,84 +1836,3 @@ async def get_user_voice_stats(
             status_code=500,
             detail=f"Error obteniendo estadísticas: {str(e)}"
         )
-
-
-# =====================================================
-#  ENDPOINT ALTERNATIVO: Si tienes problemas con enums
-# =====================================================
-
-@app.get("/api/voice/user/{user_id}/stats-simple")
-async def get_user_voice_stats_simple(
-    user_id: int,
-    days: int = 30,
-    db: Session = Depends(get_db)
-):
-    """
-    Versión simplificada que maneja mejor los enums.
-    Usar este si el principal da problemas con risk_level.
-    """
-    try:
-        from sqlalchemy import text
-        
-        # Query SQL directa para evitar problemas con enums
-        query = text("""
-            SELECT 
-                id,
-                exercise_id,
-                pitch_mean,
-                pitch_std,
-                energy,
-                voice_ratio,
-                hnr,
-                score,
-                CAST(risk_level AS TEXT) as risk_level,
-                duration_seconds,
-                completed,
-                created_at
-            FROM voice_exercise_sessions
-            WHERE user_id = :user_id
-            AND created_at >= NOW() - INTERVAL ':days days'
-            ORDER BY created_at DESC
-        """)
-        
-        result = db.execute(query, {"user_id": user_id, "days": days})
-        sessions = result.fetchall()
-        
-        if not sessions:
-            return {
-                "user_id": user_id,
-                "days": days,
-                "sessions": [],
-                "summary": None
-            }
-        
-        # Convertir a diccionarios
-        sessions_data = [
-            {
-                "id": s[0],
-                "exercise_id": s[1],
-                "pitch_mean": round(s[2], 2),
-                "pitch_std": round(s[3], 2),
-                "energy": round(s[4], 4),
-                "voice_ratio": round(s[5], 4),
-                "hnr": round(s[6], 2),
-                "score": round(s[7], 2),
-                "risk_level": s[8],
-                "duration_seconds": s[9],
-                "completed": s[10],
-                "created_at": s[11].isoformat()
-            }
-            for s in sessions
-        ]
-        
-        return {
-            "user_id": user_id,
-            "days": days,
-            "sessions": sessions_data
-        }
-        
-    except Exception as e:
-        print(f"❌ ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))

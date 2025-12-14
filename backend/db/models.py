@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, F
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
+from sqlalchemy import LargeBinary
 import enum
 
 # ==========================================
@@ -29,6 +30,26 @@ class VoiceRiskLevel(enum.Enum):
     MODERATE = "moderado"
     HIGH = "alto"
 
+class FaceEncoding(Base):
+    """Almacena los encodings faciales en PostgreSQL"""
+    __tablename__ = "face_encodings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    encoding_data = Column(JSON, nullable=False)
+    encoding_version = Column(String(20), default="1.0")
+    quality_score = Column(Float, nullable=True)
+    
+    capture_method = Column(String(50), default="registration")
+    image_metadata = Column(JSON, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    is_active = Column(Boolean, default=True, index=True)
+    
+    user = relationship("User", back_populates="face_encodings")
 
 # ==========================================
 # USUARIOS Y ADMINISTRADORES
@@ -60,6 +81,7 @@ class User(Base):
     attendance_records_as_admin = relationship("AttendanceRecord", foreign_keys="AttendanceRecord.admin_id", back_populates="admin")
     followups_as_user = relationship("FollowUp", foreign_keys="FollowUp.user_id", back_populates="user")
     followups_as_creator = relationship("FollowUp", foreign_keys="FollowUp.created_by", back_populates="creator")
+    face_encodings = relationship("FaceEncoding", back_populates="user", cascade="all, delete-orphan")
 
 
 # ==========================================

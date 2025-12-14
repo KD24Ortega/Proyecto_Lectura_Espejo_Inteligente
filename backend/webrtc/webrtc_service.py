@@ -26,7 +26,6 @@ from backend.recognition.face_service import FaceRecognitionService
 presence_state: Dict[str, Dict[str, Any]] = {}
 
 # Instancia compartida de FaceRecognitionService
-face_service = FaceRecognitionService()
 
 
 class VideoPresenceTrack(MediaStreamTrack):

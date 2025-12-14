@@ -346,8 +346,74 @@ INSERT INTO assessments (user_id, type, score, severity, created_at) VALUES
 -- - Todos los permisos están dados al usuario mirror_user
 -- - Se incluyen 6 ejercicios de ejemplo (3 ansiedad, 3 depresión)
 -- - Password del admin: admin123
-ALTER TABLE voice_exercise_sessions
-ADD CONSTRAINT voice_exercise_sessions_user_id_fkey
-FOREIGN KEY (user_id)
-REFERENCES users(id)
-ON DELETE CASCADE;
+-- ALTER TABLE voice_exercise_sessions
+-- ADD CONSTRAINT voice_exercise_sessions_user_id_fkey
+-- FOREIGN KEY (user_id)
+-- REFERENCES users(id)
+-- ON DELETE CASCADE;
+
+-- =====================================================
+--  MIGRACIÓN: Crear tabla face_encodings
+--  Almacena encodings faciales en base de datos
+-- =====================================================
+
+-- Crear tabla de encodings faciales
+CREATE TABLE IF NOT EXISTS face_encodings (
+    id SERIAL PRIMARY KEY,
+
+    -- ✅ FK definida aquí (NO repetirla después)
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Encoding facial (almacenado como JSON array)
+    -- Recomendación técnica: JSONB suele ser mejor que JSON, pero dejo JSON como tú lo pusiste.
+    encoding_data JSON NOT NULL,
+
+    -- Metadata del encoding
+    encoding_version VARCHAR(20) DEFAULT '1.0',
+    quality_score FLOAT,
+
+    -- Información de captura
+    capture_method VARCHAR(50) DEFAULT 'registration',
+    image_metadata JSON,
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Soft delete
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Crear índices para mejorar rendimiento
+CREATE INDEX IF NOT EXISTS idx_face_encodings_user_id ON face_encodings(user_id);
+CREATE INDEX IF NOT EXISTS idx_face_encodings_created_at ON face_encodings(created_at);
+CREATE INDEX IF NOT EXISTS idx_face_encodings_is_active ON face_encodings(is_active);
+CREATE INDEX IF NOT EXISTS idx_face_encodings_user_active ON face_encodings(user_id, is_active);
+
+-- Trigger para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_face_encodings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_face_encodings_updated_at
+    BEFORE UPDATE ON face_encodings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_face_encodings_updated_at();
+
+-- Comentarios de documentación
+COMMENT ON TABLE face_encodings IS 'Almacena los encodings faciales de reconocimiento de usuarios';
+COMMENT ON COLUMN face_encodings.encoding_data IS 'Vector de 128 dimensiones del encoding facial (almacenado como JSON array)';
+COMMENT ON COLUMN face_encodings.quality_score IS 'Score de calidad de la imagen original (0-100)';
+COMMENT ON COLUMN face_encodings.capture_method IS 'Método de captura: registration, improvement, verification';
+COMMENT ON COLUMN face_encodings.image_metadata IS 'Metadata de la imagen: brightness, sharpness, contrast, size';
+COMMENT ON COLUMN face_encodings.is_active IS 'Permite soft delete de encodings obsoletos';
+
+-- Verificar que la tabla se creó correctamente
+SELECT 'Tabla face_encodings creada exitosamente' AS status;
+
+-- Mostrar estructura de la tabla
+-- \d face_encodings
