@@ -273,14 +273,14 @@ function BreathingVocalization() {
 
             {/* Nivel de riesgo */}
             <div className={`rounded-xl p-6 border-3 ${
-              analysisResults.risk_level === 'bajo' ? 'bg-green-50 border-green-300' :
-              analysisResults.risk_level === 'moderado' ? 'bg-yellow-50 border-yellow-300' :
+              analysisResults.risk_level === 'LOW' ? 'bg-green-50 border-green-300' :
+              analysisResults.risk_level === 'MODERATE' ? 'bg-yellow-50 border-yellow-300' :
               'bg-red-50 border-red-300'
             }`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-3xl">
-                  {analysisResults.risk_level === 'bajo' ? '✅' :
-                   analysisResults.risk_level === 'moderado' ? '⚠️' : '🔴'}
+                  {analysisResults.risk_level === 'LOW' ? '✅' :
+                   analysisResults.risk_level === 'MODERATE' ? '⚠️' : '🔴'}
                 </span>
                 <div>
                   <p className="font-bold text-gray-800 text-lg">
