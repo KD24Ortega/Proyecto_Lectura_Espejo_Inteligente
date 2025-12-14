@@ -7,6 +7,21 @@ import FaceMonitor from '../components/FaceMonitor';
 import Camera from '../components/Camera';
 import api from '../services/api';
 
+// Importar sistema de recomendaciones
+import { 
+  getRecommendations, 
+  getPersonalizedMessage, 
+  shouldShowNotification 
+} from '../utils/recommendationSystem';
+
+// Importar componentes de notificaciones
+import { 
+  ToastNotification, 
+  RecommendationModal, 
+  FloatingBadge,
+  MiniToast 
+} from '../components/RecommendationNotifications';
+
 // Modal personalizado genérico
 const Modal = ({ isOpen, onClose, title, children, icon = 'ℹ️' }) => {
   if (!isOpen) return null;
@@ -57,9 +72,51 @@ function Home() {
   const [lastScores, setLastScores] = useState({ phq9: null, gad7: null });
   const [showMirror, setShowMirror] = useState(false);
 
+  // Estados para recomendaciones
+  const [recommendations, setRecommendations] = useState([]);
+  const [personalizedMessage, setPersonalizedMessage] = useState(null);
+  const [showRecommendationModal, setShowRecommendationModal] = useState(false);
+  const [showToastNotification, setShowToastNotification] = useState(false);
+  const [showMiniToast, setShowMiniToast] = useState(false);
+  const [currentToastExercise, setCurrentToastExercise] = useState(null);
+  const [toastPosition, setToastPosition] = useState('bottom-right');
+
   useEffect(() => {
     loadUserData();
   }, []);
+
+  // Generar recomendaciones cuando cambian los scores
+  useEffect(() => {
+    if (lastScores.phq9 !== null || lastScores.gad7 !== null) {
+      generateRecommendations();
+    }
+  }, [lastScores]);
+
+  // Sistema de notificaciones automáticas
+  useEffect(() => {
+    if (recommendations.length > 0) {
+      const lastShown = localStorage.getItem('last_recommendation_shown');
+      const shouldShow = shouldShowNotification(
+        lastShown ? parseInt(lastShown) : null,
+        30 // Mostrar cada 30 minutos
+      );
+
+      if (shouldShow) {
+        const notificationType = Math.random();
+        
+        if (notificationType < 0.4) {
+          // 40% - Toast lateral
+          showRandomToast();
+        } else if (notificationType < 0.7) {
+          // 30% - Mini toast superior
+          setShowMiniToast(true);
+          setTimeout(() => setShowMiniToast(false), 10000);
+        }
+
+        localStorage.setItem('last_recommendation_shown', Date.now().toString());
+      }
+    }
+  }, [recommendations]);
 
   const loadUserData = async () => {
     try {
@@ -103,10 +160,38 @@ function Home() {
     }
   };
 
+  const generateRecommendations = () => {
+    const recs = getRecommendations(lastScores.phq9, lastScores.gad7, {
+      maxRecommendations: 3
+    });
+    
+    const message = getPersonalizedMessage(lastScores.phq9, lastScores.gad7);
+    
+    setRecommendations(recs);
+    setPersonalizedMessage(message);
+  };
+
+  const showRandomToast = () => {
+    if (recommendations.length === 0) return;
+    
+    const randomExercise = recommendations[Math.floor(Math.random() * recommendations.length)];
+    const positions = ['top-right', 'bottom-right', 'bottom-left'];
+    const randomPosition = positions[Math.floor(Math.random() * positions.length)];
+    
+    setCurrentToastExercise(randomExercise);
+    setToastPosition(randomPosition);
+    setShowToastNotification(true);
+    
+    setTimeout(() => {
+      setShowToastNotification(false);
+    }, 15000);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_name');
     localStorage.removeItem('last_recognition');
+    localStorage.removeItem('last_recommendation_shown');
     navigate('/');
   };
 
@@ -129,6 +214,50 @@ function Home() {
 
       {/* Música de fondo */}
       <BackgroundMusic musicFile={theme.music} volume={0.2} />
+
+      {/* ========================================
+          SISTEMA DE NOTIFICACIONES
+          ======================================== */}
+      
+      {/* Toast Notification (esquinas) */}
+      {currentToastExercise && (
+        <ToastNotification
+          exercise={currentToastExercise}
+          isVisible={showToastNotification}
+          onClose={() => setShowToastNotification(false)}
+          position={toastPosition}
+        />
+      )}
+
+      {/* Modal de Recomendaciones (centro) */}
+      {personalizedMessage && (
+        <RecommendationModal
+          exercises={recommendations}
+          isOpen={showRecommendationModal}
+          onClose={() => setShowRecommendationModal(false)}
+          personalizedMessage={personalizedMessage}
+        />
+      )}
+
+      {/* Badge Flotante - Siempre visible si hay recomendaciones */}
+      {recommendations.length > 0 && (
+        <FloatingBadge
+          count={recommendations.length}
+          onClick={() => setShowRecommendationModal(true)}
+          position="top-right"
+        />
+      )}
+
+      {/* Mini Toast Superior */}
+      <MiniToast
+        message="Tenemos recomendaciones para ti ✨"
+        isVisible={showMiniToast}
+        onClose={() => setShowMiniToast(false)}
+        onClick={() => {
+          setShowMiniToast(false);
+          setShowRecommendationModal(true);
+        }}
+      />
 
       {/* Botón flotante del espejo */}
       <button
@@ -194,88 +323,54 @@ function Home() {
                   </p>
                 </div>
               </div>
-
-              {/* Footer compacto */}
-              <div className="bg-gray-50 p-3 text-center">
-                <p className="text-xs text-gray-600">
-                  El espejo te ayuda a ser consciente de tu expresión durante las evaluaciones
-                </p>
-              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Header */}
-        <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
-              ¡Hola, {userName}! 👋
-            </h1>
-            <p className="text-white/90 text-lg">
-              Estado emocional: <span className="font-semibold">{theme.name}</span>
-            </p>
-            {lastScores.phq9 !== null && (
-              <p className="text-white/80 text-sm mt-1">
-                📊 PHQ-9: {lastScores.phq9}/27 | GAD-7: {lastScores.gad7 !== null ? `${lastScores.gad7}/21` : 'Pendiente'}
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl transition font-semibold border-2 border-white/30"
-          >
-            Cerrar sesión
-          </button>
-        </div>
-
-        {/* Alerta de emergencia */}
-        {theme.emergency && (
-          <motion.div
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-6 bg-red-100 border-4 border-red-500 rounded-2xl"
+            className="text-4xl font-bold text-gray-800 mb-2"
           >
-            <div className="flex items-center gap-4">
-              <span className="text-5xl animate-pulse">🚨</span>
-              <div className="flex-1">
-                <p className="text-2xl font-bold text-red-900 mb-2">
-                  ATENCIÓN: Necesitas apoyo profesional urgente
-                </p>
-                <p className="text-red-700 mb-4">
-                  Tus resultados indican que es importante que hables con un profesional de salud mental lo antes posible.
-                </p>
-                <div className="flex gap-3">
-                  <a 
-                    href="tel:952" 
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold transition shadow-lg"
-                  >
-                    <span>📞</span>
-                    <span>Llamar Línea 952</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+            ¡Hola, {userName}! 👋
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-gray-600 text-lg"
+          >
+            {theme.welcomeMessage}
+          </motion.p>
+        </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        <button
+          onClick={handleLogout}
+          className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition shadow-lg hover:shadow-xl"
+        >
+          Cerrar Sesión
+        </button>
+      </div>
+
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Grid de cards */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
           
-          {/* Card Evaluaciones */}
+          {/* Card Tests Psicológicos */}
           <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8 hover:scale-105 transition-transform duration-300`}>
             <div className="text-center">
               <div className="text-6xl mb-4">📋</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                Evaluaciones
+                Tests Psicológicos
               </h2>
               <p className="text-gray-600 mb-6">
-                {lastScores.phq9 === null && lastScores.gad7 === null
-                  ? 'Realiza tu primera evaluación para obtener recomendaciones personalizadas'
-                  : 'Mantén actualizado tu seguimiento emocional'
-                }
+                Evalúa tu estado emocional actual con cuestionarios validados
               </p>
 
               <div className="space-y-3">
@@ -284,7 +379,7 @@ function Home() {
                   className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-between`}
                 >
                   <span className="flex items-center gap-2">
-                    <span>📝</span>
+                    <span>😔</span>
                     <span>Test PHQ-9 (Depresión)</span>
                   </span>
                   {lastScores.phq9 !== null && (
@@ -366,7 +461,7 @@ function Home() {
 
         </div>
 
-        {/* Ejercicios de Voz - NUEVA SECCIÓN */}
+        {/* Ejercicios de Voz - SECCIÓN COMPLETA */}
         <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8`}>
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-gray-800 mb-2">
@@ -410,10 +505,10 @@ function Home() {
                 {/* Badge de ejercicios */}
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-semibold">
-                    5 ejercicios
+                    3 ejercicios
                   </span>
                   <span className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-semibold">
-                    10-15 min
+                    5-7 min
                   </span>
                 </div>
 
@@ -456,10 +551,10 @@ function Home() {
                 {/* Badge de ejercicios */}
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-amber-200 text-amber-800 rounded-full text-xs font-semibold">
-                    5 ejercicios
+                    3 ejercicios
                   </span>
                   <span className="px-3 py-1 bg-amber-200 text-amber-800 rounded-full text-xs font-semibold">
-                    10-15 min
+                    6-10 min
                   </span>
                 </div>
 
