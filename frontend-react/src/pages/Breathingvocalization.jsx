@@ -3,27 +3,39 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 
+// ✅ Reconocimiento (igual que Dashboard/Home)
+import FaceMonitor from '../components/FaceMonitor';
+
+// ✅ Hook de theme dinámico
+import useDynamicTheme from '../hooks/useDynamicTheme';
+
 function BreathingVocalization() {
   const navigate = useNavigate();
+
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [currentPhase, setCurrentPhase] = useState(null); // 'inhale', 'exhale', 'hold'
+  const [currentPhase, setCurrentPhase] = useState(null);
+  const [phaseTimeRemaining, setPhaseTimeRemaining] = useState(0);
   const [cyclesCompleted, setCyclesCompleted] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // ✅ THEME dinámico
+  const { theme, isThemeLoading } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-blue-100 via-purple-100 to-pink-100';
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   const phaseTimerRef = useRef(null);
 
-  const EXERCISE_DURATION = 300; // 5 minutos en segundos
+  const EXERCISE_DURATION = 5; // 5 ciclos
   const CYCLE_PHASES = [
-    { name: 'inhale', duration: 4, instruction: 'Inhalar por 4 segundos', color: 'blue' },
-    { name: 'hold', duration: 7, instruction: 'Sostener "oooo"', color: 'purple' },
-    { name: 'exhale', duration: 8, instruction: 'Exhalar diciendo "mmm"', color: 'pink' }
+    { name: 'inhale', duration: 4, instruction: 'Inhala profundamente', detail: 'Por la nariz', color: 'blue', emoji: '🌬️' },
+    { name: 'hold', duration: 7, instruction: 'Sostén el aire', detail: 'Mantén', color: 'purple', emoji: '⏸️' },
+    { name: 'exhale', duration: 8, instruction: 'Exhala lentamente', detail: 'Diciendo "aaah"', color: 'pink', emoji: '😮‍💨' }
   ];
 
   useEffect(() => {
@@ -32,6 +44,7 @@ function BreathingVocalization() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (phaseTimerRef.current) clearInterval(phaseTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startRecording = async () => {
@@ -56,15 +69,9 @@ function BreathingVocalization() {
       mediaRecorder.start(1000); // Captura cada segundo
       setIsRecording(true);
 
-      // Iniciar temporizador
+      // Iniciar temporizador de tiempo transcurrido
       timerRef.current = setInterval(() => {
-        setTimeElapsed((prev) => {
-          if (prev + 1 >= EXERCISE_DURATION) {
-            finishExercise();
-            return prev;
-          }
-          return prev + 1;
-        });
+        setTimeElapsed((prev) => prev + 1);
       }, 1000);
 
       // Iniciar ciclo de respiración
@@ -93,14 +100,30 @@ function BreathingVocalization() {
       const phase = CYCLE_PHASES[phaseIndex];
       setCurrentPhase(phase);
       phaseTime = 0;
+      setPhaseTimeRemaining(phase.duration);
 
       phaseTimerRef.current = setInterval(() => {
         phaseTime++;
+        setPhaseTimeRemaining(phase.duration - phaseTime);
+
         if (phaseTime >= phase.duration) {
           phaseIndex = (phaseIndex + 1) % CYCLE_PHASES.length;
+
+          // Si completamos un ciclo completo (volvimos a la fase 0)
           if (phaseIndex === 0) {
-            setCyclesCompleted((prev) => prev + 1);
+            setCyclesCompleted((prev) => {
+              const newCycleCount = prev + 1;
+
+              // Si completamos 5 ciclos, terminar ejercicio
+              if (newCycleCount >= EXERCISE_DURATION) {
+                clearInterval(phaseTimerRef.current);
+                setTimeout(() => finishExercise(), 500);
+              }
+
+              return newCycleCount;
+            });
           }
+
           clearInterval(phaseTimerRef.current);
           runPhase();
         }
@@ -116,11 +139,11 @@ function BreathingVocalization() {
 
   const analyzeAudio = async (audioBlob) => {
     setIsAnalyzing(true);
-    
+
     try {
       const userId = localStorage.getItem('user_id');
       const userGender = localStorage.getItem('user_gender') || 'neutro';
-      
+
       const formData = new FormData();
       formData.append('audio_file', audioBlob, 'exercise_audio.wav');
       formData.append('user_id', userId);
@@ -162,25 +185,44 @@ function BreathingVocalization() {
     }
   };
 
+  // ✅ LOADING THEME
+  if (isThemeLoading) {
+    return (
+      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}>
+        <FaceMonitor isActive={true} />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-white/80 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xl text-white drop-shadow-lg">Cargando ejercicio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================
+  // RESULTS SCREEN
+  // ============================
   if (showResults && analysisResults) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-cyan-100 to-teal-100 p-6">
+      <div className={`min-h-screen bg-gradient-to-br ${bg} p-6 transition-all duration-1000`}>
+        {/* ✅ Reconocimiento */}
+        <FaceMonitor isActive={true} />
+
         <div className="max-w-3xl mx-auto">
-          
+
           {/* Header */}
           <div className="mb-6">
             <button
               onClick={() => navigate('/exercises/anxiety')}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition mb-4"
+              className="flex items-center gap-2 text-white/90 hover:text-white font-medium transition mb-4 drop-shadow"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
             </button>
 
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
               ✅ Ejercicio Completado
             </h1>
-            <p className="text-gray-600">
+            <p className="text-white/90 drop-shadow">
               Duración: {formatTime(timeElapsed)} | Ciclos: {cyclesCompleted}
             </p>
           </div>
@@ -193,7 +235,7 @@ function BreathingVocalization() {
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4 mb-6">
-              
+
               {/* Pitch medio */}
               <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
@@ -274,9 +316,15 @@ function BreathingVocalization() {
     );
   }
 
+  // ============================
+  // ANALYZING SCREEN
+  // ============================
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-cyan-100 to-teal-100 flex items-center justify-center">
+      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center transition-all duration-1000`}>
+        {/* ✅ Reconocimiento */}
+        <FaceMonitor isActive={true} />
+
         <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-md">
           <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -290,21 +338,27 @@ function BreathingVocalization() {
     );
   }
 
+  // ============================
+  // MAIN SCREEN
+  // ============================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-cyan-100 to-teal-100 p-6">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} p-6 transition-all duration-1000`}>
+      {/* ✅ Reconocimiento */}
+      <FaceMonitor isActive={true} />
+
       <div className="max-w-2xl mx-auto">
-        
+
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/exercises/anxiety')}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition mb-4"
+            className="flex items-center gap-2 text-white/90 hover:text-white font-medium transition mb-4 drop-shadow"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
           </button>
 
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             Respiración con Vocalización
           </h1>
         </div>
@@ -312,64 +366,107 @@ function BreathingVocalization() {
         {/* Temporizador circular */}
         <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8">
           <div className="flex flex-col items-center">
-            
-            {/* Círculo de progreso */}
-            <div className="relative w-64 h-64 mb-8">
-              <svg className="transform -rotate-90 w-64 h-64">
+
+            {/* Círculo de progreso con animación de respiración */}
+            <div className="relative w-80 h-80 mb-8">
+              {/* Círculo de fondo */}
+              <svg className="transform -rotate-90 w-full h-full">
                 <circle
-                  cx="128"
-                  cy="128"
-                  r="120"
+                  cx="160"
+                  cy="160"
+                  r="150"
                   stroke="#e5e7eb"
-                  strokeWidth="8"
+                  strokeWidth="12"
                   fill="none"
                 />
+                {/* Progreso de ciclos */}
                 <circle
-                  cx="128"
-                  cy="128"
-                  r="120"
+                  cx="160"
+                  cy="160"
+                  r="150"
                   stroke="url(#gradient)"
-                  strokeWidth="8"
+                  strokeWidth="12"
                   fill="none"
-                  strokeDasharray={`${2 * Math.PI * 120}`}
-                  strokeDashoffset={`${2 * Math.PI * 120 * (1 - timeElapsed / EXERCISE_DURATION)}`}
+                  strokeDasharray={`${2 * Math.PI * 150}`}
+                  strokeDashoffset={`${2 * Math.PI * 150 * (1 - (isRecording ? cyclesCompleted + 1 : cyclesCompleted) / EXERCISE_DURATION)}`}
                   className="transition-all duration-1000"
+                  strokeLinecap="round"
                 />
                 <defs>
                   <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="50%" stopColor="#8b5cf6" />
+                    <stop offset="100%" stopColor="#ec4899" />
                   </linearGradient>
                 </defs>
               </svg>
-              
+
+              {/* Círculo interno animado según fase */}
+              {isRecording && currentPhase && (
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center"
+                  animate={{
+                    scale: currentPhase.name === 'inhale' ? [1, 1.15, 1.15] :
+                           currentPhase.name === 'hold' ? [1.15, 1.15, 1.15] :
+                           [1.15, 1, 1]
+                  }}
+                  transition={{
+                    duration: currentPhase.duration,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <div className={`w-48 h-48 rounded-full bg-gradient-to-br ${getPhaseColor()} opacity-20 blur-xl`}></div>
+                </motion.div>
+              )}
+
+              {/* Contenido central */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
                   {isRecording ? (
                     <>
-                      <p className="text-5xl font-bold text-gray-800 mb-2">
-                        {formatTime(timeElapsed)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        de {formatTime(EXERCISE_DURATION)}
+                      <motion.p
+                        className="text-7xl font-bold text-gray-800 mb-2"
+                        key={phaseTimeRemaining}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {phaseTimeRemaining}
+                      </motion.p>
+                      <p className="text-base text-gray-500 font-medium">
+                        {cyclesCompleted + 1}/{EXERCISE_DURATION} ciclos
                       </p>
                     </>
                   ) : (
-                    <p className="text-xl text-gray-500">segundos</p>
+                    <>
+                      <p className="text-7xl font-bold text-gray-300 mb-2">
+                        0/5
+                      </p>
+                      <p className="text-base text-gray-400 font-medium">ciclos</p>
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Estado actual */}
+            {/* Instrucción actual con animación mejorada */}
             {isRecording && currentPhase && (
               <motion.div
                 key={currentPhase.name}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={`px-8 py-4 bg-gradient-to-r ${getPhaseColor()} text-white rounded-2xl font-bold text-xl mb-6 shadow-lg`}
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                className={`relative px-10 py-6 bg-gradient-to-r ${getPhaseColor()} text-white rounded-3xl font-bold text-2xl mb-6 shadow-2xl overflow-hidden`}
               >
-                {currentPhase.instruction}
+                {/* Efecto de brillo */}
+                <div className="absolute inset-0 bg-white opacity-10 blur-2xl"></div>
+
+                <div className="relative flex items-center justify-center gap-4">
+                  <span className="text-4xl">{currentPhase.emoji}</span>
+                  <div>
+                    <p className="leading-tight">{currentPhase.instruction}</p>
+                    <p className="text-base font-normal opacity-90 mt-1">{currentPhase.detail}</p>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -377,15 +474,15 @@ function BreathingVocalization() {
             {isRecording && (
               <div className="flex gap-6 text-center">
                 <div>
-                  <p className="text-3xl font-bold text-blue-600">{cyclesCompleted}</p>
-                  <p className="text-sm text-gray-600">Ciclos</p>
+                  <p className="text-3xl font-bold text-blue-600">{cyclesCompleted + 1}/5</p>
+                  <p className="text-sm text-gray-600">Ciclo actual</p>
                 </div>
                 <div className="w-px bg-gray-300"></div>
                 <div>
                   <p className="text-3xl font-bold text-purple-600">
-                    {Math.floor((timeElapsed / EXERCISE_DURATION) * 100)}%
+                    {formatTime(timeElapsed)}
                   </p>
-                  <p className="text-sm text-gray-600">Completado</p>
+                  <p className="text-sm text-gray-600">Tiempo</p>
                 </div>
               </div>
             )}
@@ -398,7 +495,8 @@ function BreathingVocalization() {
                 className="text-center"
               >
                 <p className="text-gray-600 mb-6">
-                  Presiona Iniciar<br />Cuando estés listo para comenzar
+                  Presiona Iniciar para comenzar<br />
+                  <span className="text-sm">(5 ciclos de respiración guiada)</span>
                 </p>
                 <button
                   onClick={startRecording}
@@ -423,40 +521,69 @@ function BreathingVocalization() {
           </div>
         </div>
 
-        {/* Guía de respiración */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="font-bold text-gray-800 mb-4 text-lg">
-            Guía de Respiración
-          </h3>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-blue-600 font-bold">1</span>
+        {/* Guía de respiración mejorada */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <span className="text-2xl">🧘</span>
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800 text-lg">
+                Técnica de Respiración 4-7-8
+              </h3>
+              <p className="text-sm text-gray-500">Creada por el Dr. Andrew Weil</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-lg">4</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-800">Inhalar por 4 segundos</p>
-                <p className="text-sm text-gray-600">Respira profundamente por la nariz</p>
+                <p className="font-semibold text-gray-800 flex items-center gap-2">
+                  <span>🌬️</span> Inhala por la nariz
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Cuenta mentalmente hasta 4. Siente cómo el aire llena tus pulmones completamente</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-purple-600 font-bold">2</span>
+            <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-lg">7</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-800">Exhalar diciendo "mmm"</p>
-                <p className="text-sm text-gray-600">Siente la vibración en tu pecho</p>
+                <p className="font-semibold text-gray-800 flex items-center gap-2">
+                  <span>⏸️</span> Sostén el aire
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Mantén la respiración durante 7 segundos. Relaja los hombros y el abdomen</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-pink-600 font-bold">3</span>
+            <div className="flex items-start gap-4 p-4 bg-pink-50 rounded-xl border-2 border-pink-200">
+              <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-lg">8</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-800">Sostener "oooo"</p>
-                <p className="text-sm text-gray-600">Mantén el sonido lo más prolongado posible</p>
+                <p className="font-semibold text-gray-800 flex items-center gap-2">
+                  <span>😮‍💨</span> Exhala completamente
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Exhala haciendo un sonido "aaah" audible. Libera toda la tensión</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <p className="font-semibold text-gray-800 mb-1">Beneficios comprobados:</p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Reduce la ansiedad y el estrés en minutos</li>
+                  <li>• Activa el sistema nervioso parasimpático</li>
+                  <li>• Mejora la calidad del sueño</li>
+                  <li>• Aumenta la concentración y claridad mental</li>
+                </ul>
               </div>
             </div>
           </div>

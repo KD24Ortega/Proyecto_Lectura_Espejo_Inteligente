@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -8,17 +8,21 @@ import api from '../services/api';
 function AdminUserProfile() {
   const navigate = useNavigate();
   const { userId } = useParams();
+
   const [user, setUser] = useState(null);
-  const [trends, setTrends] = useState(null); // Análisis de tendencias avanzado
+  const [trends, setTrends] = useState(null);
+
   const [adminName, setAdminName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('both'); // 'both', 'phq9', 'gad7'
-  const [timeRange, setTimeRange] = useState(8); // 4, 8, 12 semanas
+  const [selectedMetric, setSelectedMetric] = useState('both');
+  const [timeRange, setTimeRange] = useState(8);
+
   const [showNotes, setShowNotes] = useState(false);
   const [note, setNote] = useState('');
-  
-  // Estados para modales
+
+  // Modales
   const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
   const [showAttendedModal, setShowAttendedModal] = useState(false);
   const [attendanceNotes, setAttendanceNotes] = useState('');
@@ -26,66 +30,190 @@ function AdminUserProfile() {
   const [sendConfirmation, setSendConfirmation] = useState(true);
   const [followupDate, setFollowupDate] = useState('');
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
-  
+
+  // ====== VOZ ======
+  const [voiceStats, setVoiceStats] = useState(null);
+  const [voiceSessions, setVoiceSessions] = useState([]);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+
   // Ref para captura de gráfica
   const chartRef = useRef(null);
 
+  // -------------------------
+  // Helpers
+  // -------------------------
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  const apiGetTryPaths = async (paths) => {
+    let lastErr = null;
+    for (const p of paths) {
+      try {
+        return await api.get(p);
+      } catch (e) {
+        lastErr = e;
+        const status = e?.response?.status;
+        if (status === 404 || status === 405) continue;
+        throw e;
+      }
+    }
+    throw lastErr || new Error('No se pudo resolver ninguna ruta.');
+  };
+
+  const normalizeVoiceScoreTo100 = (raw) => {
+    if (raw === null || raw === undefined) return null;
+    const v = Number(raw);
+    if (Number.isNaN(v)) return null;
+
+    if (v >= 0 && v <= 1) return v * 100;
+    if (v >= 0 && v <= 100) return v;
+
+    return clamp(v, 0, 100);
+  };
+
+  const computeMultimodal = (emotionalIndex100, voiceScore100, riskDist) => {
+    const wTests = 0.6;
+    const wVoice = 0.4;
+
+    const tests = typeof emotionalIndex100 === 'number' ? clamp(emotionalIndex100, 0, 100) : null;
+    const voice = typeof voiceScore100 === 'number' ? clamp(voiceScore100, 0, 100) : null;
+
+    let index = null;
+    if (tests !== null && voice !== null) index = (wTests * tests) + (wVoice * voice);
+    else if (tests !== null) index = tests;
+    else if (voice !== null) index = voice;
+
+    if (index === null) {
+      return {
+        index: null,
+        level: 'Sin datos',
+        color: 'bg-gray-200 text-gray-700',
+        note: 'No hay suficientes señales para calcular.'
+      };
+    }
+
+    const highCount = riskDist?.HIGH ?? 0;
+    const totalRisk = (riskDist?.LOW ?? 0) + (riskDist?.MODERATE ?? 0) + (riskDist?.HIGH ?? 0);
+    const highPct = totalRisk > 0 ? (highCount / totalRisk) * 100 : 0;
+
+    const boosted = clamp(index + (highPct >= 40 ? 7 : highPct >= 20 ? 4 : 0), 0, 100);
+
+    let level = 'Estable';
+    let color = 'bg-green-100 text-green-700';
+    if (boosted >= 60) { level = 'Severo'; color = 'bg-red-100 text-red-700'; }
+    else if (boosted >= 40) { level = 'Moderado'; color = 'bg-orange-100 text-orange-700'; }
+    else if (boosted >= 20) { level = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
+
+    return {
+      index: Number(boosted.toFixed(1)),
+      level,
+      color,
+      note: totalRisk > 0
+        ? `Incluye ajuste por riesgo HIGH: ${highPct.toFixed(0)}%`
+        : 'Sin distribución de riesgo disponible.'
+    };
+  };
+
+  const getSeverityInfo = (score, type) => {
+    if (score === null || score === undefined) {
+      return { text: 'Sin evaluación', color: 'bg-gray-200 text-gray-600', max: type === 'phq9' ? 27 : 21 };
+    }
+
+    const max = type === 'phq9' ? 27 : 21;
+    let severity, color;
+
+    if (score < 5) { severity = 'Mínima'; color = 'bg-green-100 text-green-700'; }
+    else if (score < 10) { severity = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
+    else if (score < 15) { severity = 'Moderada'; color = 'bg-orange-100 text-orange-700'; }
+    else { severity = 'Severa'; color = 'bg-red-100 text-red-700'; }
+
+    return { text: severity, color, max };
+  };
+
+  const calculateTrend = (history) => {
+    if (!Array.isArray(history) || history.length < 2) {
+      return { text: 'Insuficientes datos', color: 'text-gray-600', icon: '—', percent: 0 };
+    }
+
+    const recent = history.slice(-3);
+    const older = history.slice(0, Math.min(3, Math.max(0, history.length - 3)));
+
+    const recentAvg = recent.reduce((sum, a) => sum + (a?.score ?? 0), 0) / recent.length;
+    const olderAvg = older.length > 0
+      ? older.reduce((sum, a) => sum + (a?.score ?? 0), 0) / older.length
+      : recentAvg;
+
+    const change = recentAvg - olderAvg;
+
+    let percent = 0;
+    if (olderAvg > 0) percent = Math.min(999, Math.abs((change / olderAvg) * 100));
+    else if (change !== 0) percent = Math.min(999, Math.abs(change * 10));
+
+    percent = Number(percent.toFixed(1));
+
+    if (change < -2) return { text: 'Mejorando', color: 'text-green-600', icon: '📈', percent };
+    if (change > 2) return { text: 'Empeorando', color: 'text-red-600', icon: '📉', percent };
+    return { text: 'Estable', color: 'text-gray-600', icon: '➡️', percent: 0 };
+  };
+
+  // -------------------------
+  // Effects
+  // -------------------------
   useEffect(() => {
+    const checkAuth = () => {
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+      const adminNameStored = localStorage.getItem('admin_name') || sessionStorage.getItem('admin_name');
+
+      if (!adminId) {
+        navigate('/admin/login');
+        return;
+      }
+      setAdminName(adminNameStored || 'Administrador');
+    };
+
     checkAuth();
     loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
-    // Recargar trends cuando cambie el timeRange
-    if (user) {
-      loadTrendsAnalysis();
-    }
-  }, [timeRange]);
+    if (!user) return;
+    loadTrendsAnalysis();
+    loadVoiceData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, timeRange, userId]);
 
-  const checkAuth = () => {
-    const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-    const adminNameStored = localStorage.getItem('admin_name') || sessionStorage.getItem('admin_name');
-    
-    if (!adminId) {
-      navigate('/admin/login');
-      return;
-    }
-    
-    setAdminName(adminNameStored || 'Administrador');
-  };
-
+  // -------------------------
+  // API loaders
+  // -------------------------
   const loadUserProfile = async () => {
     try {
+      setIsLoading(true);
+
       const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-
-      // 1️⃣ Cargar perfil base
       const response = await api.get(`/admin/user/${userId}?user_id=${adminId}`);
-
-      // 2️⃣ Obtener últimos scores reales
       const lastResponse = await api.get(`/assessments/last/${userId}`);
 
-      // 3️⃣ Unificar estructura esperada por el PDF
-      setUser({
+      const phqLast = lastResponse.data?.phq9?.score ?? 0;
+      const gadLast = lastResponse.data?.gad7?.score ?? 0;
+
+      const merged = {
         ...response.data,
         trend_summary: {
-          phq9_last: lastResponse.data.phq9.score,
-          gad7_last: lastResponse.data.gad7.score,
-          phq9_trend: lastResponse.data.phq9.severity,
-          gad7_trend: lastResponse.data.gad7.severity,
+          phq9_last: lastResponse.data?.phq9?.score,
+          gad7_last: lastResponse.data?.gad7?.score,
+          phq9_trend: lastResponse.data?.phq9?.severity,
+          gad7_trend: lastResponse.data?.gad7?.severity,
           status:
-            lastResponse.data.phq9.score >= 15 ||
-            lastResponse.data.gad7.score >= 15
+            (phqLast >= 15 || gadLast >= 15)
               ? "severo"
-              : lastResponse.data.phq9.score >= 10 ||
-                lastResponse.data.gad7.score >= 10
+              : (phqLast >= 10 || gadLast >= 10)
               ? "moderado"
               : "leve"
         }
-      });
-      
-      // 4️⃣ Cargar análisis de tendencias avanzado
-      await loadTrendsAnalysis();
-      
+      };
+
+      setUser(merged);
     } catch (error) {
       console.error('Error al cargar perfil:', error);
       if (error.response?.status === 403) {
@@ -94,23 +222,190 @@ function AdminUserProfile() {
         alert('Usuario no encontrado');
         navigate('/admin/users');
       }
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ← AGREGAR ESTA FUNCIÓN DESPUÉS DE loadUserProfile
   const loadTrendsAnalysis = async () => {
     try {
-      const days = timeRange * 7; // Convertir semanas a días
+      const days = timeRange * 7;
       const response = await api.get(`/trends/analyze/${userId}?days=${days}`);
       setTrends(response.data);
     } catch (error) {
       console.error('Error al cargar análisis de tendencias:', error);
-      // No bloquear la carga del perfil si falla el análisis
     }
   };
 
+  const loadVoiceData = async () => {
+    try {
+      setVoiceLoading(true);
+      setVoiceError(null);
+
+      const days = timeRange * 7;
+      const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+
+      const statsRes = await apiGetTryPaths([
+        `/voice/user/${userId}/stats?days=${days}`,
+        `/api/voice/user/${userId}/stats?days=${days}`,
+      ]);
+      setVoiceStats(statsRes.data);
+
+      let sessionsRes = null;
+      let backendFiltered = true;
+
+      try {
+        sessionsRes = await apiGetTryPaths([
+          `/voice/sessions/user/${userId}?days=${days}&limit=50`,
+          `/api/voice/sessions/user/${userId}?days=${days}&limit=50`,
+        ]);
+      } catch (e) {
+        backendFiltered = false;
+        sessionsRes = await apiGetTryPaths([
+          `/voice/sessions/user/${userId}?limit=50`,
+          `/api/voice/sessions/user/${userId}?limit=50`,
+        ]);
+      }
+
+      let sessions = Array.isArray(sessionsRes?.data) ? sessionsRes.data : [];
+
+      if (!backendFiltered) {
+        sessions = sessions.filter((s) => {
+          if (!s?.created_at) return false;
+          const t = new Date(s.created_at).getTime();
+          return Number.isFinite(t) && t >= cutoffMs;
+        });
+      }
+
+      setVoiceSessions(sessions);
+    } catch (error) {
+      console.error('Error cargando datos de voz:', error);
+      setVoiceError('No se pudo cargar el análisis de voz.');
+      setVoiceStats(null);
+      setVoiceSessions([]);
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
+
+  // -------------------------
+  // Derived (SIEMPRE se ejecutan, aunque user sea null)
+  // -------------------------
+  const assessments = user?.assessments ?? [];
+
+  const lastByType = (type) => {
+    let best = null;
+    for (const a of assessments) {
+      if (a?.type !== type || !a?.created_at) continue;
+      if (!best) best = a;
+      else if (new Date(a.created_at) > new Date(best.created_at)) best = a;
+    }
+    return best;
+  };
+
+  const lastPhq9 = lastByType('phq9');
+  const lastGad7 = lastByType('gad7');
+
+  const phq9Info = getSeverityInfo(lastPhq9?.score, 'phq9');
+  const gad7Info = getSeverityInfo(lastGad7?.score, 'gad7');
+
+  const totalEvaluations = assessments.length;
+  const phq9Count = assessments.filter(a => a.type === 'phq9').length;
+  const gad7Count = assessments.filter(a => a.type === 'gad7').length;
+
+  const mostRecentDate = useMemo(() => {
+    const candidates = [lastPhq9?.created_at, lastGad7?.created_at].filter(Boolean);
+    if (!candidates.length) return null;
+    return candidates.sort((a, b) => new Date(b) - new Date(a))[0];
+  }, [lastPhq9?.created_at, lastGad7?.created_at]);
+
+  const daysSinceLastEval = useMemo(() => {
+    if (!mostRecentDate) return null;
+    return Math.floor((Date.now() - new Date(mostRecentDate).getTime()) / (1000 * 60 * 60 * 24));
+  }, [mostRecentDate]);
+
+  const { phq9History, gad7History } = useMemo(() => {
+    const phq = assessments
+      .filter(a => a.type === 'phq9' && a.created_at)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .slice(-timeRange);
+
+    const gad = assessments
+      .filter(a => a.type === 'gad7' && a.created_at)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .slice(-timeRange);
+
+    return { phq9History: phq, gad7History: gad };
+  }, [assessments, timeRange]);
+
+  const adherence = useMemo(() => {
+    const weeks = timeRange;
+    if (!weeks) return 0;
+
+    const end = Date.now();
+    const start = end - weeks * 7 * 24 * 60 * 60 * 1000;
+
+    const within = assessments.filter(a => a?.created_at && new Date(a.created_at).getTime() >= start);
+    if (!within.length) return 0;
+
+    const weekHas = new Array(weeks).fill(false);
+
+    for (const a of within) {
+      const t = new Date(a.created_at).getTime();
+      const diffDays = Math.floor((end - t) / (24 * 60 * 60 * 1000));
+      const w = Math.floor(diffDays / 7);
+      if (w >= 0 && w < weeks) weekHas[w] = true;
+    }
+
+    const completed = weekHas.filter(Boolean).length;
+    return Math.round((completed / weeks) * 100);
+  }, [assessments, timeRange]);
+
+  const phq9Trend = useMemo(() => calculateTrend(phq9History), [phq9History]);
+  const gad7Trend = useMemo(() => calculateTrend(gad7History), [gad7History]);
+
+  const emotionalIndex = useMemo(() => {
+    const phqAvg = phq9History.length > 0
+      ? phq9History.reduce((s, a) => s + a.score, 0) / phq9History.length
+      : null;
+
+    const gadAvg = gad7History.length > 0
+      ? gad7History.reduce((s, a) => s + a.score, 0) / gad7History.length
+      : null;
+
+    const normPHQ9 = phqAvg !== null ? (phqAvg / 27) * 100 : 0;
+    const normGAD7 = gadAvg !== null ? (gadAvg / 21) * 100 : 0;
+
+    return Number(((normPHQ9 + normGAD7) / 2).toFixed(1));
+  }, [phq9History, gad7History]);
+
+  const voiceScore100 = useMemo(() => {
+    return normalizeVoiceScoreTo100(voiceStats?.summary?.avg_score);
+  }, [voiceStats]);
+
+  const multimodal = useMemo(() => {
+    return computeMultimodal(
+      emotionalIndex,
+      voiceScore100,
+      voiceStats?.summary?.risk_distribution
+    );
+  }, [emotionalIndex, voiceScore100, voiceStats]);
+
+  // Tooltip coords (fix foreignObject)
+  const tooltipCoords = useMemo(() => {
+    if (!hoveredPoint) return null;
+    const len = hoveredPoint.type === 'phq9' ? phq9History.length : gad7History.length;
+    const x = (hoveredPoint.index / Math.max(len - 1, 1)) * 100;
+    const y = 100 - (hoveredPoint.score / hoveredPoint.max) * 100;
+    const fx = clamp(x - 15, 0, 70);
+    const fy = clamp(y - 25, 0, 80);
+    return { x: fx, y: fy };
+  }, [hoveredPoint, phq9History.length, gad7History.length]);
+
+  // -------------------------
+  // Actions
+  // -------------------------
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_id');
@@ -120,16 +415,10 @@ function AdminUserProfile() {
     navigate('/admin/login');
   };
 
-  const handleViewRecommendations = () => {
-    setShowRecommendationsModal(true);
-  };
-
   const handleMarkAsAttended = () => {
-    // Establecer fecha de seguimiento sugerida (1 semana desde hoy)
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     setFollowupDate(nextWeek.toISOString().split('T')[0]);
-    
     setShowAttendedModal(true);
   };
 
@@ -137,25 +426,21 @@ function AdminUserProfile() {
     try {
       setIsSubmittingAttendance(true);
       const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-      
+
       await api.post(`/admin/mark-attended/${userId}`, {
-        admin_id: parseInt(adminId),
+        admin_id: parseInt(adminId, 10),
         notes: attendanceNotes,
         schedule_followup: scheduleFollowup,
         followup_date: scheduleFollowup ? followupDate : null,
         send_confirmation: sendConfirmation
       });
-      
-      // Cerrar modal y limpiar
+
       setShowAttendedModal(false);
       setAttendanceNotes('');
       setScheduleFollowup(true);
       setSendConfirmation(true);
-      
-      // Mostrar confirmación
+
       alert('✅ Usuario marcado como atendido exitosamente');
-      
-      // Recargar perfil
       loadUserProfile();
     } catch (error) {
       console.error('Error al marcar como atendido:', error);
@@ -165,186 +450,46 @@ function AdminUserProfile() {
     }
   };
 
-  const handleExportPDF = async () => {
-    if (!user || !user.user) return;
-
-    const profile = user.user;
-    const assessments = user.assessments || [];
-
-    if (!assessments.length) {
-      alert("Este usuario aún no posee evaluaciones registradas.");
-      return;
-    }
-
-    // ===============================
-    // PROMEDIOS REALES
-    // ===============================
-
-    const phq9 = assessments.filter(a => a.type === "phq9");
-    const gad7 = assessments.filter(a => a.type === "gad7");
-
-    const avg = (arr) =>
-      arr.length ? (arr.reduce((s,a)=>s+a.score,0)/arr.length).toFixed(1) : null;
-
-    const phq9_avg = avg(phq9);
-    const gad7_avg = avg(gad7);
-
-    // ===============================
-    // NORMALIZACIÓN 0–100
-    // ===============================
-
-    const normPHQ9 = phq9_avg ? (phq9_avg / 27) * 100 : 0;
-    const normGAD7 = gad7_avg ? (gad7_avg / 21) * 100 : 0;
-
-    const emotionalIndex = ((normPHQ9 + normGAD7) / 2).toFixed(1);
-
-    let status = "Estable";
-    if (emotionalIndex >= 60) status = "Severo";
-    else if (emotionalIndex >= 40) status = "Moderado";
-    else if (emotionalIndex >= 20) status = "Leve";
-
-    // ===============================
-    // CAPTURA DE GRÁFICA
-    // ===============================
-
-    let chartImage = null;
-
-    if (chartRef?.current) {
-      try {
-        const canvas = await html2canvas(chartRef.current, {
-          backgroundColor: "#ffffff",
-          scale: 2
-        });
-        chartImage = canvas.toDataURL("image/png");
-      } catch (error) {
-        console.error("Error capturando gráfica:", error);
-      }
-    }
-
-    // ===============================
-    // PDF
-    // ===============================
-
-    const doc = new jsPDF("p", "mm", "a4");
-
-    // HEADER
-    doc.setFontSize(18);
-    doc.text("SMART MIRROR - REPORTE CLÍNICO", 105, 15, { align: "center" });
-
-    doc.setFontSize(10);
-    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" });
-    doc.line(10, 26, 200, 26);
-
-    // -------------------------------
-    // DATOS DEL PACIENTE
-    // -------------------------------
-
-    doc.setFontSize(14);
-    doc.text("Datos del Paciente", 14, 35);
-
-    autoTable(doc,{
-      startY: 40,
-      head:[["Campo","Detalle"]],
-      body:[
-        ["Nombre", profile.full_name],
-        ["Edad", profile.age ?? "N/A"],
-        ["Género", profile.gender ?? "N/A"],
-        ["Email", profile.email ?? "N/A"],
-        ["ID Usuario", profile.id]
-      ]
-    });
-
-    // -------------------------------
-    // ESTADO EMOCIONAL
-    // -------------------------------
-
-    const y2 = doc.lastAutoTable.finalY + 10;
-
-    doc.text("Estado Emocional (Promedios)", 14, y2);
-
-    autoTable(doc,{
-      startY: y2 + 4,
-      head:[["Métrica","Resultado"]],
-      body:[
-        ["PHQ-9 Promedio", phq9_avg ?? "Sin datos"],
-        ["GAD-7 Promedio", gad7_avg ?? "Sin datos"],
-        ["Índice emocional", `${emotionalIndex} / 100`],
-        ["Clasificación", status]
-      ]
-    });
-
-    // -------------------------------
-    // HISTORIAL
-    // -------------------------------
-
-    const y3 = doc.lastAutoTable.finalY + 10;
-
-    doc.text("Historial de Evaluaciones",14,y3);
-
-    autoTable(doc,{
-      startY:y3+4,
-      head:[["Fecha","Test","Score","Severidad"]],
-      body: assessments.map(a=>[
-        new Date(a.created_at).toLocaleDateString("es-ES"),
-        a.type.toUpperCase(),
-        a.score,
-        a.severity
-      ])
-    });
-
-    // -------------------------------
-    // PÁGINA CON GRÁFICA
-    // -------------------------------
-
-    if (chartImage) {
-      doc.addPage();
-      doc.text("Gráfica de evolución clínica",105,15,{align:"center"});
-      doc.addImage(chartImage,"PNG",10,20,190,100);
-    }
-
-    // -------------------------------
-    // FOOTER
-    // -------------------------------
-
-    const pageHeight = doc.internal.pageSize.height;
-    doc.setFontSize(9);
-    doc.text(
-      "Documento generado automáticamente por Smart Mirror",
-      105,
-      pageHeight - 12,
-      { align:"center" }
-    );
-
-    // -------------------------------
-    // DESCARGA
-    // -------------------------------
-
-    const safeName = profile.full_name.replace(/\s+/g,"_");
-    doc.save(`reporte_${safeName}.pdf`);
+  const handleSaveNote = () => {
+    const notes = JSON.parse(localStorage.getItem('user_notes') || '{}');
+    notes[userId] = {
+      content: note,
+      timestamp: new Date().toISOString(),
+      author: adminName
+    };
+    localStorage.setItem('user_notes', JSON.stringify(notes));
+    alert('Nota guardada exitosamente');
+    setShowNotes(false);
   };
 
   const handleExportCSV = () => {
     try {
+      if (!assessments.length) {
+        alert("Este usuario aún no posee evaluaciones registradas.");
+        return;
+      }
+
       const csvData = [
         ['Fecha', 'Tipo', 'Puntuación', 'Severidad'],
-        ...user.assessments.map(a => [
-          new Date(a.created_at).toLocaleDateString('es-ES'),
-          a.type.toUpperCase(),
-          a.score,
-          getSeverityInfo(a.score, a.type).text
+        ...assessments.map(a => [
+          a?.created_at ? new Date(a.created_at).toLocaleDateString('es-ES') : '',
+          String(a?.type ?? '').toUpperCase(),
+          a?.score ?? '',
+          getSeverityInfo(a?.score, a?.type).text
         ])
       ];
-      
+
       const csvContent = csvData.map(row => row.join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `datos_${user.user.full_name}_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      
+      const el = document.createElement('a');
+      el.href = url;
+      el.download = `datos_${(user?.user?.full_name || 'usuario')}_${new Date().toISOString().split('T')[0]}.csv`;
+      el.click();
+
       alert('Datos exportados exitosamente');
     } catch (error) {
+      console.error(error);
       alert('Error al exportar CSV');
     }
   };
@@ -356,14 +501,15 @@ function AdminUserProfile() {
         return;
       }
 
-      // Obtener últimos scores (necesarios para el mensaje)
-      const lastPhq9Score = user.assessments
-        .filter(a => a.type === 'phq9')
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]?.score;
-      
-      const lastGad7Score = user.assessments
-        .filter(a => a.type === 'gad7')
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]?.score;
+      const phq = typeof lastPhq9?.score === 'number' ? lastPhq9.score : null;
+      const gad = typeof lastGad7?.score === 'number' ? lastGad7.score : null;
+
+      let recommendation = "Sin datos suficientes.";
+      if (phq !== null || gad !== null) {
+        if ((phq ?? 0) >= 15 || (gad ?? 0) >= 15) recommendation = "Requiere evaluación profesional prioritaria.";
+        else if ((phq ?? 0) >= 10 || (gad ?? 0) >= 10) recommendation = "Se sugiere monitoreo clínico.";
+        else recommendation = "Estado estable.";
+      }
 
       const message = `
 Estimado/a ${user.user.full_name},
@@ -372,15 +518,11 @@ Nos comunicamos desde el sistema Smart Mirror para dar seguimiento a su bienesta
 
 Resultados más recientes:
 
-PHQ-9: ${lastPhq9Score ?? "N/A"}
-GAD-7: ${lastGad7Score ?? "N/A"}
+PHQ-9: ${phq ?? "N/A"}
+GAD-7: ${gad ?? "N/A"}
 
 Recomendación:
-${lastPhq9Score >= 15 || lastGad7Score >= 15
-  ? "Requiere evaluación profesional prioritaria."
-  : lastPhq9Score >= 10 || lastGad7Score >= 10
-      ? "Se sugiere monitoreo clínico."
-      : "Estado estable."}
+${recommendation}
 
 Saludos,
 Equipo Smart Mirror
@@ -394,7 +536,6 @@ Administrador: ${adminName}
       });
 
       alert("📧 Correo enviado correctamente");
-
     } catch (error) {
       console.error("Error enviando correo:", error);
       alert("❌ No se pudo enviar la notificación.");
@@ -402,8 +543,9 @@ Administrador: ${adminName}
   };
 
   const handleDeleteUser = async () => {
+    if (!user?.user?.full_name) return;
+
     const confirmation = prompt(`Para confirmar la eliminación, escribe el nombre del usuario: "${user.user.full_name}"`);
-    
     if (confirmation === user.user.full_name) {
       try {
         const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
@@ -419,1216 +561,1005 @@ Administrador: ${adminName}
     }
   };
 
-  const handleSaveNote = () => {
-    // Guardar nota en localStorage temporalmente
-    const notes = JSON.parse(localStorage.getItem('user_notes') || '{}');
-    notes[userId] = {
-      content: note,
-      timestamp: new Date().toISOString(),
-      author: adminName
-    };
-    localStorage.setItem('user_notes', JSON.stringify(notes));
-    alert('Nota guardada exitosamente');
-    setShowNotes(false);
+  const riskBadge = (risk) => {
+    const r = String(risk || '').toUpperCase();
+    if (r === 'HIGH' || r === 'ALTO') return 'bg-red-100 text-red-700 border-red-200';
+    if (r === 'LOW' || r === 'BAJO') return 'bg-green-100 text-green-700 border-green-200';
+    return 'bg-orange-100 text-orange-700 border-orange-200';
   };
 
-  const getSeverityInfo = (score, type) => {
-    if (score === null || score === undefined) {
-      return { text: 'Sin evaluación', color: 'bg-gray-200 text-gray-600', max: type === 'phq9' ? 27 : 21 };
-    }
-    
+  const handleSelectPoint = (type, index, score, date) => {
     const max = type === 'phq9' ? 27 : 21;
-    let severity, color;
-    
-    if (type === 'phq9') {
-      if (score < 5) { severity = 'Mínima'; color = 'bg-green-100 text-green-700'; }
-      else if (score < 10) { severity = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
-      else if (score < 15) { severity = 'Moderada'; color = 'bg-orange-100 text-orange-700'; }
-      else { severity = 'Severa'; color = 'bg-red-100 text-red-700'; }
-    } else {
-      if (score < 5) { severity = 'Mínima'; color = 'bg-green-100 text-green-700'; }
-      else if (score < 10) { severity = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
-      else if (score < 15) { severity = 'Moderada'; color = 'bg-orange-100 text-orange-700'; }
-      else { severity = 'Severa'; color = 'bg-red-100 text-red-700'; }
-    }
-    
-    return { text: severity, color, max };
+    setHoveredPoint({ type, index, score, date, max });
   };
 
-  const calculateTrend = (history) => {
-    if (history.length < 2) return { text: 'Insuficientes datos', color: 'text-gray-600', icon: '—', percent: 0 };
-    
-    const recent = history.slice(-3);
-    const older = history.slice(0, Math.min(3, history.length - 3));
-    
-    const recentAvg = recent.reduce((sum, a) => sum + a.score, 0) / recent.length;
-    const olderAvg = older.length > 0 ? older.reduce((sum, a) => sum + a.score, 0) / older.length : recentAvg;
-    
-    const change = recentAvg - olderAvg;
-    
-    // Calcular porcentaje de forma segura
-    let percent = 0;
-    if (olderAvg > 0) {
-      percent = Math.min(999, Math.abs((change / olderAvg) * 100)); // Limitar a 999%
-    } else if (change !== 0) {
-      // Si olderAvg es 0 pero hay cambio, usar cambio absoluto
-      percent = Math.min(999, Math.abs(change * 10)); // Multiplicador arbitrario
+  // -------------------------
+  // PDF export (sin cambios fuertes; solo evita nulls)
+  // -------------------------
+  const handleExportPDF = async () => {
+    if (!user?.user) return;
+
+    const profile = user.user;
+    if (!assessments.length) {
+      alert("Este usuario aún no posee evaluaciones registradas.");
+      return;
     }
-    percent = parseFloat(percent.toFixed(1));
-    
-    if (change < -2) return { text: 'Mejorando', color: 'text-green-600', icon: '📈', percent };
-    if (change > 2) return { text: 'Empeorando', color: 'text-red-600', icon: '📉', percent };
-    return { text: 'Estable', color: 'text-gray-600', icon: '➡️', percent: 0 };
+
+    const phq9 = assessments.filter(a => a.type === "phq9");
+    const gad7 = assessments.filter(a => a.type === "gad7");
+
+    const avg = (arr) =>
+      arr.length ? (arr.reduce((s, a) => s + a.score, 0) / arr.length).toFixed(1) : null;
+
+    const phq9_avg = avg(phq9);
+    const gad7_avg = avg(gad7);
+
+    const normPHQ9 = phq9_avg ? (Number(phq9_avg) / 27) * 100 : 0;
+    const normGAD7 = gad7_avg ? (Number(gad7_avg) / 21) * 100 : 0;
+    const emotionalIndexPdf = Number(((normPHQ9 + normGAD7) / 2).toFixed(1));
+
+    let status = "Estable";
+    if (emotionalIndexPdf >= 60) status = "Severo";
+    else if (emotionalIndexPdf >= 40) status = "Moderado";
+    else if (emotionalIndexPdf >= 20) status = "Leve";
+
+    const voiceScore100Pdf = normalizeVoiceScoreTo100(voiceStats?.summary?.avg_score);
+    const multimodalPdf = computeMultimodal(
+      emotionalIndexPdf,
+      voiceScore100Pdf,
+      voiceStats?.summary?.risk_distribution
+    );
+
+    let chartImage = null;
+    if (chartRef?.current) {
+      try {
+        setHoveredPoint(null);
+        await new Promise(r => setTimeout(r, 60));
+
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: "#ffffff",
+          scale: 2
+        });
+        chartImage = canvas.toDataURL("image/png");
+      } catch (error) {
+        console.error("Error capturando gráfica:", error);
+      }
+    }
+
+    const doc = new jsPDF("p", "mm", "a4");
+
+    doc.setFontSize(18);
+    doc.text("SMART MIRROR - REPORTE CLÍNICO", 105, 15, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" });
+    doc.line(10, 26, 200, 26);
+
+    doc.setFontSize(14);
+    doc.text("Datos del Paciente", 14, 35);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [["Campo", "Detalle"]],
+      body: [
+        ["Nombre", profile.full_name],
+        ["Edad", profile.age ?? "N/A"],
+        ["Género", profile.gender ?? "N/A"],
+        ["Email", profile.email ?? "N/A"],
+        ["ID Usuario", profile.id]
+      ]
+    });
+
+    const y2 = doc.lastAutoTable.finalY + 10;
+    doc.text("Estado Emocional (Tests)", 14, y2);
+
+    autoTable(doc, {
+      startY: y2 + 4,
+      head: [["Métrica", "Resultado"]],
+      body: [
+        ["PHQ-9 Promedio", phq9_avg ?? "Sin datos"],
+        ["GAD-7 Promedio", gad7_avg ?? "Sin datos"],
+        ["Índice emocional", `${emotionalIndexPdf} / 100`],
+        ["Clasificación", status]
+      ]
+    });
+
+    const y3 = doc.lastAutoTable.finalY + 10;
+    doc.text("Historial de Evaluaciones", 14, y3);
+
+    autoTable(doc, {
+      startY: y3 + 4,
+      head: [["Fecha", "Test", "Score", "Severidad"]],
+      body: assessments.map(a => [
+        a?.created_at ? new Date(a.created_at).toLocaleDateString("es-ES") : "—",
+        String(a?.type ?? "—").toUpperCase(),
+        a?.score ?? "—",
+        a?.severity ?? getSeverityInfo(a?.score, a?.type).text
+      ])
+    });
+
+    const y4 = doc.lastAutoTable.finalY + 10;
+    doc.text("Biomarcadores Vocales", 14, y4);
+
+    const vs = voiceStats?.summary;
+
+    autoTable(doc, {
+      startY: y4 + 4,
+      head: [["Métrica", "Resultado"]],
+      body: [
+        ["Ventana (días)", voiceStats?.days ?? (timeRange * 7)],
+        ["Sesiones (total)", vs?.total_sessions ?? "Sin datos"],
+        ["Sesiones completadas", vs?.completed_sessions ?? "Sin datos"],
+        ["Duración total (s)", vs?.total_duration ?? "Sin datos"],
+        ["Pitch promedio", vs?.avg_pitch ?? "Sin datos"],
+        ["Energía promedio", vs?.avg_energy ?? "Sin datos"],
+        ["HNR promedio", vs?.avg_hnr ?? "Sin datos"],
+        ["Score vocal promedio", voiceScore100Pdf !== null ? `${Number(voiceScore100Pdf).toFixed(1)} / 100` : "Sin datos"],
+        ["Riesgo LOW/MOD/HIGH", vs?.risk_distribution
+          ? `LOW ${vs.risk_distribution.LOW} | MOD ${vs.risk_distribution.MODERATE} | HIGH ${vs.risk_distribution.HIGH}`
+          : "Sin datos"
+        ]
+      ]
+    });
+
+    const y5 = doc.lastAutoTable.finalY + 8;
+    doc.text("Sesiones de Voz (recientes)", 14, y5);
+
+    autoTable(doc, {
+      startY: y5 + 4,
+      head: [["Fecha", "Ejercicio", "Score", "Riesgo", "Duración(s)"]],
+      body: (voiceSessions || []).slice(0, 15).map(s => [
+        s?.created_at ? new Date(s.created_at).toLocaleDateString("es-ES") : "—",
+        s?.exercise_id ?? "—",
+        (s?.score ?? "—"),
+        (s?.risk_level ?? "—"),
+        (s?.duration_seconds ?? "—")
+      ])
+    });
+
+    const y6 = doc.lastAutoTable.finalY + 10;
+    doc.text("Evaluación Multimodal", 14, y6);
+
+    autoTable(doc, {
+      startY: y6 + 4,
+      head: [["Componente", "Valor"]],
+      body: [
+        ["Índice tests (PHQ-9/GAD-7)", `${emotionalIndexPdf} / 100`],
+        ["Índice voz (promedio)", voiceScore100Pdf !== null ? `${Number(voiceScore100Pdf).toFixed(1)} / 100` : "Sin datos"],
+        ["Índice multimodal", multimodalPdf.index !== null ? `${multimodalPdf.index} / 100` : "Sin datos"],
+        ["Clasificación multimodal", multimodalPdf.level],
+        ["Nota", multimodalPdf.note]
+      ]
+    });
+
+    if (chartImage) {
+      doc.addPage();
+      doc.text("Gráfica de evolución clínica", 105, 15, { align: "center" });
+      doc.addImage(chartImage, "PNG", 10, 20, 190, 100);
+    }
+
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setFontSize(9);
+    doc.text(
+      "Documento generado automáticamente por Smart Mirror",
+      105,
+      pageHeight - 12,
+      { align: "center" }
+    );
+
+    const safeName = String(profile.full_name || "usuario").replace(/\s+/g, "_");
+    doc.save(`reporte_${safeName}.pdf`);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xl text-gray-600">Cargando perfil...</p>
-        </div>
-      </div>
-    );
-  }
+  // -------------------------
+  // Render
+  // -------------------------
+  const yAxisLabels = [
+    { phq: 27, gad: 21 },
+    { phq: 20, gad: 16 },
+    { phq: 14, gad: 11 },
+    { phq: 7,  gad: 5 },
+    { phq: 0,  gad: 0 },
+  ];
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <span className="text-6xl mb-4 block">😕</span>
-          <p className="text-2xl font-bold text-red-600 mb-2">Usuario no encontrado</p>
-          <button
-            onClick={() => navigate('/admin/users')}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            Volver a Usuarios
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const lastPhq9 = user.assessments.filter(a => a.type === 'phq9').sort((a, b) => 
-    new Date(b.created_at) - new Date(a.created_at)
-  )[0];
-  
-  const lastGad7 = user.assessments.filter(a => a.type === 'gad7').sort((a, b) => 
-    new Date(b.created_at) - new Date(a.created_at)
-  )[0];
-
-  const phq9Info = getSeverityInfo(lastPhq9?.score, 'phq9');
-  const gad7Info = getSeverityInfo(lastGad7?.score, 'gad7');
-
-  const totalEvaluations = user.assessments.length;
-  const phq9Count = user.assessments.filter(a => a.type === 'phq9').length;
-  const gad7Count = user.assessments.filter(a => a.type === 'gad7').length;
-  const adherence = totalEvaluations > 0 ? 100 : 0;
-
-  // Datos de gráfica
-  const phq9History = user.assessments
-    .filter(a => a.type === 'phq9')
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .slice(-timeRange);
-  
-  const gad7History = user.assessments
-    .filter(a => a.type === 'gad7')
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .slice(-timeRange);
-
-  const phq9Trend = calculateTrend(phq9History);
-  const gad7Trend = calculateTrend(gad7History);
-
-  // Días desde última evaluación
-  const daysSinceLastEval = lastPhq9 || lastGad7 
-    ? Math.floor((new Date() - new Date((lastPhq9?.created_at || lastGad7?.created_at))) / (1000 * 60 * 60 * 24))
-    : null;
+  const showMain = !isLoading && !!user;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      
-      {/* Barra Lateral */}
-      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
-        
-        {/* Logo */}
-        <div className="p-6 border-b border-blue-700">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🛡️</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-lg">Espejo Inteligente</h1>
-              <p className="text-xs text-blue-300">Panel Administrativo</p>
-            </div>
+    <div className="min-h-screen bg-gray-100">
+      {/* Pantalla de carga */}
+      {isLoading && (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-xl text-gray-600">Cargando perfil...</p>
           </div>
         </div>
+      )}
 
-        {/* Menú */}
-        <nav className="flex-1 p-4">
-          <button
-            onClick={() => navigate('/admin/dashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
-          >
-            <span>🏠</span>
-            <span className="font-medium">Inicio</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/admin/users')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
-          >
-            <span>👥</span>
-            <span className="font-medium">Usuarios</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/admin/alerts')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
-          >
-            <span>⚠️</span>
-            <span className="font-medium">Alertas</span>
-          </button>
-        </nav>
-
-        {/* Usuario admin */}
-        <div className="p-4 border-t border-blue-700">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-              {adminName.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">{adminName}</p>
-              <p className="text-xs text-blue-300">Administrador</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </aside>
-
-      {/* Contenido Principal */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
+      {/* Usuario no encontrado */}
+      {!isLoading && !user && (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="text-center">
+            <span className="text-6xl mb-4 block">😕</span>
+            <p className="text-2xl font-bold text-red-600 mb-2">Usuario no encontrado</p>
             <button
               onClick={() => navigate('/admin/users')}
-              className="text-blue-600 hover:underline mb-2 flex items-center gap-1"
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              ← Volver a Usuarios
-            </button>
-            <h2 className="text-3xl font-bold text-gray-800 mb-1">Perfil de Usuario</h2>
-            <p className="text-gray-600">Información detallada e historial completo</p>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={loadUserProfile}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
-            >
-              <span>🔄</span>
-              <span>Actualizar</span>
-            </button>
-            <button
-              onClick={() => setShowNotes(!showNotes)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-            >
-              <span>📝</span>
-              <span>Notas</span>
+              Volver a Usuarios
             </button>
           </div>
         </div>
+      )}
 
-        {/* Modal de Notas */}
-        {showNotes && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-96">
-              <h3 className="text-xl font-bold mb-4">Agregar Nota</h3>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="Escribe tus observaciones aquí..."
-              />
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={handleSaveNote}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Guardar
-                </button>
-                <button
-                  onClick={() => setShowNotes(false)}
-                  className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Resumen del Usuario */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex items-start gap-6">
-            
-            {/* Avatar */}
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold flex-shrink-0 shadow-lg">
-              {user.user.full_name.charAt(0).toUpperCase()}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1">
-              <div className="flex items-start justify-between mb-3">
+      {/* UI principal */}
+      {showMain && (
+        <div className="min-h-screen bg-gray-100 flex">
+          {/* Sidebar */}
+          <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
+            <div className="p-6 border-b border-blue-700">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🛡️</span>
+                </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-1">{user.user.full_name}</h3>
-                  <p className="text-gray-600 mb-2">
-                    {user.user.age ? `${user.user.age} años` : 'Edad no registrada'} • 
-                    {user.user.gender === 'm' ? ' Masculino' : user.user.gender === 'f' ? ' Femenino' : ' No especificado'} • 
-                    ID: #{user.user.id}
-                  </p>
-                  <p className="text-gray-600 flex items-center gap-2">
-                    <span>📧</span>
-                    <span>{user.user.email || 'No registrado'}</span>
-                  </p>
-                </div>
-
-                {/* Badge de estado con días */}
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    Activo
-                  </span>
-                  {daysSinceLastEval !== null && (
-                    <p className="text-xs text-gray-500">
-                      Última evaluación: hace {daysSinceLastEval} día{daysSinceLastEval !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Alerta condicional */}
-              {(lastPhq9?.score >= 10 || lastGad7?.score >= 10) && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl flex-shrink-0">⚠️</span>
-                    <div className="flex-1">
-                      <p className="font-semibold text-orange-800 mb-1">
-                        Usuario con niveles {lastPhq9?.score >= 15 || lastGad7?.score >= 15 ? 'severos' : 'moderados'}
-                      </p>
-                      <p className="text-sm text-orange-700 mb-3">
-                        {lastPhq9?.score >= 15 || lastGad7?.score >= 15 
-                          ? 'Requiere intervención inmediata. Considerar derivación profesional urgente.'
-                          : 'Monitoreo recomendado. Considerar seguimiento en las próximas semanas.'}
-                      </p>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={handleViewRecommendations}
-                          className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-lg text-sm hover:bg-orange-50 transition font-medium"
-                        >
-                          Ver recomendaciones
-                        </button>
-                        <button
-                          onClick={handleMarkAsAttended}
-                          className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition font-medium"
-                        >
-                          Marcar como atendido
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Info adicional */}
-              <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <span>📅</span>
-                  <span>Registrado: {new Date(user.user.created_at).toLocaleDateString('es-ES')}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <span>📊</span>
-                  <span>{totalEvaluations} evaluaciones totales</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <span>🔗</span>
-                  <span>{user.user.total_sessions || 0} sesiones</span>
+                  <h1 className="font-bold text-lg">Espejo Inteligente</h1>
+                  <p className="text-xs text-blue-300">Panel Administrativo</p>
                 </div>
               </div>
             </div>
 
-          </div>
-        </div>
+            <nav className="flex-1 p-4">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+              >
+                <span>🏠</span>
+                <span className="font-medium">Inicio</span>
+              </button>
 
-        {/* Estado Actual */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Estado Actual</h3>
-          
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            
-            {/* PHQ-9 */}
-            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl">
-              <p className="text-gray-600 text-sm mb-2 font-semibold">PHQ-9 (Depresión)</p>
-              <p className="text-6xl font-bold text-gray-800 mb-2">
-                {lastPhq9?.score ?? '—'}
-                <span className="text-2xl text-gray-400"> / {phq9Info.max}</span>
-              </p>
-              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${phq9Info.color} mb-3`}>
-                {phq9Info.text}
-              </span>
-              
-              {/* Tendencia PHQ-9 */}
-              <div className={`flex items-center justify-center gap-2 text-sm ${phq9Trend.color}`}>
-                <span>{phq9Trend.icon}</span>
-                <span className="font-medium">{phq9Trend.text}</span>
-                {phq9Trend.percent > 0 && <span>({phq9Trend.percent}%)</span>}
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+              >
+                <span>👥</span>
+                <span className="font-medium">Usuarios</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/admin/alerts')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+              >
+                <span>⚠️</span>
+                <span className="font-medium">Alertas</span>
+              </button>
+            </nav>
+
+            <div className="p-4 border-t border-blue-700">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                  {adminName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{adminName}</p>
+                  <p className="text-xs text-blue-300">Administrador</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </aside>
+
+          {/* Main */}
+          <main className="flex-1 p-8 overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <button
+                  onClick={() => navigate('/admin/users')}
+                  className="text-blue-600 hover:underline mb-2 flex items-center gap-1"
+                >
+                  ← Volver a Usuarios
+                </button>
+                <h2 className="text-3xl font-bold text-gray-800 mb-1">Perfil de Usuario</h2>
+                <p className="text-gray-600">Información detallada e historial completo</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={loadUserProfile}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                >
+                  <span>🔄</span>
+                  <span>Actualizar</span>
+                </button>
+                <button
+                  onClick={() => setShowNotes(!showNotes)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                >
+                  <span>📝</span>
+                  <span>Notas</span>
+                </button>
               </div>
             </div>
 
-            {/* GAD-7 */}
-            <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
-              <p className="text-gray-600 text-sm mb-2 font-semibold">GAD-7 (Ansiedad)</p>
-              <p className="text-6xl font-bold text-gray-800 mb-2">
-                {lastGad7?.score ?? '—'}
-                <span className="text-2xl text-gray-400"> / {gad7Info.max}</span>
-              </p>
-              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${gad7Info.color} mb-3`}>
-                {gad7Info.text}
-              </span>
-              
-              {/* Tendencia GAD-7 */}
-              <div className={`flex items-center justify-center gap-2 text-sm ${gad7Trend.color}`}>
-                <span>{gad7Trend.icon}</span>
-                <span className="font-medium">{gad7Trend.text}</span>
-                {gad7Trend.percent > 0 && <span>({gad7Trend.percent}%)</span>}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Metadata */}
-          <div className="border-t border-gray-200 pt-4 grid grid-cols-4 gap-4 text-sm">
-            <div className="text-center">
-              <p className="text-gray-500 mb-1">Última evaluación</p>
-              <p className="font-semibold text-gray-800">
-                {lastPhq9 ? new Date(lastPhq9.created_at).toLocaleDateString('es-ES') : 'N/A'}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-500 mb-1">PHQ-9 completadas</p>
-              <p className="font-semibold text-gray-800">{phq9Count}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-500 mb-1">GAD-7 completadas</p>
-              <p className="font-semibold text-gray-800">{gad7Count}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-500 mb-1">Adherencia</p>
-              <p className="font-semibold text-green-600">{adherence}%</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Análisis Avanzado de Tendencias */}
-        {trends && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Análisis Avanzado de Tendencias</h3>
-              
-              {/* Indicador de tendencia general */}
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                <span className="text-sm font-semibold text-gray-700">Tendencia General:</span>
-                <span className={`text-sm font-bold ${
-                  trends.insights.overall_trend === 'improving' ? 'text-green-600' :
-                  trends.insights.overall_trend === 'worsening' ? 'text-red-600' :
-                  'text-gray-600'
-                }`}>
-                  {trends.insights.overall_trend === 'improving' && '📈 Mejorando'}
-                  {trends.insights.overall_trend === 'worsening' && '📉 Empeorando'}
-                  {trends.insights.overall_trend === 'stable' && '➡️ Estable'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              
-              {/* PHQ-9 Avanzado */}
-              <div className="border-2 border-blue-200 rounded-xl p-5 bg-blue-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-bold text-blue-900">PHQ-9 (Depresión)</h4>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    trends.phq9.confidence === 'high' ? 'bg-green-100 text-green-700' :
-                    trends.phq9.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    Confianza: {trends.phq9.confidence === 'high' ? 'Alta' : trends.phq9.confidence === 'medium' ? 'Media' : 'Baja'}
-                  </span>
+            {/* Modal notas */}
+            {showNotes && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl p-6 w-96">
+                  <h3 className="text-xl font-bold mb-4">Agregar Nota</h3>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="Escribe tus observaciones aquí..."
+                  />
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={handleSaveNote}
+                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      onClick={() => setShowNotes(false)}
+                      className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Volatilidad:</span>
-                    <span className={`font-semibold ${
-                      trends.phq9.volatility > 5 ? 'text-red-600' :
-                      trends.phq9.volatility > 3 ? 'text-yellow-600' :
-                      'text-green-600'
-                    }`}>
-                      {trends.phq9.volatility.toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Consistencia:</span>
-                    <span className={`font-semibold ${
-                      trends.phq9.consistency === 'high' ? 'text-green-600' :
-                      trends.phq9.consistency === 'medium' ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {trends.phq9.consistency === 'high' ? 'Alta' :
-                       trends.phq9.consistency === 'medium' ? 'Media' : 'Baja'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">R² (Precisión):</span>
-                    <span className="font-semibold text-gray-800">
-                      {(trends.phq9.r_squared * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Promedio:</span>
-                    <span className="font-semibold text-gray-800">
-                      {trends.phq9.average.toFixed(1)} / 27
-                    </span>
-                  </div>
-                  
-                  {trends.phq9.rapid_changes.has_rapid_changes && (
-                    <div className="mt-3 p-2 bg-orange-100 border border-orange-300 rounded">
-                      <p className="text-xs text-orange-800 font-semibold">
-                        ⚠️ {trends.phq9.rapid_changes.count} cambio(s) rápido(s) detectado(s)
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Distribución de severidad */}
-                {trends.phq9.distribution && Object.keys(trends.phq9.distribution).length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-600 mb-2 font-semibold">Distribución de Severidad:</p>
-                    <div className="flex gap-1 h-4 rounded overflow-hidden">
-                      {trends.phq9.distribution.minimal > 0 && (
-                        <div 
-                          className="bg-green-500" 
-                          style={{width: `${trends.phq9.distribution.minimal}%`}}
-                          title={`Mínima: ${trends.phq9.distribution.minimal}%`}
-                        />
-                      )}
-                      {trends.phq9.distribution.mild > 0 && (
-                        <div 
-                          className="bg-blue-500" 
-                          style={{width: `${trends.phq9.distribution.mild}%`}}
-                          title={`Leve: ${trends.phq9.distribution.mild}%`}
-                        />
-                      )}
-                      {trends.phq9.distribution.moderate > 0 && (
-                        <div 
-                          className="bg-orange-500" 
-                          style={{width: `${trends.phq9.distribution.moderate}%`}}
-                          title={`Moderada: ${trends.phq9.distribution.moderate}%`}
-                        />
-                      )}
-                      {trends.phq9.distribution.severe > 0 && (
-                        <div 
-                          className="bg-red-500" 
-                          style={{width: `${trends.phq9.distribution.severe}%`}}
-                          title={`Severa: ${trends.phq9.distribution.severe}%`}
-                        />
-                      )}
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>✓ Mínima: {trends.phq9.distribution.minimal}%</span>
-                      <span>⚠️ Severa: {trends.phq9.distribution.severe}%</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* GAD-7 Avanzado */}
-              <div className="border-2 border-purple-200 rounded-xl p-5 bg-purple-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-bold text-purple-900">GAD-7 (Ansiedad)</h4>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    trends.gad7.confidence === 'high' ? 'bg-green-100 text-green-700' :
-                    trends.gad7.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    Confianza: {trends.gad7.confidence === 'high' ? 'Alta' : trends.gad7.confidence === 'medium' ? 'Media' : 'Baja'}
-                  </span>
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Volatilidad:</span>
-                    <span className={`font-semibold ${
-                      trends.gad7.volatility > 5 ? 'text-red-600' :
-                      trends.gad7.volatility > 3 ? 'text-yellow-600' :
-                      'text-green-600'
-                    }`}>
-                      {trends.gad7.volatility.toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Consistencia:</span>
-                    <span className={`font-semibold ${
-                      trends.gad7.consistency === 'high' ? 'text-green-600' :
-                      trends.gad7.consistency === 'medium' ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {trends.gad7.consistency === 'high' ? 'Alta' :
-                       trends.gad7.consistency === 'medium' ? 'Media' : 'Baja'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">R² (Precisión):</span>
-                    <span className="font-semibold text-gray-800">
-                      {(trends.gad7.r_squared * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Promedio:</span>
-                    <span className="font-semibold text-gray-800">
-                      {trends.gad7.average.toFixed(1)} / 21
-                    </span>
-                  </div>
-                  
-                  {trends.gad7.rapid_changes.has_rapid_changes && (
-                    <div className="mt-3 p-2 bg-orange-100 border border-orange-300 rounded">
-                      <p className="text-xs text-orange-800 font-semibold">
-                        ⚠️ {trends.gad7.rapid_changes.count} cambio(s) rápido(s) detectado(s)
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Distribución de severidad */}
-                {trends.gad7.distribution && Object.keys(trends.gad7.distribution).length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-600 mb-2 font-semibold">Distribución de Severidad:</p>
-                    <div className="flex gap-1 h-4 rounded overflow-hidden">
-                      {trends.gad7.distribution.minimal > 0 && (
-                        <div 
-                          className="bg-green-500" 
-                          style={{width: `${trends.gad7.distribution.minimal}%`}}
-                          title={`Mínima: ${trends.gad7.distribution.minimal}%`}
-                        />
-                      )}
-                      {trends.gad7.distribution.mild > 0 && (
-                        <div 
-                          className="bg-blue-500" 
-                          style={{width: `${trends.gad7.distribution.mild}%`}}
-                          title={`Leve: ${trends.gad7.distribution.mild}%`}
-                        />
-                      )}
-                      {trends.gad7.distribution.moderate > 0 && (
-                        <div 
-                          className="bg-orange-500" 
-                          style={{width: `${trends.gad7.distribution.moderate}%`}}
-                          title={`Moderada: ${trends.gad7.distribution.moderate}%`}
-                        />
-                      )}
-                      {trends.gad7.distribution.severe > 0 && (
-                        <div 
-                          className="bg-red-500" 
-                          style={{width: `${trends.gad7.distribution.severe}%`}}
-                          title={`Severa: ${trends.gad7.distribution.severe}%`}
-                        />
-                      )}
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>✓ Mínima: {trends.gad7.distribution.minimal}%</span>
-                      <span>⚠️ Severa: {trends.gad7.distribution.severe}%</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Recomendaciones y Alertas */}
-            {(trends.insights.alerts.length > 0 || trends.insights.recommendations.length > 0) && (
-              <div className="grid grid-cols-2 gap-4">
-                
-                {/* Alertas */}
-                {trends.insights.alerts.length > 0 && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
-                    <h4 className="font-bold text-red-900 mb-3 flex items-center gap-2">
-                      <span>🚨</span> Alertas Críticas
-                    </h4>
-                    <ul className="space-y-2">
-                      {trends.insights.alerts.map((alert, idx) => (
-                        <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
-                          <span className="text-red-500 font-bold">•</span>
-                          <span>{alert}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Recomendaciones */}
-                {trends.insights.recommendations.length > 0 && (
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                    <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-                      <span>💡</span> Recomendaciones
-                    </h4>
-                    <ul className="space-y-2">
-                      {trends.insights.recommendations.map((rec, idx) => (
-                        <li key={idx} className="text-sm text-blue-800 flex items-start gap-2">
-                          <span className="text-blue-500 font-bold">•</span>
-                          <span>{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Historial INTERACTIVO */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-xl font-bold text-gray-800">
-                Historial de Evaluaciones
-              </h3>
-              <p className="text-sm text-gray-600">
-                {phq9History.length} PHQ-9 • {gad7History.length} GAD-7
-              </p>
-            </div>
+            {/* Resumen usuario */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex items-start gap-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold flex-shrink-0 shadow-lg">
+                  {(user?.user?.full_name || 'U').charAt(0).toUpperCase()}
+                </div>
 
-            <div className="flex gap-2">
-              {/* Selector de métrica */}
-              <select
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="both">Ambas métricas</option>
-                <option value="phq9">Solo PHQ-9</option>
-                <option value="gad7">Solo GAD-7</option>
-              </select>
-
-              {/* Selector de rango */}
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value={4}>4 semanas</option>
-                <option value={8}>8 semanas</option>
-                <option value={12}>12 semanas</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Gráfica INTERACTIVA */}
-          <div 
-            className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
-            onMouseLeave={() => setHoveredPoint(null)}
-          >
-            
-            {/* Eje Y */}
-            <div className="absolute left-4 top-6 bottom-12 flex flex-col justify-between text-sm text-gray-600">
-              <span>27</span>
-              <span>21</span>
-              <span>14</span>
-              <span>7</span>
-              <span>0</span>
-            </div>
-
-            {/* Grid */}
-            <div className="absolute left-16 right-6 top-6 bottom-12">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 25}%` }} />
-              ))}
-            </div>
-
-            {/* SVG Chart CON HOVER */}
-            <div className="absolute left-16 right-6 top-6 bottom-12">
-              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                
-                {/* Línea PHQ-9 */}
-                {(selectedMetric === 'both' || selectedMetric === 'phq9') && phq9History.length > 1 && (
-                  <>
-                    <polyline
-                      points={phq9History.map((a, i) => {
-                        const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
-                        const y = 100 - (a.score / 27) * 100;
-                        return `${x},${y}`;
-                      }).join(' ')}
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="0.8"
-                      strokeLinecap="round"
-                      vectorEffect="non-scaling-stroke"
-                    />
-
-                    {phq9History.map((a, i) => {
-                      const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
-                      const y = 100 - (a.score / 27) * 100;
-                      return (
-                        <circle 
-                          key={`phq9-${i}`} 
-                          cx={x} 
-                          cy={y} 
-                          r={hoveredPoint?.type === 'phq9' && hoveredPoint?.index === i ? "2.5" : "1.5"}
-                          fill="#10b981" 
-                          stroke="white" 
-                          strokeWidth="0.5" 
-                          vectorEffect="non-scaling-stroke"
-                          className="cursor-pointer"
-                          onMouseEnter={() => setHoveredPoint({ type: 'phq9', index: i, score: a.score, date: a.created_at })}
-                        />
-                      );
-                    })}
-                  </>
-                )}
-
-                {/* Línea GAD-7 */}
-                {(selectedMetric === 'both' || selectedMetric === 'gad7') && gad7History.length > 1 && (
-                  <>
-                    <polyline
-                      points={gad7History.map((a, i) => {
-                        const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
-                        const y = 100 - (a.score / 27) * 100;
-                        return `${x},${y}`;
-                      }).join(' ')}
-                      fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="0.8"
-                      strokeLinecap="round"
-                      vectorEffect="non-scaling-stroke"
-                    />
-
-                    {gad7History.map((a, i) => {
-                      const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
-                      const y = 100 - (a.score / 27) * 100;
-                      return (
-                        <circle 
-                          key={`gad7-${i}`} 
-                          cx={x} 
-                          cy={y} 
-                          r={hoveredPoint?.type === 'gad7' && hoveredPoint?.index === i ? "2.5" : "1.5"}
-                          fill="#3b82f6" 
-                          stroke="white" 
-                          strokeWidth="0.5" 
-                          vectorEffect="non-scaling-stroke"
-                          className="cursor-pointer"
-                          onMouseEnter={() => setHoveredPoint({ type: 'gad7', index: i, score: a.score, date: a.created_at })}
-                        />
-                      );
-                    })}
-                  </>
-                )}
-
-                {/* Tooltip on hover */}
-                {hoveredPoint && (
-                  <foreignObject 
-                    x={hoveredPoint.type === 'phq9' 
-                      ? (hoveredPoint.index / Math.max(phq9History.length - 1, 1)) * 100 - 15
-                      : (hoveredPoint.index / Math.max(gad7History.length - 1, 1)) * 100 - 15}
-                    y={100 - (hoveredPoint.score / 27) * 100 - 25}
-                    width="30" 
-                    height="20"
-                  >
-                    <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
-                      <p className="font-bold text-gray-800">
-                        {hoveredPoint.type === 'phq9' ? 'PHQ-9' : 'GAD-7'}: {hoveredPoint.score}
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-800 mb-1">{user?.user?.full_name}</h3>
+                      <p className="text-gray-600 mb-2">
+                        {user?.user?.age ? `${user.user.age} años` : 'Edad no registrada'} •
+                        {user?.user?.gender === 'm' ? ' Masculino' : user?.user?.gender === 'f' ? ' Femenino' : ' No especificado'} •
+                        ID: #{user?.user?.id}
                       </p>
-                      <p className="text-gray-600">{new Date(hoveredPoint.date).toLocaleDateString('es-ES')}</p>
+                      <p className="text-gray-600 flex items-center gap-2">
+                        <span>📧</span>
+                        <span>{user?.user?.email || 'No registrado'}</span>
+                      </p>
                     </div>
-                  </foreignObject>
-                )}
 
-              </svg>
-            </div>
+                    <div className="text-right">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        Activo
+                      </span>
+                      {daysSinceLastEval !== null && (
+                        <p className="text-xs text-gray-500">
+                          Última evaluación: hace {daysSinceLastEval} día{daysSinceLastEval !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-            {/* Eje X */}
-            <div className="absolute left-16 right-6 bottom-6 flex justify-between text-xs text-gray-600">
-              {Array.from({length: Math.min(timeRange, Math.max(phq9History.length, gad7History.length))}).map((_, i) => (
-                <span key={i}>S{i + 1}</span>
-              ))}
-            </div>
+                  {(lastPhq9?.score >= 10 || lastGad7?.score >= 10) && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl flex-shrink-0">⚠️</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-orange-800 mb-1">
+                            Usuario con niveles {lastPhq9?.score >= 15 || lastGad7?.score >= 15 ? 'severos' : 'moderados'}
+                          </p>
+                          <p className="text-sm text-orange-700 mb-3">
+                            {lastPhq9?.score >= 15 || lastGad7?.score >= 15
+                              ? 'Requiere intervención inmediata. Considerar derivación profesional urgente.'
+                              : 'Monitoreo recomendado. Considerar seguimiento en las próximas semanas.'}
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setShowRecommendationsModal(true)}
+                              className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-lg text-sm hover:bg-orange-50 transition font-medium"
+                            >
+                              Ver recomendaciones
+                            </button>
+                            <button
+                              onClick={handleMarkAsAttended}
+                              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition font-medium"
+                            >
+                              Marcar como atendido
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-            {/* Leyenda */}
-            <div className="absolute bottom-2 right-6 flex gap-4 text-xs">
-              {(selectedMetric === 'both' || selectedMetric === 'phq9') && (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span>PHQ-9</span>
+                  <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <span>📅</span>
+                      <span>Registrado: {user?.user?.created_at ? new Date(user.user.created_at).toLocaleDateString('es-ES') : '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <span>📊</span>
+                      <span>{totalEvaluations} evaluaciones totales</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <span>🔗</span>
+                      <span>{user?.user?.total_sessions || 0} sesiones</span>
+                    </div>
+                  </div>
                 </div>
-              )}
-              {(selectedMetric === 'both' || selectedMetric === 'gad7') && (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span>GAD-7</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Análisis automático */}
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            {/* Análisis PHQ-9 */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <span>📊</span>
-                Análisis PHQ-9
-              </p>
-              <ul className="text-sm text-green-700 space-y-1">
-                <li>• Tendencia: {phq9Trend.icon} {phq9Trend.text}</li>
-                <li>• Evaluaciones: {phq9Count}</li>
-                <li>• Promedio: {phq9History.length > 0 
-                  ? (phq9History.reduce((sum, a) => sum + a.score, 0) / phq9History.length).toFixed(1)
-                  : 'N/A'}
-                </li>
-              </ul>
-            </div>
-
-            {/* Análisis GAD-7 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                <span>📊</span>
-                Análisis GAD-7
-              </p>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Tendencia: {gad7Trend.icon} {gad7Trend.text}</li>
-                <li>• Evaluaciones: {gad7Count}</li>
-                <li>• Promedio: {gad7History.length > 0 
-                  ? (gad7History.reduce((sum, a) => sum + a.score, 0) / gad7History.length).toFixed(1)
-                  : 'N/A'}
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Acciones FUNCIONALES */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Acciones</h3>
-          
-          <div className="grid grid-cols-4 gap-3">
-            <button
-              onClick={handleExportPDF}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition transform hover:scale-105"
-            >
-              <span className="text-3xl">📄</span>
-              <span className="text-sm font-medium text-gray-700 text-center">Exportar Reporte PDF</span>
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition transform hover:scale-105"
-            >
-              <span className="text-3xl">📊</span>
-              <span className="text-sm font-medium text-gray-700 text-center">Exportar Datos CSV</span>
-            </button>
-
-            <button
-              onClick={handleSendNotification}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition transform hover:scale-105"
-            >
-              <span className="text-3xl">📧</span>
-              <span className="text-sm font-medium text-gray-700 text-center">Enviar Notificación</span>
-            </button>
-
-            <button
-              onClick={handleDeleteUser}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-red-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition transform hover:scale-105"
-            >
-              <span className="text-3xl">🗑️</span>
-              <span className="text-sm font-medium text-red-700 text-center">Eliminar Usuario</span>
-            </button>
-          </div>
-        </div>
-
-      </main>
-
-      {/* Modal de Recomendaciones */}
-      {showRecommendationsModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">💡 Recomendaciones para {user?.user.full_name}</h2>
-                <button 
-                  onClick={() => setShowRecommendationsModal(false)}
-                  className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
-                >
-                  ✕
-                </button>
               </div>
             </div>
-            
-            <div className="p-6 space-y-6">
-              {/* Recomendaciones automáticas (de trends) */}
-              {trends?.insights && (trends.insights.recommendations.length > 0 || trends.insights.alerts.length > 0) ? (
+
+            {/* Multimodal */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Evaluación Multimodal</h3>
+                <span className={`px-4 py-2 rounded-full text-sm font-bold ${multimodal.color}`}>
+                  {multimodal.level}{multimodal.index !== null ? ` • ${multimodal.index}/100` : ''}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl border bg-gray-50">
+                  <p className="text-sm text-gray-500 mb-1 font-semibold">Índice Tests</p>
+                  <p className="text-3xl font-bold text-gray-800">{emotionalIndex}</p>
+                  <p className="text-xs text-gray-500">0–100 (PHQ-9/GAD-7 normalizado)</p>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-gray-50">
+                  <p className="text-sm text-gray-500 mb-1 font-semibold">Índice Voz</p>
+                  <p className="text-3xl font-bold text-gray-800">{voiceScore100 !== null ? voiceScore100.toFixed(1) : '—'}</p>
+                  <p className="text-xs text-gray-500">Promedio (0–100)</p>
+                </div>
+
+                <div className="p-4 rounded-xl border bg-gray-50">
+                  <p className="text-sm text-gray-500 mb-1 font-semibold">Detalle</p>
+                  <p className="text-sm text-gray-700">{multimodal.note}</p>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Ventana voz: {timeRange * 7} días
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Estado actual */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Estado Actual</h3>
+
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl">
+                  <p className="text-gray-600 text-sm mb-2 font-semibold">PHQ-9 (Depresión)</p>
+                  <p className="text-6xl font-bold text-gray-800 mb-2">
+                    {lastPhq9?.score ?? '—'}
+                    <span className="text-2xl text-gray-400"> / {phq9Info.max}</span>
+                  </p>
+                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${phq9Info.color} mb-3`}>
+                    {phq9Info.text}
+                  </span>
+
+                  <div className={`flex items-center justify-center gap-2 text-sm ${phq9Trend.color}`}>
+                    <span>{phq9Trend.icon}</span>
+                    <span className="font-medium">{phq9Trend.text}</span>
+                    {phq9Trend.percent > 0 && <span>({phq9Trend.percent}%)</span>}
+                  </div>
+                </div>
+
+                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                  <p className="text-gray-600 text-sm mb-2 font-semibold">GAD-7 (Ansiedad)</p>
+                  <p className="text-6xl font-bold text-gray-800 mb-2">
+                    {lastGad7?.score ?? '—'}
+                    <span className="text-2xl text-gray-400"> / {gad7Info.max}</span>
+                  </p>
+                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${gad7Info.color} mb-3`}>
+                    {gad7Info.text}
+                  </span>
+
+                  <div className={`flex items-center justify-center gap-2 text-sm ${gad7Trend.color}`}>
+                    <span>{gad7Trend.icon}</span>
+                    <span className="font-medium">{gad7Trend.text}</span>
+                    {gad7Trend.percent > 0 && <span>({gad7Trend.percent}%)</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4 grid grid-cols-4 gap-4 text-sm">
+                <div className="text-center">
+                  <p className="text-gray-500 mb-1">Última evaluación</p>
+                  <p className="font-semibold text-gray-800">
+                    {mostRecentDate ? new Date(mostRecentDate).toLocaleDateString('es-ES') : 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500 mb-1">PHQ-9 completadas</p>
+                  <p className="font-semibold text-gray-800">{phq9Count}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500 mb-1">GAD-7 completadas</p>
+                  <p className="font-semibold text-gray-800">{gad7Count}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500 mb-1">Adherencia</p>
+                  <p className="font-semibold text-green-600">{adherence}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Voz */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">Análisis de Voz</h3>
+                  <p className="text-sm text-gray-600">Ventana: últimos {timeRange * 7} días</p>
+                </div>
+                <button
+                  onClick={loadVoiceData}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                >
+                  <span>🎙️</span>
+                  <span>Actualizar voz</span>
+                </button>
+              </div>
+
+              {voiceLoading && (
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Cargando análisis de voz...</span>
+                </div>
+              )}
+
+              {!voiceLoading && voiceError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                  {voiceError}
+                </div>
+              )}
+
+              {!voiceLoading && !voiceError && (
                 <>
-                  {/* Alertas críticas */}
-                  {trends.insights.alerts.length > 0 && (
-                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
-                      <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2 text-lg">
-                        <span className="text-2xl">🚨</span> Alertas Críticas
-                      </h3>
-                      <ul className="space-y-3">
-                        {trends.insights.alerts.map((alert, idx) => (
-                          <li key={idx} className="text-sm text-red-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                            <span className="text-red-500 font-bold text-lg">•</span>
-                            <span className="flex-1">{alert}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="grid grid-cols-4 gap-4 mb-5">
+                    <div className="p-4 rounded-xl border bg-gray-50">
+                      <p className="text-xs text-gray-500 font-semibold">Sesiones</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {voiceStats?.summary?.total_sessions ?? 0}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Completadas: {voiceStats?.summary?.completed_sessions ?? 0}
+                      </p>
                     </div>
-                  )}
-                  
-                  {/* Recomendaciones del sistema */}
-                  {trends.insights.recommendations.length > 0 && (
-                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
-                      <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2 text-lg">
-                        <span className="text-2xl">📊</span> Según Análisis de Tendencias
-                      </h3>
-                      <ul className="space-y-3">
-                        {trends.insights.recommendations.map((rec, idx) => (
-                          <li key={idx} className="text-sm text-blue-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                            <span className="text-blue-500 font-bold text-lg">•</span>
-                            <span className="flex-1">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              ) : null}
-              
-              {/* Recomendaciones clínicas estándar */}
-              <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
-                <h3 className="font-bold text-purple-900 mb-3 flex items-center gap-2 text-lg">
-                  <span className="text-2xl">🏥</span> Protocolo Clínico Estándar
-                </h3>
-                <ul className="space-y-3">
-                  {lastPhq9?.score >= 20 || lastGad7?.score >= 15 ? (
-                    <>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Evaluación profesional urgente requerida</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Considerar derivación a psiquiatría o psicología clínica</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Contacto dentro de las próximas 24-48 horas</span>
-                      </li>
-                    </>
-                  ) : lastPhq9?.score >= 15 || lastGad7?.score >= 10 ? (
-                    <>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Sesión de seguimiento en 1-2 semanas</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Evaluación semanal con PHQ-9 y GAD-7</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Considerar intervención terapéutica estructurada</span>
-                      </li>
-                    </>
-                  ) : (
-                    <>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Continuar con monitoreo regular cada 2-4 semanas</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Promover hábitos saludables y autocuidado</span>
-                      </li>
-                      <li className="text-sm text-purple-800 flex items-start gap-3 bg-white p-3 rounded-lg">
-                        <span className="text-purple-500 font-bold text-lg">•</span>
-                        <span className="flex-1">Reforzar estrategias de afrontamiento positivas</span>
-                      </li>
-                    </>
-                  )}
-                </ul>
-              </div>
-              
-              {/* Acciones rápidas */}
-              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5">
-                <h3 className="font-bold text-green-900 mb-3 flex items-center gap-2 text-lg">
-                  <span className="text-2xl">✅</span> Acciones Sugeridas
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => {
-                      setShowRecommendationsModal(false);
-                      handleMarkAsAttended();
-                    }}
-                    className="bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium"
-                  >
-                    📅 Marcar como atendido
-                  </button>
-                  <button 
-                    onClick={handleSendNotification}
-                    className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium"
-                  >
-                    📧 Enviar email con recursos
-                  </button>
-                  <button 
-                    onClick={handleExportPDF}
-                    className="bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition font-medium"
-                  >
-                    📄 Generar reporte PDF
-                  </button>
-                  <button 
-                    onClick={() => setShowRecommendationsModal(false)}
-                    className="bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition font-medium"
-                  >
-                    🔙 Volver al perfil
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal de Marcar como Atendido */}
-      {showAttendedModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">✅ Marcar como Atendido</h2>
-                <button 
-                  onClick={() => setShowAttendedModal(false)}
-                  className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
-                  disabled={isSubmittingAttendance}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-5">
-              {/* Info del usuario */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
-                <p className="font-bold text-lg text-gray-800">{user?.user.full_name}</p>
-                <p className="text-sm text-gray-500">
-                  {new Date().toLocaleDateString('es-ES', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-              
-              {/* Notas de la sesión */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Notas de la Sesión (Opcional)
-                </label>
-                <textarea 
-                  value={attendanceNotes}
-                  onChange={(e) => setAttendanceNotes(e.target.value)}
-                  placeholder="Describe brevemente la sesión, intervenciones realizadas, observaciones importantes..."
-                  className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  rows="4"
-                  disabled={isSubmittingAttendance}
-                />
-              </div>
-              
-              {/* Opciones adicionales */}
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition">
-                  <input 
-                    type="checkbox" 
-                    checked={scheduleFollowup}
-                    onChange={(e) => setScheduleFollowup(e.target.checked)}
-                    className="mt-1 w-5 h-5 text-blue-600"
-                    disabled={isSubmittingAttendance}
-                  />
-                  <div className="flex-1">
-                    <span className="font-semibold text-gray-800">Programar seguimiento</span>
-                    {scheduleFollowup && (
-                      <input 
-                        type="date"
-                        value={followupDate}
-                        onChange={(e) => setFollowupDate(e.target.value)}
-                        className="mt-2 w-full border border-blue-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isSubmittingAttendance}
-                      />
+                    <div className="p-4 rounded-xl border bg-gray-50">
+                      <p className="text-xs text-gray-500 font-semibold">Pitch promedio</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {voiceStats?.summary?.avg_pitch ?? '—'}
+                      </p>
+                      <p className="text-xs text-gray-500">Hz (según backend)</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border bg-gray-50">
+                      <p className="text-xs text-gray-500 font-semibold">Energía promedio</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {voiceStats?.summary?.avg_energy ?? '—'}
+                      </p>
+                      <p className="text-xs text-gray-500">Escala backend</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border bg-gray-50">
+                      <p className="text-xs text-gray-500 font-semibold">Score voz promedio</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {voiceScore100 !== null ? voiceScore100.toFixed(1) : '—'}
+                      </p>
+                      <p className="text-xs text-gray-500">0–100 (normalizado)</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border p-4 bg-gradient-to-r from-green-50 via-orange-50 to-red-50">
+                    <p className="text-sm font-semibold text-gray-800 mb-2">Distribución de riesgo (sesiones)</p>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                        LOW: {voiceStats?.summary?.risk_distribution?.LOW ?? 0}
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                        MODERATE: {voiceStats?.summary?.risk_distribution?.MODERATE ?? 0}
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                        HIGH: {voiceStats?.summary?.risk_distribution?.HIGH ?? 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="font-bold text-gray-800">Sesiones recientes</p>
+                      <p className="text-xs text-gray-500">Mostrando hasta 12</p>
+                    </div>
+
+                    {voiceSessions?.length ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-gray-600 border-b">
+                              <th className="py-2 pr-3">Fecha</th>
+                              <th className="py-2 pr-3">Ejercicio</th>
+                              <th className="py-2 pr-3">Score</th>
+                              <th className="py-2 pr-3">Riesgo</th>
+                              <th className="py-2 pr-3">Pitch</th>
+                              <th className="py-2 pr-3">HNR</th>
+                              <th className="py-2 pr-3">Duración</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {voiceSessions.slice(0, 12).map((s) => (
+                              <tr key={s.id} className="border-b last:border-b-0">
+                                <td className="py-2 pr-3">
+                                  {s.created_at ? new Date(s.created_at).toLocaleString('es-ES') : '—'}
+                                </td>
+                                <td className="py-2 pr-3">{s.exercise_id ?? '—'}</td>
+                                <td className="py-2 pr-3">{s.score ?? '—'}</td>
+                                <td className="py-2 pr-3">
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full border ${riskBadge(s.risk_level)}`}>
+                                    {String(s.risk_level ?? 'MODERATE')}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-3">{s.pitch_mean ?? '—'}</td>
+                                <td className="py-2 pr-3">{s.hnr ?? '—'}</td>
+                                <td className="py-2 pr-3">{s.duration_seconds ?? '—'}s</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-gray-600 text-sm bg-gray-50 border rounded-lg p-4">
+                        Este usuario aún no tiene sesiones de voz registradas.
+                      </div>
                     )}
                   </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:bg-green-100 transition">
-                  <input 
-                    type="checkbox" 
-                    checked={sendConfirmation}
-                    onChange={(e) => setSendConfirmation(e.target.checked)}
-                    className="w-5 h-5 text-green-600"
-                    disabled={isSubmittingAttendance}
-                  />
-                  <span className="font-semibold text-gray-800">Enviar email de confirmación al paciente</span>
-                </label>
+                </>
+              )}
+            </div>
+
+            {/* Historial (gráfica) */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">Historial de Evaluaciones</h3>
+                  <p className="text-sm text-gray-600">{phq9History.length} PHQ-9 • {gad7History.length} GAD-7</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="both">Ambas métricas</option>
+                    <option value="phq9">Solo PHQ-9</option>
+                    <option value="gad7">Solo GAD-7</option>
+                  </select>
+
+                  <select
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(Number(e.target.value))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value={4}>4 semanas</option>
+                    <option value={8}>8 semanas</option>
+                    <option value={12}>12 semanas</option>
+                  </select>
+                </div>
               </div>
-              
-              {/* Botones de acción */}
-              <div className="flex gap-3 pt-4 border-t">
-                <button 
-                  onClick={() => setShowAttendedModal(false)}
-                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-                  disabled={isSubmittingAttendance}
+
+              <div
+                ref={chartRef}
+                className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
+                <div className="absolute left-4 top-6 bottom-12 flex flex-col justify-between text-sm text-gray-600">
+                  {yAxisLabels.map((l, idx) => (
+                    <span key={idx}>
+                      {idx === yAxisLabels.length - 1 ? '0' : `${l.phq}/${l.gad}`}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="absolute left-16 right-6 top-6 bottom-12">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 25}%` }} />
+                  ))}
+                </div>
+
+                <div className="absolute left-16 right-6 top-6 bottom-12">
+                  <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    {(selectedMetric === 'both' || selectedMetric === 'phq9') && phq9History.length > 1 && (
+                      <>
+                        <polyline
+                          points={phq9History.map((a, i) => {
+                            const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
+                            const y = 100 - (a.score / 27) * 100;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="0.8"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+
+                        {phq9History.map((a, i) => {
+                          const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
+                          const y = 100 - (a.score / 27) * 100;
+                          return (
+                            <circle
+                              key={`phq9-${i}`}
+                              cx={x}
+                              cy={y}
+                              r={hoveredPoint?.type === 'phq9' && hoveredPoint?.index === i ? "2.5" : "1.5"}
+                              fill="#10b981"
+                              stroke="white"
+                              strokeWidth="0.5"
+                              vectorEffect="non-scaling-stroke"
+                              className="cursor-pointer"
+                              onMouseEnter={() => handleSelectPoint('phq9', i, a.score, a.created_at)}
+                            />
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {(selectedMetric === 'both' || selectedMetric === 'gad7') && gad7History.length > 1 && (
+                      <>
+                        <polyline
+                          points={gad7History.map((a, i) => {
+                            const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
+                            const y = 100 - (a.score / 21) * 100; // ✅ GAD-7 max 21
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="0.8"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+
+                        {gad7History.map((a, i) => {
+                          const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
+                          const y = 100 - (a.score / 21) * 100; // ✅ GAD-7 max 21
+                          return (
+                            <circle
+                              key={`gad7-${i}`}
+                              cx={x}
+                              cy={y}
+                              r={hoveredPoint?.type === 'gad7' && hoveredPoint?.index === i ? "2.5" : "1.5"}
+                              fill="#3b82f6"
+                              stroke="white"
+                              strokeWidth="0.5"
+                              vectorEffect="non-scaling-stroke"
+                              className="cursor-pointer"
+                              onMouseEnter={() => handleSelectPoint('gad7', i, a.score, a.created_at)}
+                            />
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {hoveredPoint && tooltipCoords && (
+                      <foreignObject
+                        x={tooltipCoords.x}
+                        y={tooltipCoords.y}
+                        width="30"
+                        height="20"
+                      >
+                        <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
+                          <p className="font-bold text-gray-800">
+                            {hoveredPoint.type === 'phq9' ? 'PHQ-9' : 'GAD-7'}: {hoveredPoint.score}
+                          </p>
+                          <p className="text-gray-600">
+                            {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
+                          </p>
+                        </div>
+                      </foreignObject>
+                    )}
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Acciones</h3>
+
+              <div className="grid grid-cols-4 gap-3">
+                <button
+                  onClick={handleExportPDF}
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition transform hover:scale-105"
                 >
-                  Cancelar
+                  <span className="text-3xl">📄</span>
+                  <span className="text-sm font-medium text-gray-700 text-center">Exportar Reporte PDF</span>
                 </button>
-                <button 
-                  onClick={submitAttendance}
-                  className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  disabled={isSubmittingAttendance}
+
+                <button
+                  onClick={handleExportCSV}
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition transform hover:scale-105"
                 >
-                  {isSubmittingAttendance ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Registrando...
-                    </>
-                  ) : (
-                    <>✓ Confirmar Atención</>
-                  )}
+                  <span className="text-3xl">📊</span>
+                  <span className="text-sm font-medium text-gray-700 text-center">Exportar Datos CSV</span>
+                </button>
+
+                <button
+                  onClick={handleSendNotification}
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition transform hover:scale-105"
+                >
+                  <span className="text-3xl">📧</span>
+                  <span className="text-sm font-medium text-gray-700 text-center">Enviar Notificación</span>
+                </button>
+
+                <button
+                  onClick={handleDeleteUser}
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-red-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition transform hover:scale-105"
+                >
+                  <span className="text-3xl">🗑️</span>
+                  <span className="text-sm font-medium text-red-700 text-center">Eliminar Usuario</span>
                 </button>
               </div>
             </div>
-          </div>
+          </main>
+
+          {/* Modal marcar atendido */}
+          {showAttendedModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">✅ Marcar como Atendido</h2>
+                    <button
+                      onClick={() => setShowAttendedModal(false)}
+                      className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
+                      disabled={isSubmittingAttendance}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
+                    <p className="font-bold text-lg text-gray-800">{user?.user?.full_name}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date().toLocaleDateString('es-ES', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Notas de la Sesión (Opcional)
+                    </label>
+                    <textarea
+                      value={attendanceNotes}
+                      onChange={(e) => setAttendanceNotes(e.target.value)}
+                      placeholder="Describe brevemente la sesión..."
+                      className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      rows="4"
+                      disabled={isSubmittingAttendance}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition">
+                      <input
+                        type="checkbox"
+                        checked={scheduleFollowup}
+                        onChange={(e) => setScheduleFollowup(e.target.checked)}
+                        className="mt-1 w-5 h-5 text-blue-600"
+                        disabled={isSubmittingAttendance}
+                      />
+                      <div className="flex-1">
+                        <span className="font-semibold text-gray-800">Programar seguimiento</span>
+                        {scheduleFollowup && (
+                          <input
+                            type="date"
+                            value={followupDate}
+                            onChange={(e) => setFollowupDate(e.target.value)}
+                            className="mt-2 w-full border border-blue-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            disabled={isSubmittingAttendance}
+                          />
+                        )}
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:bg-green-100 transition">
+                      <input
+                        type="checkbox"
+                        checked={sendConfirmation}
+                        onChange={(e) => setSendConfirmation(e.target.checked)}
+                        className="w-5 h-5 text-green-600"
+                        disabled={isSubmittingAttendance}
+                      />
+                      <span className="font-semibold text-gray-800">Enviar email de confirmación al paciente</span>
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    <button
+                      onClick={() => setShowAttendedModal(false)}
+                      className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+                      disabled={isSubmittingAttendance}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={submitAttendance}
+                      className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      disabled={isSubmittingAttendance}
+                    >
+                      {isSubmittingAttendance ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Registrando...
+                        </>
+                      ) : (
+                        <>✓ Confirmar Atención</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal recomendaciones (si quieres, lo reinsertamos igual que antes) */}
+          {showRecommendationsModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl flex justify-between">
+                  <h2 className="text-xl font-bold">💡 Recomendaciones</h2>
+                  <button
+                    onClick={() => setShowRecommendationsModal(false)}
+                    className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="bg-gray-50 border rounded-xl p-4">
+                    <p className="font-semibold text-gray-800">Multimodal:</p>
+                    <p className="text-sm text-gray-700">
+                      {multimodal.level}{multimodal.index !== null ? ` • ${multimodal.index}/100` : ''} — {multimodal.note}
+                    </p>
+                  </div>
+                  {trends?.insights?.recommendations?.length ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <p className="font-semibold text-blue-900 mb-2">Recomendaciones (tendencias):</p>
+                      <ul className="list-disc pl-5 text-sm text-blue-800 space-y-1">
+                        {trends.insights.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">No hay recomendaciones automáticas disponibles.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
-
     </div>
   );
 }

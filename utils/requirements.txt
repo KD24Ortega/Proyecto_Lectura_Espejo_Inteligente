@@ -23,3 +23,5 @@ gtts
 aiortc
 av
 resend
+pydub
+ffmpeg-python

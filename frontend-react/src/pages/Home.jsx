@@ -56,8 +56,6 @@ function Home() {
   const [theme, setTheme] = useState(null);
   const [lastScores, setLastScores] = useState({ phq9: null, gad7: null });
   const [showMirror, setShowMirror] = useState(false);
-  const [showResources, setShowResources] = useState(false);
-  const [infoModal, setInfoModal] = useState(null); // { title, content, icon }
 
   useEffect(() => {
     loadUserData();
@@ -112,229 +110,6 @@ function Home() {
     navigate('/');
   };
 
-  // Mostrar modal de información
-  const showInfoModal = (title, content, icon = 'ℹ️') => {
-    setInfoModal({ title, content, icon });
-  };
-
-  // Recursos de ayuda según el estado emocional
-  const getResources = () => {
-    const resources = {
-      estable: [
-        { 
-          icon: '🧘', 
-          title: 'Meditación guiada', 
-          desc: 'Practica mindfulness diario', 
-          action: () => window.open('https://www.youtube.com/results?search_query=meditacion+guiada', '_blank') 
-        },
-        { 
-          icon: '📚', 
-          title: 'Lecturas recomendadas', 
-          desc: 'Artículos sobre bienestar', 
-          action: () => window.open('https://www.who.int/es/news-room/fact-sheets/detail/mental-health-strengthening-our-response', '_blank') 
-        },
-        { 
-          icon: '💪', 
-          title: 'Ejercicios de respiración', 
-          desc: 'Técnicas de relajación', 
-          action: () => showInfoModal(
-            'Ejercicio de Respiración 4-7-8',
-            <div className="space-y-4">
-              <p className="text-gray-700">
-                La técnica 4-7-8 es un método de respiración respaldado por la ciencia que ayuda a reducir 
-                la ansiedad y facilita el sueño. Fue desarrollada por el Dr. Andrew Weil.
-              </p>
-              
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl flex-shrink-0">1️⃣</span>
-                  <div>
-                    <p className="font-bold text-gray-800 mb-1">Inhala por la nariz</p>
-                    <p className="text-gray-600">Cuenta hasta <strong className="text-blue-600">4</strong> mientras respiras profundamente</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl flex-shrink-0">2️⃣</span>
-                  <div>
-                    <p className="font-bold text-gray-800 mb-1">Sostén la respiración</p>
-                    <p className="text-gray-600">Mantén el aire en tus pulmones contando hasta <strong className="text-purple-600">7</strong></p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl flex-shrink-0">3️⃣</span>
-                  <div>
-                    <p className="font-bold text-gray-800 mb-1">Exhala por la boca</p>
-                    <p className="text-gray-600">Suelta el aire lentamente contando hasta <strong className="text-green-600">8</strong></p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg p-4 border-2 border-blue-300">
-                <p className="text-center font-bold text-gray-800 mb-2">📊 Patrón: 4 segundos - 7 segundos - 8 segundos</p>
-                <p className="text-center text-sm text-gray-700">Repite este ciclo <strong>4 veces</strong> para obtener mejores resultados</p>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="font-semibold text-green-900 mb-2">✨ Beneficios:</p>
-                <ul className="text-sm text-green-800 space-y-1">
-                  <li>• Reduce la ansiedad y el estrés</li>
-                  <li>• Ayuda a conciliar el sueño</li>
-                  <li>• Calma el sistema nervioso</li>
-                  <li>• Mejora la concentración</li>
-                </ul>
-              </div>
-
-              <p className="text-xs text-center text-gray-500 italic">
-                💡 Tip: Practica esta técnica 2 veces al día para mejores resultados
-              </p>
-            </div>,
-            '🌬️'
-          )
-        }
-      ],
-      leve: [
-        { 
-          icon: '🎯', 
-          title: 'Plan de autocuidado', 
-          desc: 'Establece rutinas saludables', 
-          action: () => navigate('/dashboard') 
-        },
-        { 
-          icon: '📝', 
-          title: 'Diario emocional', 
-          desc: 'Registra cómo te sientes', 
-          action: () => showInfoModal(
-            'Diario Emocional',
-            <div className="space-y-4">
-              <p className="text-gray-700">El diario emocional es una herramienta poderosa para el autoconocimiento.</p>
-              <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6">
-                <h4 className="font-bold text-gray-800 mb-3">Beneficios:</h4>
-                <ul className="space-y-2 text-gray-700">
-                  <li>✓ Identifica patrones emocionales</li>
-                  <li>✓ Reduce el estrés al expresar sentimientos</li>
-                  <li>✓ Mejora el autoconocimiento</li>
-                  <li>✓ Facilita la comunicación con terapeutas</li>
-                </ul>
-              </div>
-              <p className="text-sm text-gray-600 text-center italic">Esta función estará disponible próximamente en tu dashboard</p>
-            </div>,
-            '📖'
-          )
-        },
-        { 
-          icon: '🤝', 
-          title: 'Grupos de apoyo', 
-          desc: 'Conecta con otros', 
-          action: () => window.open('https://www.mentalhealthamerica.net/find-support-groups', '_blank') 
-        }
-      ],
-      moderado: [
-        { 
-          icon: '👨‍⚕️', 
-          title: 'Buscar ayuda profesional', 
-          desc: 'Encuentra un terapeuta', 
-          action: () => window.open('https://www.psychologytoday.com/us/therapists', '_blank') 
-        },
-        { 
-          icon: '📞', 
-          title: 'Líneas de crisis', 
-          desc: 'Apoyo inmediato 24/7', 
-          action: () => showInfoModal(
-            'Líneas de Crisis y Apoyo',
-            <div className="space-y-4">
-              <p className="text-gray-700">Si necesitas hablar con alguien de inmediato, estos servicios están disponibles 24/7:</p>
-              <div className="space-y-3">
-                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5">
-                  <p className="font-bold text-green-900 text-xl mb-2">🇪🇨 Ecuador</p>
-                  <a href="tel:952" className="text-3xl font-bold text-green-700 hover:text-green-900">952</a>
-                  <p className="text-sm text-gray-600 mt-2">Línea gratuita de apoyo emocional</p>
-                </div>
-                <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-5">
-                  <p className="font-bold text-blue-900 mb-2">Internacional</p>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    <li>🇺🇸 USA: 988 (Suicide & Crisis Lifeline)</li>
-                    <li>🇪🇸 España: 024 (Línea de Atención)</li>
-                    <li>🇲🇽 México: 800-290-0024</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="text-center text-gray-600 font-semibold">No estás solo/a. Siempre hay alguien dispuesto a escucharte.</p>
-            </div>,
-            '📞'
-          )
-        },
-        { 
-          icon: '💊', 
-          title: 'Información médica', 
-          desc: 'Sobre tratamientos disponibles', 
-          action: () => window.open('https://www.nimh.nih.gov/health/topics', '_blank') 
-        }
-      ],
-      severo: [
-        { 
-          icon: '🚨', 
-          title: 'Ayuda urgente', 
-          desc: 'Contacto inmediato', 
-          action: () => window.location.href = 'tel:952' 
-        },
-        { 
-          icon: '🏥', 
-          title: 'Centros de salud', 
-          desc: 'Ubicaciones cercanas', 
-          action: () => window.open('https://www.google.com/maps/search/centros+de+salud+mental/', '_blank') 
-        },
-        { 
-          icon: '👥', 
-          title: 'Red de apoyo', 
-          desc: 'Contacta a tu red cercana', 
-          action: () => showInfoModal(
-            'Tu Red de Apoyo',
-            <div className="space-y-4">
-              <p className="text-gray-700">Es fundamental que hables con alguien de confianza sobre cómo te sientes.</p>
-              <div className="space-y-3">
-                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-5">
-                  <h4 className="font-bold text-orange-900 mb-3">Personas de confianza:</h4>
-                  <ul className="space-y-2 text-gray-700">
-                    <li className="flex items-center gap-2">
-                      <span>👨‍👩‍👧</span>
-                      <span>Familiar cercano</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span>🤝</span>
-                      <span>Amigo de confianza</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span>👨‍⚕️</span>
-                      <span>Médico de cabecera</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span>🏫</span>
-                      <span>Consejero escolar/universitario</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 text-center">
-                <p className="font-bold text-red-900">Recuerda: No estás solo/a</p>
-                <p className="text-sm text-red-700 mt-1">Pedir ayuda es un acto de valentía, no de debilidad</p>
-              </div>
-            </div>,
-            '💙'
-          )
-        }
-      ]
-    };
-
-    if (emotionalState === 'estable') return resources.estable;
-    if (emotionalState === 'leve' || emotionalState === 'ansiedad_leve' || emotionalState === 'depresion_leve') return resources.leve;
-    if (emotionalState.includes('moderado')) return resources.moderado;
-    if (emotionalState.includes('severo') || emotionalState.includes('grave')) return resources.severo;
-    
-    return resources.estable;
-  };
-
   if (!theme) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -354,16 +129,6 @@ function Home() {
 
       {/* Música de fondo */}
       <BackgroundMusic musicFile={theme.music} volume={0.2} />
-
-      {/* Modal de información */}
-      <Modal
-        isOpen={infoModal !== null}
-        onClose={() => setInfoModal(null)}
-        title={infoModal?.title || ''}
-        icon={infoModal?.icon}
-      >
-        {infoModal?.content}
-      </Modal>
 
       {/* Botón flotante del espejo */}
       <button
@@ -440,45 +205,6 @@ function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Modal de recursos */}
-      <Modal
-        isOpen={showResources}
-        onClose={() => setShowResources(false)}
-        title="Recursos de Apoyo"
-        icon="🛠️"
-      >
-        <p className="text-gray-600 mb-6">
-          Herramientas y recursos según tu estado actual: <span className="font-semibold text-blue-600">{theme.name}</span>
-        </p>
-
-        <div className="grid gap-4">
-          {getResources().map((resource, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                setShowResources(false);
-                resource.action();
-              }}
-              className="p-5 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <span className="text-4xl group-hover:scale-110 transition-transform">{resource.icon}</span>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-800 mb-1">{resource.title}</h3>
-                  <p className="text-sm text-gray-600">{resource.desc}</p>
-                </div>
-                <span className="text-blue-500 text-xl group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-gray-700 text-center">
-            <strong>Recuerda:</strong> Estos recursos complementan, pero no reemplazan la ayuda profesional.
-          </p>
-        </div>
-      </Modal>
 
       <div className="max-w-6xl mx-auto">
         
@@ -530,12 +256,6 @@ function Home() {
                     <span>📞</span>
                     <span>Llamar Línea 952</span>
                   </a>
-                  <button
-                    onClick={() => setShowResources(true)}
-                    className="px-6 py-3 bg-white border-2 border-red-600 text-red-600 rounded-full font-bold hover:bg-red-50 transition"
-                  >
-                    Ver recursos de ayuda
-                  </button>
                 </div>
               </div>
             </div>
@@ -646,39 +366,124 @@ function Home() {
 
         </div>
 
-        {/* Recursos de apoyo */}
+        {/* Ejercicios de Voz - NUEVA SECCIÓN */}
         <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8`}>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-1">
-                Recursos de Apoyo
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Herramientas personalizadas según tu estado emocional
-              </p>
-            </div>
-            <button
-              onClick={() => setShowResources(true)}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition font-medium"
-            >
-              Ver todos →
-            </button>
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              Ejercicios de Voz y Respiración
+            </h3>
+            <p className="text-gray-600 text-sm">
+              Técnicas guiadas para mejorar tu bienestar emocional
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            {getResources().slice(0, 3).map((resource, index) => (
-              <button
-                key={index}
-                onClick={resource.action}
-                className="p-5 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition text-left group"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-3xl group-hover:scale-110 transition-transform">{resource.icon}</span>
-                  <h4 className="font-bold text-gray-800">{resource.title}</h4>
+          <div className="grid md:grid-cols-2 gap-6">
+            
+            {/* Tarjeta de Ansiedad */}
+            <motion.button
+              onClick={() => navigate('/exercises/anxiety')}
+              className="group relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border-3 border-blue-300 hover:border-blue-500 hover:shadow-2xl transition-all duration-300 text-left overflow-hidden"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* Icono decorativo de fondo */}
+              <div className="absolute -right-8 -bottom-8 text-blue-200 opacity-20 text-9xl">
+                🧠
+              </div>
+
+              <div className="relative z-10">
+                {/* Icono principal */}
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                  <span className="text-4xl">🧠</span>
                 </div>
-                <p className="text-sm text-gray-600">{resource.desc}</p>
-              </button>
-            ))}
+
+                {/* Título */}
+                <h4 className="text-2xl font-bold text-gray-800 mb-3">
+                  Recursos de Ansiedad
+                </h4>
+
+                {/* Descripción */}
+                <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+                  Técnicas de respiración, lectura consciente y práctica vocal para reducir la ansiedad
+                </p>
+
+                {/* Badge de ejercicios */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-semibold">
+                    5 ejercicios
+                  </span>
+                  <span className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-semibold">
+                    10-15 min
+                  </span>
+                </div>
+
+                {/* Flecha */}
+                <div className="flex items-center text-blue-600 font-semibold group-hover:translate-x-2 transition-transform">
+                  <span>Comenzar ejercicios</span>
+                  <span className="text-2xl ml-2">→</span>
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Tarjeta de Depresión */}
+            <motion.button
+              onClick={() => navigate('/exercises/depression')}
+              className="group relative bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 border-3 border-amber-300 hover:border-amber-500 hover:shadow-2xl transition-all duration-300 text-left overflow-hidden"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* Icono decorativo de fondo */}
+              <div className="absolute -right-8 -bottom-8 text-amber-200 opacity-20 text-9xl">
+                ❤️
+              </div>
+
+              <div className="relative z-10">
+                {/* Icono principal */}
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                  <span className="text-4xl">❤️</span>
+                </div>
+
+                {/* Título */}
+                <h4 className="text-2xl font-bold text-gray-800 mb-3">
+                  Recursos de Depresión
+                </h4>
+
+                {/* Descripción */}
+                <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+                  Lectura prosódica, afirmaciones vocales y diálogo guiado para elevar el ánimo
+                </p>
+
+                {/* Badge de ejercicios */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-3 py-1 bg-amber-200 text-amber-800 rounded-full text-xs font-semibold">
+                    5 ejercicios
+                  </span>
+                  <span className="px-3 py-1 bg-amber-200 text-amber-800 rounded-full text-xs font-semibold">
+                    10-15 min
+                  </span>
+                </div>
+
+                {/* Flecha */}
+                <div className="flex items-center text-amber-600 font-semibold group-hover:translate-x-2 transition-transform">
+                  <span>Comenzar ejercicios</span>
+                  <span className="text-2xl ml-2">→</span>
+                </div>
+              </div>
+            </motion.button>
+
+          </div>
+
+          {/* Nota informativa */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">💡</span>
+              <div>
+                <p className="text-sm text-gray-700">
+                  <strong>¿Cómo funciona?</strong> Los ejercicios utilizan análisis de voz en tiempo real para 
+                  evaluar tu estado emocional y brindarte retroalimentación personalizada.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

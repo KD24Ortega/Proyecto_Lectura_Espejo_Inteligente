@@ -1,62 +1,77 @@
-// Sistema de temas basado en PHQ-9 y GAD-7
+// =====================================================
+// SISTEMA DE TEMAS MULTIMODAL
+// Basado en PHQ-9, GAD-7 y Riesgo Vocal
+// =====================================================
 
-export const getEmotionalState = (phq9Score, gad7Score) => {
-  // Sin tests
+// voiceRisk: 'LOW' | 'MODERATE' | 'HIGH'
+export const getEmotionalState = (phq9Score, gad7Score, voiceRisk = 'LOW') => {
+
+  // ---------------------------------
+  // SIN EVALUACIÓN
+  // ---------------------------------
   if (phq9Score === null && gad7Score === null) {
     return 'sin_evaluacion';
   }
 
-  // Clasificación de depresión (PHQ-9)
-  const depressionLevel = 
-    phq9Score === null ? 'sin_test' :
-    phq9Score < 5 ? 'minima' :
-    phq9Score < 10 ? 'leve' :
-    phq9Score < 15 ? 'moderada' :
-    'severa';
+  // Normalizar
+  const phq = phq9Score ?? 0;
+  const gad = gad7Score ?? 0;
+  const risk = (voiceRisk || 'LOW').toUpperCase();
 
-  // Clasificación de ansiedad (GAD-7)
-  const anxietyLevel = 
-    gad7Score === null ? 'sin_test' :
-    gad7Score < 5 ? 'minima' :
-    gad7Score < 10 ? 'leve' :
-    gad7Score < 15 ? 'moderada' :
-    'severa';
-
-  // Emergencia
-  if (phq9Score >= 15 && gad7Score >= 15) {
+  // ---------------------------------
+  // 🚨 EMERGENCIA MULTIMODAL
+  // ---------------------------------
+  if (
+    (phq >= 15 && gad >= 15) ||
+    (risk === 'HIGH' && (phq >= 15 || gad >= 15))
+  ) {
     return 'emergencia';
   }
 
-  // Depresión severa
-  if (phq9Score >= 15) {
-    return 'depresion_severa';
+  // ---------------------------------
+  // SEVERO (voz prioriza riesgo)
+  // ---------------------------------
+  if (risk === 'HIGH') {
+    if (phq >= 10) return 'depresion_severa';
+    if (gad >= 10) return 'ansiedad_severa';
   }
 
-  // Ansiedad severa
-  if (gad7Score >= 15) {
-    return 'ansiedad_severa';
+  if (phq >= 15) return 'depresion_severa';
+  if (gad >= 15) return 'ansiedad_severa';
+
+  // ---------------------------------
+  // MODERADO MULTIMODAL
+  // ---------------------------------
+  if (phq >= 10 && gad >= 10) return 'dual_moderado';
+
+  if (risk === 'MODERATE') {
+    if (phq >= 5 || gad >= 5) {
+      return 'dual_moderado';
+    }
   }
 
-  // Dual moderado
-  if (phq9Score >= 10 && gad7Score >= 10) {
-    return 'dual_moderado';
-  }
+  if (phq >= 10) return 'depresion_moderada';
+  if (gad >= 10) return 'ansiedad_moderada';
 
-  // Moderado individual
-  if (phq9Score >= 10 || gad7Score >= 10) {
-    return phq9Score >= 10 ? 'depresion_moderada' : 'ansiedad_moderada';
-  }
-
-  // Leve
-  if (phq9Score >= 5 || gad7Score >= 5) {
+  // ---------------------------------
+  // LEVE
+  // ---------------------------------
+  if (phq >= 5 || gad >= 5) {
     return 'leve';
   }
 
-  // Estable
+  // ---------------------------------
+  // ESTABLE
+  // ---------------------------------
   return 'estable';
 };
 
+// =====================================================
+// DEFINICIÓN DE TEMAS VISUALES
+// =====================================================
+
 export const themes = {
+
   sin_evaluacion: {
     name: 'Sin evaluación',
     colors: {
@@ -67,7 +82,7 @@ export const themes = {
       button: 'from-blue-500 to-blue-600'
     },
     music: null,
-    tools: ['Intro', 'Botones de test'],
+    tools: ['Intro', 'Evaluaciones iniciales'],
     emergency: false
   },
 
@@ -81,12 +96,12 @@ export const themes = {
       button: 'from-green-500 to-cyan-500'
     },
     music: 'https://cdn.pixabay.com/audio/2022/10/01/audio_784b40f9f6.mp3',
-    tools: ['Consejos de bienestar', 'Meditación preventiva'],
+    tools: ['Bienestar', 'Prevención'],
     emergency: false
   },
 
   leve: {
-    name: 'Ansiedad/Depresión Leve',
+    name: 'Ansiedad / Depresión Leve',
     colors: {
       primary: 'from-sky-200 via-blue-300 to-blue-400',
       card: 'bg-white/95',
@@ -95,7 +110,7 @@ export const themes = {
       button: 'from-blue-400 to-blue-500'
     },
     music: 'https://cdn.pixabay.com/audio/2021/08/19/audio_a817080ba3.mp3',
-    tools: ['Respiración básica', 'Gratitud', 'Autocuidado'],
+    tools: ['Respiración', 'Autocuidado'],
     emergency: false
   },
 
@@ -109,21 +124,21 @@ export const themes = {
       button: 'from-blue-500 to-blue-600'
     },
     music: 'https://cdn.pixabay.com/audio/2022/03/09/audio_5ffca7b9d1.mp3',
-    tools: ['Mindfulness', 'Respiración 4-7-8', 'Técnicas de grounding'],
+    tools: ['Mindfulness', 'Grounding'],
     emergency: false
   },
 
   depresion_moderada: {
     name: 'Depresión Moderada',
     colors: {
-      primary: 'from-blue-500 via-indigo-500 to-blue-600',
+      primary: 'from-indigo-400 via-indigo-500 to-indigo-600',
       card: 'bg-white/95',
       text: 'text-gray-800',
       accent: 'text-indigo-600',
       button: 'from-indigo-500 to-blue-600'
     },
     music: 'https://cdn.pixabay.com/audio/2025/07/17/audio_5925f8939b.mp3',
-    tools: ['Meditación', 'Relajación', 'Activación conductual'],
+    tools: ['Activación conductual', 'Motivación'],
     emergency: false
   },
 
@@ -151,7 +166,7 @@ export const themes = {
       button: 'from-orange-500 to-red-500'
     },
     music: 'https://cdn.pixabay.com/audio/2021/08/27/audio_f52b2b0ead.mp3',
-    tools: ['PFA', 'Respiración guiada', 'Técnicas de emergencia'],
+    tools: ['Respiración guiada', 'Emergencia'],
     emergency: true
   },
 
@@ -165,7 +180,7 @@ export const themes = {
       button: 'from-orange-500 to-red-500'
     },
     music: 'https://cdn.pixabay.com/audio/2024/03/25/audio_b94d4bae8c.mp3',
-    tools: ['PFA intensivo', 'Contacto de emergencia'],
+    tools: ['Apoyo profesional', 'Emergencia'],
     emergency: true
   },
 
@@ -179,12 +194,15 @@ export const themes = {
       button: 'from-red-600 to-red-700'
     },
     music: null,
-    tools: ['🚨 LÍNEA 171 opción 6', 'PFA Emergencia'],
+    tools: ['🚨 Línea 171 opción 6', 'PFA'],
     emergency: true,
     emergencyNumber: '171 opción 6'
   }
 };
 
+// =====================================================
+// OBTENER TEMA
+// =====================================================
 export const getTheme = (emotionalState) => {
   return themes[emotionalState] || themes.sin_evaluacion;
 };

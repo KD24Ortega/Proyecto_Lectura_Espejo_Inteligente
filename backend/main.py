@@ -1587,6 +1587,9 @@ async def create_voice_session(
         raise
     except Exception as e:
         db.rollback()
+        print(f"❌ ERROR COMPLETO: {e}")  # ← AGREGAR ESTA LÍNEA
+        import traceback
+        traceback.print_exc()  # ← AGREGAR ESTA LÍNEA
         raise HTTPException(
             status_code=500,
             detail=f"Error creando sesión: {str(e)}"
@@ -1744,3 +1747,246 @@ async def get_exercise_recommendations(
             for ex in exercises
         ]
     }
+    
+    # =====================================================
+#  ENDPOINT FALTANTE: ESTADÍSTICAS DE VOZ
+#  Agregar a main.py después de los otros endpoints de voz
+# =====================================================
+
+from datetime import datetime, timedelta
+from typing import Optional
+
+@app.get("/api/voice/user/{user_id}/stats")
+async def get_user_voice_stats(
+    user_id: int,
+    days: int = 30,
+    db: Session = Depends(get_db)
+):
+    try:
+        # --------------------------------------------------
+        # 🔥 NORMALIZAR RIESGO (ESPAÑOL / ENUM / STRING)
+        # --------------------------------------------------
+        def normalize_risk(risk):
+            if not risk:
+                return "MODERATE"
+
+            # Si es Enum de SQLAlchemy
+            if hasattr(risk, "value"):
+                risk = risk.value
+
+            risk = str(risk).strip().lower()
+
+            if risk in ("bajo", "low"):
+                return "LOW"
+            if risk in ("moderado", "moderate", "medium"):
+                return "MODERATE"
+            if risk in ("alto", "high"):
+                return "HIGH"
+
+            return "MODERATE"
+
+        # --------------------------------------------------
+        # FECHA INICIO
+        # --------------------------------------------------
+        start_date = datetime.now() - timedelta(days=days)
+
+        # --------------------------------------------------
+        # SESIONES
+        # --------------------------------------------------
+        sessions = db.query(models.VoiceExerciseSession).filter(
+            models.VoiceExerciseSession.user_id == user_id,
+            models.VoiceExerciseSession.created_at >= start_date
+        ).order_by(
+            models.VoiceExerciseSession.created_at.desc()
+        ).all()
+
+        if not sessions:
+            return {
+                "user_id": user_id,
+                "days": days,
+                "sessions": [],
+                "summary": {
+                    "total_sessions": 0,
+                    "completed_sessions": 0,
+                    "total_duration": 0,
+                    "avg_pitch": 0,
+                    "avg_energy": 0,
+                    "avg_hnr": 0,
+                    "avg_score": 0,
+                    "risk_distribution": {
+                        "LOW": 0,
+                        "MODERATE": 0,
+                        "HIGH": 0
+                    },
+                    "exercises_done": {}
+                }
+            }
+
+        # --------------------------------------------------
+        # ESTADÍSTICAS GENERALES
+        # --------------------------------------------------
+        total_sessions = len(sessions)
+        completed_sessions = len([s for s in sessions if s.completed])
+        total_duration = sum(s.duration_seconds or 0 for s in sessions)
+
+        # --------------------------------------------------
+        # PROMEDIOS SEGUROS
+        # --------------------------------------------------
+        valid_pitch = [s.pitch_mean for s in sessions if s.pitch_mean is not None]
+        valid_energy = [s.energy for s in sessions if s.energy is not None]
+        valid_hnr = [s.hnr for s in sessions if s.hnr is not None]
+        valid_score = [s.score for s in sessions if s.score is not None]
+
+        avg_pitch = sum(valid_pitch) / len(valid_pitch) if valid_pitch else 0.0
+        avg_energy = sum(valid_energy) / len(valid_energy) if valid_energy else 0.0
+        avg_hnr = sum(valid_hnr) / len(valid_hnr) if valid_hnr else 0.0
+        avg_score = sum(valid_score) / len(valid_score) if valid_score else 0.0
+
+        # --------------------------------------------------
+        # 🔥 DISTRIBUCIÓN DE RIESGO (YA FUNCIONA)
+        # --------------------------------------------------
+        risk_distribution = {
+            "LOW": len([s for s in sessions if normalize_risk(s.risk_level) == "LOW"]),
+            "MODERATE": len([s for s in sessions if normalize_risk(s.risk_level) == "MODERATE"]),
+            "HIGH": len([s for s in sessions if normalize_risk(s.risk_level) == "HIGH"])
+        }
+
+        print("Distribución de Riesgo:", risk_distribution)
+
+        # --------------------------------------------------
+        # EJERCICIOS REALIZADOS
+        # --------------------------------------------------
+        exercises_done = {}
+        for s in sessions:
+            exercises_done[s.exercise_id] = exercises_done.get(s.exercise_id, 0) + 1
+
+        # --------------------------------------------------
+        # SESIONES FORMATEADAS
+        # --------------------------------------------------
+        sessions_data = [
+            {
+                "id": s.id,
+                "exercise_id": s.exercise_id,
+                "pitch_mean": round(float(s.pitch_mean or 0.0), 2),
+                "pitch_std": round(float(s.pitch_std or 0.0), 2),
+                "energy": round(float(s.energy or 0.0), 4),
+                "voice_ratio": round(float(s.voice_ratio or 0.0), 4),
+                "hnr": round(float(s.hnr or 0.0), 2),
+                "score": round(float(s.score or 0.0), 2),
+                "risk_level": normalize_risk(s.risk_level),
+                "duration_seconds": s.duration_seconds or 0,
+                "completed": bool(s.completed),
+                "created_at": s.created_at.isoformat()
+            }
+            for s in sessions
+        ]
+
+        # --------------------------------------------------
+        # RESPUESTA FINAL
+        # --------------------------------------------------
+        return {
+            "user_id": user_id,
+            "days": days,
+            "sessions": sessions_data,
+            "summary": {
+                "total_sessions": total_sessions,
+                "completed_sessions": completed_sessions,
+                "total_duration": total_duration,
+                "avg_pitch": round(avg_pitch, 2),
+                "avg_energy": round(avg_energy, 4),
+                "avg_hnr": round(avg_hnr, 2),
+                "avg_score": round(avg_score, 2),
+                "risk_distribution": risk_distribution,
+                "exercises_done": exercises_done
+            }
+        }
+
+    except Exception as e:
+        print(f"❌ ERROR en get_user_voice_stats: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estadísticas: {str(e)}"
+        )
+
+
+# =====================================================
+#  ENDPOINT ALTERNATIVO: Si tienes problemas con enums
+# =====================================================
+
+@app.get("/api/voice/user/{user_id}/stats-simple")
+async def get_user_voice_stats_simple(
+    user_id: int,
+    days: int = 30,
+    db: Session = Depends(get_db)
+):
+    """
+    Versión simplificada que maneja mejor los enums.
+    Usar este si el principal da problemas con risk_level.
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Query SQL directa para evitar problemas con enums
+        query = text("""
+            SELECT 
+                id,
+                exercise_id,
+                pitch_mean,
+                pitch_std,
+                energy,
+                voice_ratio,
+                hnr,
+                score,
+                CAST(risk_level AS TEXT) as risk_level,
+                duration_seconds,
+                completed,
+                created_at
+            FROM voice_exercise_sessions
+            WHERE user_id = :user_id
+            AND created_at >= NOW() - INTERVAL ':days days'
+            ORDER BY created_at DESC
+        """)
+        
+        result = db.execute(query, {"user_id": user_id, "days": days})
+        sessions = result.fetchall()
+        
+        if not sessions:
+            return {
+                "user_id": user_id,
+                "days": days,
+                "sessions": [],
+                "summary": None
+            }
+        
+        # Convertir a diccionarios
+        sessions_data = [
+            {
+                "id": s[0],
+                "exercise_id": s[1],
+                "pitch_mean": round(s[2], 2),
+                "pitch_std": round(s[3], 2),
+                "energy": round(s[4], 4),
+                "voice_ratio": round(s[5], 4),
+                "hnr": round(s[6], 2),
+                "score": round(s[7], 2),
+                "risk_level": s[8],
+                "duration_seconds": s[9],
+                "completed": s[10],
+                "created_at": s[11].isoformat()
+            }
+            for s in sessions
+        ]
+        
+        return {
+            "user_id": user_id,
+            "days": days,
+            "sessions": sessions_data
+        }
+        
+    except Exception as e:
+        print(f"❌ ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
