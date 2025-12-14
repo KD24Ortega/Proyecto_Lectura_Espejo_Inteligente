@@ -26,8 +26,8 @@ function AnxietyExercises() {
       hoverBorder: "hover:border-blue-500",
       details: [
         "Inhalar 4 segundos",
-        'Exhalar diciendo "mmm"',
-        'Sostener "oooo" lo más posible',
+        'Exhalar diciendo "ahhh" por 8 segundos',
+        'Sostener por 7 segundos',
         "Temporizador circular",
       ],
     },
@@ -61,7 +61,7 @@ function AnxietyExercises() {
       details: [
         "Notación musical: Do → Re → Mi",
         "Emisión Vocal Energética (EVE)",
-        "Secuencias rítmicas: Ha-Pa-Ta",
+        "Secuencias rítmicas de vocalización",
         "Contador de repeticiones",
       ],
     },
@@ -180,7 +180,7 @@ function AnxietyExercises() {
               <p className="text-sm text-gray-700 mb-3">
                 Cada ejercicio utiliza análisis de voz en tiempo real para evaluar
                 tu estado emocional y proporcionarte retroalimentación inmediata.
-                Los ejercicios duran entre 5-15 minutos.
+                Los ejercicios duran entre 3-5 minutos.
               </p>
               <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-gray-700">

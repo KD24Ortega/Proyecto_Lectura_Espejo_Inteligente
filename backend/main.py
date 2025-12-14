@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, status, Form
+from fastapi import FastAPI, Depends, Request, UploadFile, File, HTTPException, status, Form, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -53,6 +53,10 @@ resend.api_key = "re_361pUwcN_LsC1uhDKeUm9QiJqd4HnmENE"
 # RATE LIMITING DIFERENCIADO
 # -----------------------------
 request_counts = defaultdict(list)
+
+# Router para rutas de sesión
+router = APIRouter(prefix="/session", tags=["sessions"])
+
 
 def check_rate_limit(client_ip: str, endpoint_type: str = "default"):
     """
@@ -167,7 +171,8 @@ class AssessmentRequest(BaseModel):
         return v
 
 class SessionStartRequest(BaseModel):
-    username: str = Field(..., min_length=1, max_length=100, description="Nombre de usuario")
+    user_id: int = Field(..., gt=0)
+    username: str = Field(..., min_length=1, max_length=100)
     
     @validator('username')
     def validate_username(cls, v):
@@ -211,6 +216,9 @@ class AdminChangePasswordRequest(BaseModel):
         if len(v) < 8:
             raise ValueError('La nueva contraseña debe tener al menos 8 caracteres')
         return v
+    
+class SessionEndRequest(BaseModel):
+    user_id: int = Field(..., gt=0, description="ID del usuario")
     
 # ============================================================
 #  SALUD
@@ -316,6 +324,136 @@ async def admin_change_password(
         "message": "Contraseña actualizada correctamente"
     }
 
+# ============================================================
+# ENDPOINT: /admin/sessions
+# Agregar a main.py después de los otros endpoints de admin
+# ============================================================
+
+@app.get("/admin/sessions")
+async def get_all_sessions(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene todas las sesiones (activas e inactivas) para el dashboard de admin
+    
+    Args:
+        user_id: ID del administrador (para verificar permisos)
+    
+    Returns:
+        Lista de sesiones con información del usuario
+    """
+    try:
+        # Verificar que el usuario es administrador
+        admin = db.query(models.User).filter(
+            models.User.id == user_id,
+            models.User.is_admin == True
+        ).first()
+        
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acceso denegado. Se requieren permisos de administrador."
+            )
+        
+        # Obtener todas las sesiones con información del usuario
+        sessions = db.query(models.SessionLog).join(
+            models.User,
+            models.SessionLog.user_id == models.User.id
+        ).order_by(
+            models.SessionLog.timestamp_login.desc()
+        ).all()
+        
+        # Formatear respuesta
+        sessions_data = []
+        for session in sessions:
+            user = db.query(models.User).filter(models.User.id == session.user_id).first()
+            
+            sessions_data.append({
+                "id": session.id,
+                "user_id": session.user_id,
+                "username": session.username,
+                "full_name": user.full_name if user else session.username,
+                "timestamp_login": session.timestamp_login.isoformat() if session.timestamp_login else None,
+                "timestamp_logout": session.timestamp_logout.isoformat() if session.timestamp_logout else None,
+                "method": session.method,
+                "is_active": session.is_active,
+                "duration": None if not session.timestamp_logout else (
+                    session.timestamp_logout - session.timestamp_login
+                ).total_seconds()
+            })
+        
+        return sessions_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener sesiones: {str(e)}"
+        )
+
+
+# ============================================================
+# ENDPOINT ALTERNATIVO: Solo sesiones activas
+# ============================================================
+
+@app.get("/admin/sessions/active")
+async def get_active_sessions(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene solo las sesiones activas
+    
+    Args:
+        user_id: ID del administrador
+    
+    Returns:
+        Lista de sesiones activas
+    """
+    try:
+        # Verificar admin
+        admin = db.query(models.User).filter(
+            models.User.id == user_id,
+            models.User.is_admin == True
+        ).first()
+        
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acceso denegado"
+            )
+        
+        # Solo sesiones activas
+        active_sessions = db.query(models.SessionLog).filter(
+            models.SessionLog.is_active == True
+        ).order_by(
+            models.SessionLog.timestamp_login.desc()
+        ).all()
+        
+        sessions_data = []
+        for session in active_sessions:
+            user = db.query(models.User).filter(models.User.id == session.user_id).first()
+            
+            sessions_data.append({
+                "id": session.id,
+                "user_id": session.user_id,
+                "username": session.username,
+                "full_name": user.full_name if user else session.username,
+                "timestamp_login": session.timestamp_login.isoformat(),
+                "is_active": True
+            })
+        
+        return sessions_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener sesiones activas: {str(e)}"
+        )
 
 
 # ============================================================
@@ -499,71 +637,157 @@ async def recognize_face_check(
 
     return face_service.recognize(np_img)
 
-# ==============================================
-# 📌 MANEJO DE SESIONES
-# ==============================================
+# ============================================================
+# ENDPOINTS DE SESIONES (CORREGIDOS SIN ROUTER)
+# ============================================================
+
 @app.post("/session/start")
-async def start_session(payload: SessionStartRequest, db: Session = Depends(get_db)):
-    username = payload.username
-
-    # Buscar usuario
-    user_obj = db.query(models.User).filter(
-        models.User.full_name.ilike(username)
-    ).first()
-
-    if not user_obj:
-        return {"success": False, "error": "Usuario no encontrado"}
-
-    # 🔥 CERRAR TODAS LAS SESIONES ACTIVAS PREVIAS
-    db.query(models.SessionLog).filter(
-        models.SessionLog.user_id == user_obj.id,
-        models.SessionLog.is_active == True
-    ).update({
-        models.SessionLog.is_active: False,
-        models.SessionLog.timestamp_logout: datetime.utcnow()
-    })
-    db.commit()
-
-    # 🔥 CREAR NUEVA SESIÓN
-    session = models.SessionLog(
-        user_id=user_obj.id,
-        username=user_obj.full_name,
-        method="face",
-        is_active=True,
-        timestamp_login=datetime.utcnow()
-    )
-    db.add(session)
-    db.commit()
-
-    return {
-        "success": True,
-        "session_id": session.id,
-        "user_id": user_obj.id,
-        "username": user_obj.full_name
-    }
-
-
-@app.post("/session/end/{session_id}")
-async def end_session(session_id: int, db: Session = Depends(get_db)):
+async def start_session(
+    request: SessionStartRequest,
+    db: Session = Depends(get_db)
+):
     """
-    Cierra una sesión de usuario.
+    Inicia una nueva sesión para el usuario
     """
-    session = db.query(models.SessionLog).filter(
-        models.SessionLog.id == session_id
-    ).first()
+    try:
+        # Cerrar cualquier sesión activa previa del usuario
+        active_sessions = db.query(models.SessionLog).filter(
+            models.SessionLog.user_id == request.user_id,
+            models.SessionLog.is_active == True
+        ).all()
+        
+        for session in active_sessions:
+            session.is_active = False
+            session.timestamp_logout = datetime.utcnow()
+        
+        # Crear nueva sesión
+        new_session = models.SessionLog(
+            user_id=request.user_id,
+            username=request.username,
+            timestamp_login=datetime.utcnow(),
+            method="face",
+            is_active=True
+        )
+        
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
+        
+        return {
+            "success": True,
+            "message": "Sesión iniciada correctamente",
+            "session_id": new_session.id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al iniciar sesión: {str(e)}")
 
-    if not session:
-        return {"success": False, "error": "Sesión no encontrada"}
 
-    # Marcar sesión como inactiva y registrar hora de cierre
-    session.is_active = False  # type: ignore # ✅ Ahora sí podemos usar False
-    session.timestamp_logout = datetime.utcnow() # type: ignore
-    db.commit()
+@app.post("/session/end")
+async def end_session(
+    request: SessionEndRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Cierra todas las sesiones activas del usuario
+    """
+    try:
+        # Buscar sesiones activas
+        active_sessions = db.query(models.SessionLog).filter(
+            models.SessionLog.user_id == request.user_id,
+            models.SessionLog.is_active == True
+        ).all()
+        
+        if not active_sessions:
+            return {
+                "success": True,
+                "message": "No hay sesiones activas para cerrar",
+                "sessions_closed": 0
+            }
+        
+        # Cerrar todas las sesiones activas
+        sessions_closed = 0
+        for session in active_sessions:
+            session.is_active = False
+            session.timestamp_logout = datetime.utcnow()
+            sessions_closed += 1
+        
+        db.commit()
+        
+        print(f"✅ Sesiones cerradas para user_id {request.user_id}: {sessions_closed}")
+        
+        return {
+            "success": True,
+            "message": f"Se cerraron {sessions_closed} sesión(es) activa(s)",
+            "sessions_closed": sessions_closed
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al cerrar sesión: {str(e)}")
 
-    return {
-        "success": True,
-        "message": "Sesión cerrada correctamente"
-    }
+
+@app.post("/session/cleanup-orphaned")
+async def cleanup_orphaned_sessions(db: Session = Depends(get_db)):
+    """
+    Cierra todas las sesiones que llevan más de 24 horas activas
+    """
+    try:
+        # Sesiones activas de más de 24 horas
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        
+        orphaned_sessions = db.query(models.SessionLog).filter(
+            models.SessionLog.is_active == True,
+            models.SessionLog.timestamp_login < cutoff_time
+        ).all()
+        
+        sessions_closed = 0
+        for session in orphaned_sessions:
+            session.is_active = False
+            session.timestamp_logout = datetime.utcnow()
+            sessions_closed += 1
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Se limpiaron {sessions_closed} sesiones huérfanas",
+            "sessions_closed": sessions_closed
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error en limpieza: {str(e)}")
+
+
+@app.get("/session/check/{user_id}")
+async def check_active_session(user_id: int, db: Session = Depends(get_db)):
+    """
+    Verifica si un usuario tiene sesión activa
+    """
+    try:
+        active_session = db.query(models.SessionLog).filter(
+            models.SessionLog.user_id == user_id,
+            models.SessionLog.is_active == True
+        ).first()
+        
+        if active_session:
+            return {
+                "has_active_session": True,
+                "session_id": active_session.id,
+                "login_time": active_session.timestamp_login.isoformat()
+            }
+        else:
+            return {
+                "has_active_session": False,
+                "session_id": None,
+                "login_time": None
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al verificar sesión: {str(e)}")
+
 
 # ==============================================
 # 📌 Reconocimiento facial (login) + creación de sesión
@@ -1836,3 +2060,9 @@ async def get_user_voice_stats(
             status_code=500,
             detail=f"Error obteniendo estadísticas: {str(e)}"
         )
+        
+        
+        
+# ============================================================
+# Inicio y cierre de sesiones
+# ============================================================

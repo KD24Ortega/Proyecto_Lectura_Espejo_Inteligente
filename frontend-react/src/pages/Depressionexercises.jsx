@@ -183,7 +183,7 @@ function DepressionExercises() {
               <p className="text-sm text-gray-700 mb-3">
                 Cada ejercicio utiliza análisis de voz en tiempo real para evaluar
                 tu tono, energía y estado emocional, brindándote retroalimentación
-                personalizada. Los ejercicios duran entre 8-15 minutos.
+                personalizada. Los ejercicios duran entre 3-5 minutos.
               </p>
               <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3">
                 <p className="text-sm text-gray-700">

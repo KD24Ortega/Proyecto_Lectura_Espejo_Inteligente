@@ -120,16 +120,43 @@ export default function Welcome() {
   const [error, setError] = useState("");
   
   const recognitionAttempts = useRef(0);
-  const maxAttempts = 30; // 30 intentos antes de mostrar error
+  const maxAttempts = 30;
+  
+  // ============================================================
+  // NUEVO: Referencias para cleanup
+  // ============================================================
+  const isComponentMounted = useRef(true);
+  const abortControllerRef = useRef(null);
 
-  // ---------------- LIMPIAR SESIÓN ANTERIOR ----------------
+  // ============================================================
+  // CORREGIDO: Cleanup al montar/desmontar
+  // ============================================================
   useEffect(() => {
+    // Marcar componente como montado
+    isComponentMounted.current = true;
+    
     // Limpiar sesión anterior al entrar a Welcome
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_name');
     localStorage.removeItem('last_recognition');
     
     console.log('🔄 Welcome: Sesión anterior limpiada');
+
+    // CLEANUP al desmontar componente
+    return () => {
+      console.log('🧹 Welcome: Componente desmontado - limpiando...');
+      isComponentMounted.current = false;
+      
+      // Cancelar cualquier request pendiente
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        console.log('🛑 Request de reconocimiento cancelado');
+      }
+      
+      // Limpiar estados
+      setIsRecognizing(false);
+      recognitionAttempts.current = 0;
+    };
   }, []);
 
   // ---------------- PASOS ----------------
@@ -158,8 +185,16 @@ export default function Welcome() {
     return () => clearInterval(interval);
   }, [step]);
 
-  // ---------------- RECONOCIMIENTO FACIAL ----------------
+  // ============================================================
+  // CORREGIDO: Reconocimiento facial con cleanup y timeout aumentado
+  // ============================================================
   const handleCapture = async (frameBase64) => {
+    // NUEVO: Verificar si el componente está montado
+    if (!isComponentMounted.current) {
+      console.log('🛑 Componente desmontado - ignorando captura');
+      return;
+    }
+
     // Validaciones
     if (isRecognizing || step < 4 || userName || isNewUser) return;
     
@@ -173,6 +208,9 @@ export default function Welcome() {
 
     setIsRecognizing(true);
     recognitionAttempts.current += 1;
+
+    // NUEVO: Crear AbortController para esta petición
+    abortControllerRef.current = new AbortController();
 
     try {
       // Convertir base64 a blob
@@ -191,10 +229,18 @@ export default function Welcome() {
 
       console.log(`🔍 Intento de reconocimiento ${recognitionAttempts.current}/${maxAttempts}`);
 
+      // CORREGIDO: Timeout aumentado de 5s a 15s y signal para cancelación
       const response = await api.post('/face/recognize/check', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 5000 // 5 segundos timeout
+        timeout: 15000, // ✅ 15 segundos (antes: 5000)
+        signal: abortControllerRef.current.signal // ✅ Permitir cancelación
       });
+
+      // NUEVO: Verificar si aún está montado antes de procesar
+      if (!isComponentMounted.current) {
+        console.log('🛑 Componente desmontado después de request - ignorando respuesta');
+        return;
+      }
 
       const { found, user } = response.data;
 
@@ -204,10 +250,15 @@ export default function Welcome() {
         
         try {
           // Obtener user_id desde el backend
-          const userResponse = await api.get(`/user/id-by-name?name=${encodeURIComponent(user)}`);
+          const userResponse = await api.get(`/user/id-by-name?name=${encodeURIComponent(user)}`, {
+            signal: abortControllerRef.current.signal
+          });
           const userId = userResponse.data.user_id;
           
           console.log('✅ User ID obtenido:', userId);
+          
+          // NUEVO: Verificar montaje antes de continuar
+          if (!isComponentMounted.current) return;
           
           // Guardar en localStorage
           localStorage.setItem('user_id', userId.toString());
@@ -221,57 +272,97 @@ export default function Welcome() {
             await api.post('/session/start', { 
               user_id: userId,
               username: user 
+            }, {
+              signal: abortControllerRef.current.signal
             });
             console.log('✅ Sesión iniciada en DB');
           } catch (sessionError) {
+            // Ignorar si fue cancelado
+            if (sessionError.name === 'AbortError' || sessionError.name === 'CanceledError') {
+              console.log('🛑 Inicio de sesión cancelado');
+              return;
+            }
             console.warn('⚠️ Error al iniciar sesión en DB:', sessionError);
-            // No bloqueamos el flujo si falla esto
           }
+
+          // NUEVO: Verificar montaje antes de redirigir
+          if (!isComponentMounted.current) return;
 
           // Redirigir después de 1.5 segundos
           setTimeout(() => {
-            console.log('🚀 Redirigiendo a /home');
-            navigate('/home');
+            if (isComponentMounted.current) {
+              console.log('🚀 Redirigiendo a /home');
+              navigate('/home');
+            }
           }, 1500);
           
         } catch (userIdError) {
+          // NUEVO: Ignorar si fue cancelado
+          if (userIdError.name === 'AbortError' || userIdError.name === 'CanceledError') {
+            console.log('🛑 Obtención de user_id cancelada');
+            return;
+          }
+
           console.error('❌ Error al obtener user_id:', userIdError);
-          setError('Error al cargar tu perfil. Intenta nuevamente.');
           
-          // Limpiar y permitir reintentar
-          setTimeout(() => {
-            setUserName('');
-            setError('');
-            recognitionAttempts.current = 0;
-          }, 3000);
+          // NUEVO: Solo actualizar estado si está montado
+          if (isComponentMounted.current) {
+            setError('Error al cargar tu perfil. Intenta nuevamente.');
+            
+            // Limpiar y permitir reintentar
+            setTimeout(() => {
+              if (isComponentMounted.current) {
+                setUserName('');
+                setError('');
+                recognitionAttempts.current = 0;
+              }
+            }, 3000);
+          }
         }
       }
       // ⚠️ CASO 2: Rostro detectado pero no registrado (found=true, user=null/undefined)
       else if (found && !user) {
         console.log('⚠️ Rostro detectado pero no registrado');
-        setIsNewUser(true);
+        
+        // NUEVO: Verificar montaje
+        if (isComponentMounted.current) {
+          setIsNewUser(true);
 
-        // Redirigir a registro después de 1.5 segundos
-        setTimeout(() => {
-          console.log('🚀 Redirigiendo a /register (usuario nuevo)');
-          navigate('/register');
-        }, 1500);
+          // Redirigir a registro después de 1.5 segundos
+          setTimeout(() => {
+            if (isComponentMounted.current) {
+              console.log('🚀 Redirigiendo a /register (usuario nuevo)');
+              navigate('/register');
+            }
+          }, 1500);
+        }
       }
       // ⏸️ CASO 3: No se detectó rostro (found=false)
       else {
-        // Silencioso, seguir intentando
         console.log('⏸️ No se detectó rostro, reintentando...');
       }
 
     } catch (error) {
+      // NUEVO: Ignorar errores de cancelación
+      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+        console.log('🛑 Request cancelado (componente desmontado)');
+        return;
+      }
+
       console.error('❌ Error en reconocimiento:', error);
       
-      // No mostrar error en cada intento fallido, solo al límite
-      if (recognitionAttempts.current >= maxAttempts) {
-        setError('Error de conexión con el servidor. Intenta registrarte manualmente.');
+      // NUEVO: Solo actualizar estado si el componente está montado
+      if (isComponentMounted.current) {
+        // No mostrar error en cada intento fallido, solo al límite
+        if (recognitionAttempts.current >= maxAttempts) {
+          setError('Error de conexión con el servidor. Intenta registrarte manualmente.');
+        }
       }
     } finally {
-      setIsRecognizing(false);
+      // NUEVO: Solo actualizar estado si está montado
+      if (isComponentMounted.current) {
+        setIsRecognizing(false);
+      }
     }
   };
 
@@ -279,7 +370,6 @@ export default function Welcome() {
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col items-center justify-between px-4 sm:px-10 py-10 overflow-hidden">
 
       {/* Botón Admin */}
-      {/* Versión alternativa con más estilo */}
       <button
         onClick={() => navigate('/admin/login')}
         className="fixed top-6 right-6 z-50 group"
@@ -295,12 +385,14 @@ export default function Welcome() {
         </div>
       </button>
 
-      {/* CAMARA (oculta pero activa) */}
+      {/* CAMARA (oculta pero activa) - CORREGIDO: Solo activa si está montado */}
       <div className="hidden">
-        <Camera
-          onCapture={handleCapture}
-          isActive={step >= 4 && !userName && !isNewUser}
-        />
+        {isComponentMounted.current && (
+          <Camera
+            onCapture={handleCapture}
+            isActive={step >= 4 && !userName && !isNewUser}
+          />
+        )}
       </div>
 
       {/* HEADER */}

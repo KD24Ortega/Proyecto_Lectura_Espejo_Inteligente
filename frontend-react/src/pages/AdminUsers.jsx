@@ -12,7 +12,10 @@ function AdminUsers() {
   const [adminName, setAdminName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [viewMode, setViewMode] = useState('table'); // 'table' o 'grid'
+  const [viewMode, setViewMode] = useState('table');
+  
+  // NUEVO: Estado de sesiones activas
+  const [activeSessions, setActiveSessions] = useState(new Set());
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,6 +31,10 @@ function AdminUsers() {
   useEffect(() => {
     checkAuth();
     loadUsers();
+    loadActiveSessions(); // NUEVO
+    
+    // Actualizar sesiones activas cada 30 segundos
+    const interval = setInterval(loadActiveSessions, 30000);
     
     // Leer parámetro de búsqueda de la URL
     const searchParams = new URLSearchParams(location.search);
@@ -35,11 +42,13 @@ function AdminUsers() {
     if (searchQuery) {
       setSearchTerm(searchQuery);
     }
+    
+    return () => clearInterval(interval);
   }, [location]);
 
   useEffect(() => {
     applyFilters();
-  }, [users, searchTerm, statusFilter, severityFilter, trendFilter, sortOrder]);
+  }, [users, searchTerm, statusFilter, severityFilter, trendFilter, sortOrder, activeSessions]);
 
   const checkAuth = () => {
     const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
@@ -51,6 +60,27 @@ function AdminUsers() {
     }
     
     setAdminName(adminNameStored || 'Administrador');
+  };
+
+  // NUEVO: Cargar sesiones activas
+  const loadActiveSessions = async () => {
+    try {
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+      const response = await api.get(`/admin/sessions?user_id=${adminId}`);
+      
+      // Crear Set de user_ids con sesiones activas
+      const activeUserIds = new Set(
+        response.data
+          .filter(session => session.is_active)
+          .map(session => session.user_id)
+      );
+      
+      setActiveSessions(activeUserIds);
+      console.log('📊 Sesiones activas:', activeUserIds.size);
+      
+    } catch (error) {
+      console.error('Error al cargar sesiones activas:', error);
+    }
   };
 
   const loadUsers = async () => {
@@ -80,14 +110,17 @@ function AdminUsers() {
       );
     }
 
-    // Filtro por estado (activo/inactivo)
+    // CORREGIDO: Filtro por estado (usando sesiones activas)
     if (statusFilter !== 'Todos') {
       filtered = filtered.filter(user => {
+        const isActive = activeSessions.has(user.id);
+        
         if (statusFilter === 'Activo') {
-          return user.total_sessions > 0;
-        } else {
-          return user.total_sessions === 0;
+          return isActive;
+        } else if (statusFilter === 'Inactivo') {
+          return !isActive;
         }
+        return true;
       });
     }
 
@@ -115,10 +148,17 @@ function AdminUsers() {
       filtered.sort((a, b) => (b.latest_gad7 || 0) - (a.latest_gad7 || 0));
     } else if (sortOrder === 'recent') {
       filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (sortOrder === 'active') {
+      // NUEVO: Ordenar por activos primero
+      filtered.sort((a, b) => {
+        const aActive = activeSessions.has(a.id);
+        const bActive = activeSessions.has(b.id);
+        return (bActive ? 1 : 0) - (aActive ? 1 : 0);
+      });
     }
 
     setFilteredUsers(filtered);
-    setCurrentPage(1); // Resetear a página 1 cuando se filtran
+    setCurrentPage(1);
   };
 
   const getSeverityBadge = (score, type) => {
@@ -141,6 +181,29 @@ function AdminUsers() {
     return { text: severity, color };
   };
 
+  // NUEVO: Función para obtener estado de usuario
+  const getUserStatus = (userId) => {
+    const isActive = activeSessions.has(userId);
+    
+    if (isActive) {
+      return {
+        text: 'En línea',
+        icon: '🟢',
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-700',
+        dotColor: 'bg-green-500'
+      };
+    } else {
+      return {
+        text: 'Desconectado',
+        icon: '⚫',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-600',
+        dotColor: 'bg-gray-400'
+      };
+    }
+  };
+
   const getTimeSince = (dateString) => {
     if (!dateString) return 'Nunca';
     const date = new Date(dateString);
@@ -160,18 +223,9 @@ function AdminUsers() {
 
   const handleDownloadReport = async (user) => {
     try {
-
-      const adminId =
-        localStorage.getItem("admin_id") ||
-        sessionStorage.getItem("admin_id");
-
-      // Obtener información COMPLETA del usuario
-      const res = await api.get(
-        `/admin/user/${user.id}?user_id=${adminId}`
-      );
-
+      const adminId = localStorage.getItem("admin_id") || sessionStorage.getItem("admin_id");
+      const res = await api.get(`/admin/user/${user.id}?user_id=${adminId}`);
       const data = res.data;
-
       const profile = data.user;
       const assessments = data.assessments || [];
 
@@ -183,13 +237,8 @@ function AdminUsers() {
         .filter(a => a.type === "gad7")
         .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
-      //--------------------------------------------------------------------
-      // CREACIÓN DEL PDF
-      //--------------------------------------------------------------------
-
       const doc = new jsPDF("p","mm","a4");
 
-      // ---------------- HEADER ----------------
       doc.setFontSize(18);
       doc.text("SMART MIRROR - REPORTE CLÍNICO",105,15,{align:"center"});
 
@@ -197,7 +246,6 @@ function AdminUsers() {
       doc.text(`Fecha: ${new Date().toLocaleDateString()}`,105,22,{align:"center"});
       doc.line(10,26,200,26);
 
-      // ---------------- DATOS PERSONALES ----------------
       doc.setFontSize(14);
       doc.text("Datos del Usuario",14,35);
 
@@ -210,13 +258,12 @@ function AdminUsers() {
           ["Género", profile.gender ?? "N/A"],
           ["Email", profile.email ?? "N/A"],
           ["ID Usuario", profile.id],
-          ["Registrado", new Date(profile.created_at).toLocaleDateString("es-ES")]
+          ["Registrado", new Date(profile.created_at).toLocaleDateString("es-ES")],
+          ["Estado Actual", activeSessions.has(profile.id) ? "En línea" : "Desconectado"]
         ]
       });
 
-      //----------------- ESTADO ACTUAL ------------------
       const y2 = doc.lastAutoTable.finalY + 10;
-
       doc.text("Estado Actual",14,y2);
 
       autoTable(doc,{
@@ -228,11 +275,8 @@ function AdminUsers() {
         ]
       });
 
-      //----------------- HISTORIAL ------------------
       if(assessments.length > 0){
-
         const y3 = doc.lastAutoTable.finalY + 10;
-
         doc.text("Historial de Evaluaciones",14,y3);
 
         autoTable(doc,{
@@ -245,23 +289,13 @@ function AdminUsers() {
             a.severity
           ])
         });
-
       }
 
-      //----------------- FOOTER ------------------
       const pageHeight = doc.internal.pageSize.height;
-
       doc.setFontSize(9);
-      doc.text(
-        "Documento generado automáticamente por Smart Mirror",
-        105,
-        pageHeight - 12,
-        { align:"center" }
-      );
+      doc.text("Documento generado automáticamente por Smart Mirror", 105, pageHeight - 12, { align:"center" });
 
-      //----------------- DESCARGA ------------------
       const safeName = profile.full_name.replace(/\s+/g,"_");
-
       doc.save(`reporte_${safeName}.pdf`);
 
     } catch (error) {
@@ -272,23 +306,19 @@ function AdminUsers() {
 
   const handleSendEmail = async (user) => {
     try {
-      const adminId =
-        localStorage.getItem("admin_id") ||
-        sessionStorage.getItem("admin_id");
-
       const message = `
-  Hola ${user.full_name},
+Hola ${user.full_name},
 
-  Estamos realizando un seguimiento de tus resultados recientes en PHQ-9 y GAD-7.
-  Si necesitas apoyo adicional, no dudes en comunicarte con nosotros.
+Estamos realizando un seguimiento de tus resultados recientes en PHQ-9 y GAD-7.
+Si necesitas apoyo adicional, no dudes en comunicarte con nosotros.
 
-  Atentamente,
-  Equipo del Espejo Inteligente.
-  `;
+Atentamente,
+Equipo del Espejo Inteligente.
+`;
 
-      const res = await api.post("/notifications/email", {
-        user_id: user.id,   // 👈 EXACTAMENTE LO QUE ESPERA EL BACKEND
-        message: message    // 👈 EXACTAMENTE LO QUE ESPERA EL BACKEND
+      await api.post("/notifications/email", {
+        user_id: user.id,
+        message: message
       });
 
       alert("Correo enviado correctamente ✔️");
@@ -317,24 +347,6 @@ function AdminUsers() {
     }
   };
 
-  const handleBulkAction = (action) => {
-    if (selectedUsers.length === 0) {
-      alert('Selecciona al menos un usuario');
-      return;
-    }
-    
-    if (action === 'delete') {
-      if (confirm(`¿Eliminar ${selectedUsers.length} usuario(s)?`)) {
-        alert(`Eliminando ${selectedUsers.length} usuarios...`);
-        setSelectedUsers([]);
-      }
-    } else if (action === 'export') {
-      alert(`Exportando ${selectedUsers.length} usuarios...`);
-    } else if (action === 'email') {
-      alert(`Enviando email a ${selectedUsers.length} usuarios...`);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_id');
@@ -357,6 +369,10 @@ function AdminUsers() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const paginatedUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  // NUEVO: Contar usuarios activos e inactivos
+  const activeUsersCount = users.filter(u => activeSessions.has(u.id)).length;
+  const inactiveUsersCount = users.length - activeUsersCount;
 
   if (isLoading) {
     return (
@@ -442,36 +458,33 @@ function AdminUsers() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-2">Lista de Usuarios</h2>
-            <p className="text-gray-600">
-              Mostrando {filteredUsers.length} de {users.length} usuarios
-            </p>
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span>
+                Mostrando {filteredUsers.length} de {users.length} usuarios
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                {activeUsersCount} en línea
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                {inactiveUsersCount} desconectados
+              </span>
+            </div>
           </div>
 
           {/* Acciones rápidas */}
           <div className="flex gap-3">
             <button
-              onClick={() => loadUsers()}
+              onClick={() => {
+                loadUsers();
+                loadActiveSessions();
+              }}
               className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
             >
               <span>🔄</span>
               <span>Actualizar</span>
             </button>
-
-            {/* <button
-              onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
-            >
-              <span>{viewMode === 'table' ? '📊' : '📋'}</span>
-              <span>{viewMode === 'table' ? 'Vista Grid' : 'Vista Tabla'}</span>
-            </button> */}
-
-            {/* <button
-              onClick={() => handleBulkAction('export')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-            >
-              <span>📥</span>
-              <span>Exportar Todo</span>
-            </button> */}
           </div>
         </div>
 
@@ -546,6 +559,7 @@ function AdminUsers() {
               <option value="phq9">📊 PHQ-9 ↓</option>
               <option value="gad7">📊 GAD-7 ↓</option>
               <option value="recent">🕒 Más reciente</option>
+              <option value="active">🟢 Activos primero</option>
             </select>
 
           </div>
@@ -576,35 +590,6 @@ function AdminUsers() {
           )}
         </div>
 
-        {/* Acciones masivas */}
-        {selectedUsers.length > 0 && (
-          <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <span className="font-semibold text-blue-900">{selectedUsers.length} usuario(s) seleccionado(s)</span>
-            </div>
-            <div className="flex gap-2">
-              {/* <button
-                onClick={() => handleBulkAction('email')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
-              >
-                📧 Enviar Email
-              </button>
-              <button
-                onClick={() => handleBulkAction('export')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-              >
-                📥 Exportar
-              </button>
-              <button
-                onClick={() => handleBulkAction('delete')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-              >
-                🗑️ Eliminar
-              </button> */}
-            </div>
-          </div>
-        )}
-
         {/* Tabla de Usuarios */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <table className="w-full">
@@ -631,6 +616,7 @@ function AdminUsers() {
               {paginatedUsers.map((user) => {
                 const phq9Badge = getSeverityBadge(user.latest_phq9, 'phq9');
                 const gad7Badge = getSeverityBadge(user.latest_gad7, 'gad7');
+                const status = getUserStatus(user.id); // NUEVO
                 
                 return (
                   <tr 
@@ -691,11 +677,11 @@ function AdminUsers() {
                       {getTimeSince(user.created_at)}
                     </td>
 
-                    {/* Estado */}
+                    {/* CORREGIDO: Estado real basado en sesiones */}
                     <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        Activo
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 ${status.bgColor} ${status.textColor} text-xs font-medium rounded-full`}>
+                        <span className={`w-2 h-2 ${status.dotColor} rounded-full ${status.text === 'En línea' ? 'animate-pulse' : ''}`}></span>
+                        {status.text}
                       </span>
                     </td>
 

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import SessionManager from './components/SessionManager';
 
 // ✅ Carga inmediata solo para la landing (opcional)
 import Welcome from "./pages/Welcome";
@@ -40,34 +41,36 @@ function AppLoader() {
 function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<AppLoader />}>
-        <Routes>
-          <Route path="/" element={<Welcome />} />
+      <SessionManager>
+        <Suspense fallback={<AppLoader />}>
+          <Routes>
+            <Route path="/" element={<Welcome />} />
 
-          <Route path="/register" element={<Register />} />
-          <Route path="/profile-success" element={<ProfileSuccess />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/phq9" element={<PHQ9 />} />
-          <Route path="/gad7" element={<GAD7 />} />
-          <Route path="/results" element={<Results />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/profile-success" element={<ProfileSuccess />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/phq9" element={<PHQ9 />} />
+            <Route path="/gad7" element={<GAD7 />} />
+            <Route path="/results" element={<Results />} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/user/:userId" element={<AdminUserProfile />} />
-          <Route path="/admin/alerts" element={<AdminAlerts />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/user/:userId" element={<AdminUserProfile />} />
+            <Route path="/admin/alerts" element={<AdminAlerts />} />
 
-          <Route path="/exercises/anxiety" element={<AnxietyExercises />} />
-          <Route path="/exercises/depression" element={<DepressionExercises />} />
-          <Route path="/anxiety/breathing-vocalization" element={<BreathingVocalization />} />
-          <Route path="/anxiety/conscious-reading" element={<ConsciousReading />} />
-          <Route path="/depression/vocal-affirmations" element={<VocalAffirmations />} />
-          <Route path="/anxiety/vocal-practice" element={<VocalPractice />} />
-          <Route path="/depression/prosodic-reading" element={<ProsodicReading />} />
-          <Route path="/depression/guided-dialogue" element={<GuidedDialogue />} />
-        </Routes>
-      </Suspense>
+            <Route path="/exercises/anxiety" element={<AnxietyExercises />} />
+            <Route path="/exercises/depression" element={<DepressionExercises />} />
+            <Route path="/anxiety/breathing-vocalization" element={<BreathingVocalization />} />
+            <Route path="/anxiety/conscious-reading" element={<ConsciousReading />} />
+            <Route path="/depression/vocal-affirmations" element={<VocalAffirmations />} />
+            <Route path="/anxiety/vocal-practice" element={<VocalPractice />} />
+            <Route path="/depression/prosodic-reading" element={<ProsodicReading />} />
+            <Route path="/depression/guided-dialogue" element={<GuidedDialogue />} />
+          </Routes>
+        </Suspense>
+      </SessionManager>
     </BrowserRouter>
   );
 }
