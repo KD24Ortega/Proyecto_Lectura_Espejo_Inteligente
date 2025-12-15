@@ -142,7 +142,7 @@ const INFO_CONTENTS = {
                   Pitch (Tono fundamental)
                 </p>
                 <p className="text-gray-600">
-                  Frecuencia de tu voz. Valores bajos pueden indicar depresión.
+                  Frecuencia de tu voz. Cambios pueden reflejar tu estado emocional.
                 </p>
               </div>
             </li>
@@ -153,8 +153,7 @@ const INFO_CONTENTS = {
               <div>
                 <p className="font-semibold text-gray-800">Energía vocal</p>
                 <p className="text-gray-600">
-                  Intensidad de tu voz. Baja energía se asocia con fatiga
-                  emocional.
+                  Intensidad de tu voz. Refleja tu vitalidad y estado de ánimo.
                 </p>
               </div>
             </li>
@@ -220,7 +219,7 @@ const INFO_CONTENTS = {
 };
 
 /* =====================================================
-   MENSAJE CLÍNICO (fuera, puro)
+   MENSAJE CLÍNICO (fuera, puro) - VERSIÓN POSITIVA Y ALENTADORA
 ===================================================== */
 const getClinicalMessage = (result) => {
   const baseDisclaimer = (
@@ -236,16 +235,15 @@ const getClinicalMessage = (result) => {
         <>
           <p>
             <strong>Resultado del análisis vocal:</strong> Se detectaron
-            biomarcadores vocales asociados a alteraciones emocionales
-            significativas (riesgo ALTO).
+            biomarcadores vocales que sugieren la importancia de brindarte apoyo emocional adicional.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> PHQ-9 y GAD-7 sugieren
-            síntomas compatibles con depresión y ansiedad moderadas.
+            síntomas que merecen atención profesional.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Se recomienda seguimiento y
-            orientación profesional.
+            <strong>Recomendación:</strong> Te animamos a buscar orientación profesional. 
+            Pedir ayuda es un paso valiente hacia tu bienestar.
           </p>
           {baseDisclaimer}
         </>
@@ -255,15 +253,15 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> Biomarcadores
-            moderados (riesgo MODERADO).
+            <strong>Resultado del análisis vocal:</strong> Los biomarcadores sugieren
+            que podrías beneficiarte de apoyo adicional.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> PHQ-9 y GAD-7 ≥ 10.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Seguimiento cercano y apoyo
-            profesional si es posible.
+            <strong>Recomendación:</strong> Considera buscar acompañamiento profesional. 
+            Cuidar de ti mismo es importante y mereces sentirte mejor.
           </p>
           {baseDisclaimer}
         </>
@@ -273,16 +271,15 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> No se detectan
-            señales fuertes (LOW).
+            <strong>Resultado del análisis vocal:</strong> Tu voz muestra indicadores positivos.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> Los tests (PHQ-9 y GAD-7)
-            reportan síntomas relevantes.
+            reportan síntomas que vale la pena explorar.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Considera evaluación profesional
-            para validar resultados.
+            <strong>Recomendación:</strong> Sería beneficioso conversar con un profesional
+            para validar tus experiencias y encontrar estrategias de apoyo.
           </p>
           {baseDisclaimer}
         </>
@@ -293,13 +290,14 @@ const getClinicalMessage = (result) => {
         <>
           <p>
             <strong>Resultado del análisis vocal:</strong> Se detectaron
-            biomarcadores vocales fuertes (riesgo ALTO).
+            biomarcadores que indican la importancia de darte apoyo emocional.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> PHQ-9 ≥ 10, GAD-7 &lt; 10.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Se sugiere evaluación clínica.
+            <strong>Recomendación:</strong> Te sugerimos buscar evaluación profesional. 
+            Hay muchas herramientas disponibles para ayudarte a sentirte mejor.
           </p>
           {baseDisclaimer}
         </>
@@ -309,15 +307,15 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> Biomarcadores
-            moderados (riesgo MODERADO).
+            <strong>Resultado del análisis vocal:</strong> Los biomarcadores sugieren
+            que algunos cambios podrían ser beneficiosos.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> PHQ-9 ≥ 10.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Seguimiento y hábitos de apoyo;
-            buscar ayuda si empeora.
+            <strong>Recomendación:</strong> Mantén hábitos de autocuidado y considera 
+            buscar apoyo profesional si los síntomas persisten. Mereces sentirte bien.
           </p>
           {baseDisclaimer}
         </>
@@ -327,15 +325,14 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> LOW.
+            <strong>Resultado del análisis vocal:</strong> Tu voz muestra características positivas.
           </p>
           <p className="mt-2">
-            <strong>Evaluación combinada:</strong> PHQ-9 ≥ 10 (alerta por
-            auto-reporte).
+            <strong>Evaluación combinada:</strong> PHQ-9 ≥ 10 (según tu auto-reporte).
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Valida con un profesional si los
-            síntomas impactan tu día a día.
+            <strong>Recomendación:</strong> Si estos síntomas afectan tu día a día, 
+            conversar con un profesional puede darte herramientas valiosas para mejorar.
           </p>
           {baseDisclaimer}
         </>
@@ -346,14 +343,14 @@ const getClinicalMessage = (result) => {
         <>
           <p>
             <strong>Resultado del análisis vocal:</strong> Se detectaron
-            biomarcadores vocales fuertes (riesgo ALTO).
+            biomarcadores que sugieren la importancia de técnicas de regulación emocional.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> GAD-7 ≥ 10, PHQ-9 &lt; 10.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Se recomienda orientación
-            profesional.
+            <strong>Recomendación:</strong> Te animamos a buscar orientación profesional 
+            para aprender estrategias efectivas de manejo emocional.
           </p>
           {baseDisclaimer}
         </>
@@ -363,14 +360,15 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> Biomarcadores
-            moderados (riesgo MODERADO).
+            <strong>Resultado del análisis vocal:</strong> Los biomarcadores sugieren
+            que podrías beneficiarte de técnicas de regulación.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> GAD-7 ≥ 10.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Técnicas de regulación y seguimiento.
+            <strong>Recomendación:</strong> Practica técnicas de regulación emocional 
+            y mantén seguimiento de tu progreso. Estás tomando pasos positivos.
           </p>
           {baseDisclaimer}
         </>
@@ -380,15 +378,14 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> LOW.
+            <strong>Resultado del análisis vocal:</strong> Tu voz muestra buena estabilidad.
           </p>
           <p className="mt-2">
-            <strong>Evaluación combinada:</strong> GAD-7 ≥ 10 (alerta por
-            auto-reporte).
+            <strong>Evaluación combinada:</strong> GAD-7 ≥ 10 (según tu auto-reporte).
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Valida con apoyo profesional si se
-            mantiene.
+            <strong>Recomendación:</strong> Si estos síntomas persisten, 
+            buscar apoyo profesional puede ayudarte a desarrollar mejores estrategias de afrontamiento.
           </p>
           {baseDisclaimer}
         </>
@@ -398,16 +395,16 @@ const getClinicalMessage = (result) => {
       return (
         <>
           <p>
-            <strong>Resultado del análisis vocal:</strong> Riesgo ALTO en
-            biomarcadores vocales.
+            <strong>Resultado del análisis vocal:</strong> Tu voz muestra señales
+            que vale la pena explorar más a fondo.
           </p>
           <p className="mt-2">
-            <strong>Evaluación combinada:</strong> Tests bajos (PHQ-9 y GAD-7
+            <strong>Evaluación combinada:</strong> Tests en rango favorable (PHQ-9 y GAD-7
             &lt; 10).
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Repite ejercicios y revisa factores
-            (sueño, estrés, fatiga). Si persiste, busca orientación.
+            <strong>Recomendación:</strong> Repite ejercicios y cuida factores como 
+            sueño y estrés. Si persiste, conversa con un profesional para descartar causas físicas.
           </p>
           {baseDisclaimer}
         </>
@@ -418,14 +415,15 @@ const getClinicalMessage = (result) => {
         <>
           <p>
             <strong>Resultado del análisis vocal:</strong> Se detectaron
-            biomarcadores leves/moderados.
+            algunos indicadores leves que vale la pena monitorear.
           </p>
           <p className="mt-2">
-            <strong>Evaluación combinada:</strong> Tests sin indicios clínicos
+            <strong>Evaluación combinada:</strong> Tests en rango favorable
             (PHQ-9 y GAD-7 &lt; 10).
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Mantener seguimiento preventivo.
+            <strong>Recomendación:</strong> Mantén un seguimiento preventivo 
+            y continúa con tus hábitos saludables. Vas por buen camino.
           </p>
           {baseDisclaimer}
         </>
@@ -437,14 +435,15 @@ const getClinicalMessage = (result) => {
         <>
           <p>
             <strong>Resultado del análisis vocal:</strong> No se detectaron
-            patrones vocales relevantes.
+            patrones vocales de preocupación.
           </p>
           <p className="mt-2">
             <strong>Evaluación combinada:</strong> Los cuestionarios no sugieren
-            alteraciones clínicamente significativas.
+            alteraciones significativas.
           </p>
           <p className="mt-2">
-            <strong>Recomendación:</strong> Continúa con hábitos saludables.
+            <strong>Recomendación:</strong> ¡Excelente! Continúa con tus hábitos saludables 
+            y mantén este bienestar emocional.
           </p>
           {baseDisclaimer}
         </>
@@ -547,17 +546,17 @@ function Dashboard() {
     if (score >= 80) return "excellent";
     if (score >= 65) return "good";
     if (score >= 45) return "moderate";
-    if (score >= 30) return "concerning";
-    return "critical";
+    if (score >= 30) return "needs_attention";
+    return "needs_support";
   }, []);
 
   const getStatusText = useCallback((status) => {
     const texts = {
       excellent: "Excelente",
       good: "Bueno",
-      moderate: "Moderado",
-      concerning: "Preocupante",
-      critical: "Crítico",
+      moderate: "En progreso",
+      needs_attention: "Necesita atención",
+      needs_support: "Requiere apoyo",
     };
     return texts[status] || status;
   }, []);
@@ -566,7 +565,7 @@ function Dashboard() {
     if (trend === "improving")
       return { icon: "📈", text: "Mejorando", color: "text-green-600" };
     if (trend === "worsening")
-      return { icon: "📉", text: "Empeorando", color: "text-red-600" };
+      return { icon: "📊", text: "Requiere atención", color: "text-amber-600" };
     return { icon: "➡️", text: "Estable", color: "text-gray-600" };
   }, []);
 
@@ -607,8 +606,6 @@ function Dashboard() {
 
     const pitch = voiceSessions.reduce((sum, s) => sum + safeNum(s?.pitch_mean, 0), 0) / voiceSessions.length;
 
-    // Nota: tu código original hacía (avg_energy * 100). Mantengo esa lógica,
-    // pero cuidando NaN/undefined.
     const energy =
       (voiceSessions.reduce((sum, s) => sum + safeNum(s?.energy, 0), 0) / voiceSessions.length) * 100;
 
@@ -621,8 +618,8 @@ function Dashboard() {
     };
   }, [voiceSessions]);
 
-  // Calcular distribución riesgo 1 sola vez
-  const voiceRiskDistribution = useMemo(() => {
+  // Calcular distribución de indicadores vocales 1 sola vez
+  const voiceIndicatorDistribution = useMemo(() => {
     const total = voiceSessions.length || 0;
     const levels = ["LOW", "MODERATE", "HIGH"];
     const counts = { LOW: 0, MODERATE: 0, HIGH: 0 };
@@ -683,9 +680,9 @@ function Dashboard() {
   const multimodal = useMemo(() => calculateMultimodalScore(), [calculateMultimodalScore]);
 
   // ===============================
-  // ANÁLISIS MULTIMODAL CLÍNICO REAL (CORREGIDO)
+  // ANÁLISIS MULTIMODAL CLÍNICO REAL
   // ===============================
-  const voiceRisk = useMemo(() => {
+  const voiceIndicator = useMemo(() => {
     if (!voiceSessions.length) return "LOW";
     const order = { LOW: 0, MODERATE: 1, HIGH: 2 };
 
@@ -701,31 +698,31 @@ function Dashboard() {
 
   const multimodalClinicalResult = useMemo(() => {
     if (phqPositive && gadPositive) {
-      if (voiceRisk === "HIGH") return "DEPRESION_Y_ANSIEDAD_ALTA_PROB";
-      if (voiceRisk === "MODERATE") return "DEPRESION_Y_ANSIEDAD_PROBABLE";
+      if (voiceIndicator === "HIGH") return "DEPRESION_Y_ANSIEDAD_ALTA_PROB";
+      if (voiceIndicator === "MODERATE") return "DEPRESION_Y_ANSIEDAD_PROBABLE";
       return "DEPRESION_Y_ANSIEDAD_EN_TESTS";
     }
 
     if (phqPositive && !gadPositive) {
-      if (voiceRisk === "HIGH") return "DEPRESION_ALTA_PROB";
-      if (voiceRisk === "MODERATE") return "DEPRESION_PROBABLE";
+      if (voiceIndicator === "HIGH") return "DEPRESION_ALTA_PROB";
+      if (voiceIndicator === "MODERATE") return "DEPRESION_PROBABLE";
       return "DEPRESION_EN_TESTS";
     }
 
     if (!phqPositive && gadPositive) {
-      if (voiceRisk === "HIGH") return "ANSIEDAD_ALTA_PROB";
-      if (voiceRisk === "MODERATE") return "ANSIEDAD_PROBABLE";
+      if (voiceIndicator === "HIGH") return "ANSIEDAD_ALTA_PROB";
+      if (voiceIndicator === "MODERATE") return "ANSIEDAD_PROBABLE";
       return "ANSIEDAD_EN_TESTS";
     }
 
     if (!phqPositive && !gadPositive) {
-      if (voiceRisk === "HIGH") return "RIESGO_VOCAL_ALTO_SIN_TESTS";
-      if (voiceRisk === "MODERATE") return "RIESGO_EMOCIONAL_LEVE";
+      if (voiceIndicator === "HIGH") return "RIESGO_VOCAL_ALTO_SIN_TESTS";
+      if (voiceIndicator === "MODERATE") return "RIESGO_EMOCIONAL_LEVE";
       return "SIN_INDICIOS";
     }
 
     return "SIN_INDICIOS";
-  }, [phqPositive, gadPositive, voiceRisk]);
+  }, [phqPositive, gadPositive, voiceIndicator]);
 
   // ===============================
   // CHART: precálculo de puntos (mejor rendimiento)
@@ -850,8 +847,8 @@ function Dashboard() {
       excellent: "from-green-500 to-emerald-500",
       good: "from-blue-500 to-cyan-500",
       moderate: "from-yellow-500 to-orange-500",
-      concerning: "from-orange-500 to-red-500",
-      critical: "from-red-600 to-red-800",
+      needs_attention: "from-orange-500 to-amber-600",
+      needs_support: "from-amber-600 to-orange-700",
     };
     return colors[status] || "from-gray-500 to-gray-700";
   };
@@ -872,7 +869,7 @@ function Dashboard() {
       {enableFace && <FaceMonitor isActive={true} />}
 
       {/* Música de fondo */}
-            <BackgroundMusic musicFile={theme.music} volume={0.2} />
+      <BackgroundMusic musicFile={theme.music} volume={0.2} />
 
       <InfoModal
         isOpen={showInfo !== null}
@@ -1204,18 +1201,18 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {/* Distribución de riesgo */}
+                {/* Distribución de indicadores */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-sm font-semibold text-gray-700 mb-3">
-                    Distribución de Nivel de Riesgo
+                    Distribución de Indicadores Vocales
                   </p>
 
                   <div className="space-y-2">
-                    {voiceRiskDistribution.map(({ level, count, percent }) => {
+                    {voiceIndicatorDistribution.map(({ level, count, percent }) => {
                       const colors = {
-                        LOW: { bg: "bg-green-500", text: "Bajo" },
-                        MODERATE: { bg: "bg-yellow-500", text: "Moderado" },
-                        HIGH: { bg: "bg-red-500", text: "Alto" },
+                        LOW: { bg: "bg-green-500", text: "Favorable" },
+                        MODERATE: { bg: "bg-yellow-500", text: "Atención" },
+                        HIGH: { bg: "bg-orange-500", text: "Apoyo necesario" },
                       };
 
                       return (
@@ -1555,7 +1552,7 @@ function Dashboard() {
                   ? "bg-blue-50 border-blue-300"
                   : multimodal.status === "moderate"
                   ? "bg-yellow-50 border-yellow-300"
-                  : "bg-red-50 border-red-300"
+                  : "bg-orange-50 border-orange-300"
               }`}
             >
               <div className="flex items-start gap-4">
@@ -1565,8 +1562,8 @@ function Dashboard() {
                     : multimodal.status === "good"
                     ? "👍"
                     : multimodal.status === "moderate"
-                    ? "⚠️"
-                    : "🚨"}
+                    ? "💪"
+                    : "🤝"}
                 </span>
 
                 <div className="flex-1">
@@ -1609,12 +1606,12 @@ function Dashboard() {
                   {multimodal.status === "moderate" && (
                     <>
                       <p className="font-bold text-yellow-900 mb-2">
-                        Es momento de actuar
+                        Puedes mejorar con pequeños cambios
                       </p>
                       <p className="text-yellow-800 mb-3">
                         {multimodal.testsScore > multimodal.voiceScore
-                          ? "Tu voz muestra más señales de estrés que tus tests. Esto puede indicar tensión no reconocida."
-                          : "Tus tests muestran más preocupación que tu voz. Considera evaluar cómo te sientes realmente."}
+                          ? "Tu voz sugiere que podrías estar experimentando tensión no reconocida. Es una oportunidad para cuidarte más."
+                          : "Tus tests muestran algunas áreas de oportunidad. Reflexionar sobre cómo te sientes puede ayudarte."}
                       </p>
                       <ul className="text-sm text-yellow-700 space-y-1">
                         <li>• Aumenta la frecuencia de ejercicios de voz</li>
@@ -1624,34 +1621,34 @@ function Dashboard() {
                     </>
                   )}
 
-                  {(multimodal.status === "concerning" ||
-                    multimodal.status === "critical") && (
+                  {(multimodal.status === "needs_attention" ||
+                    multimodal.status === "needs_support") && (
                     <>
-                      <p className="font-bold text-red-900 mb-2">
-                        Necesitas apoyo profesional
+                      <p className="font-bold text-orange-900 mb-2">
+                        Mereces recibir apoyo profesional
                       </p>
-                      <p className="text-red-800 mb-3">
-                        Tu evaluación multimodal indica que sería muy
-                        beneficioso buscar ayuda profesional.
+                      <p className="text-orange-800 mb-3">
+                        Tu evaluación multimodal sugiere que buscar ayuda profesional
+                        puede ser muy beneficioso para ti.
                         {Math.abs(multimodal.testsScore - multimodal.voiceScore) >
                           20 && (
                           <>
                             {" "}
-                            Hay una discrepancia significativa entre tus tests y
-                            análisis de voz, lo cual refuerza esta recomendación.
+                            Hay diferencias entre tus tests y análisis de voz que vale 
+                            la pena explorar con un especialista.
                           </>
                         )}
                       </p>
                       <div className="flex flex-wrap gap-3 mt-4">
                         <a
                           href="tel:952"
-                          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition shadow-lg"
+                          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition shadow-lg"
                         >
                           📞 Llamar Línea 952
                         </a>
                         <button
                           onClick={() => navigate("/home")}
-                          className="px-6 py-3 bg-white border-2 border-red-600 text-red-600 rounded-lg font-bold hover:bg-red-50 transition"
+                          className="px-6 py-3 bg-white border-2 border-orange-600 text-orange-600 rounded-lg font-bold hover:bg-orange-50 transition"
                         >
                           Ver recursos de ayuda
                         </button>

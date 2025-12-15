@@ -545,7 +545,7 @@ function GAD7() {
           >
             <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl p-5 border-2 border-teal-100">
               <p className="text-sm text-gray-600 mb-3 font-medium">
-                Durante las últimas dos semanas, ¿con qué frecuencia has sentido...?
+                Durante los últimos días, ¿con qué frecuencia has sentido...?
               </p>
 
               <div className="flex items-start gap-3">
