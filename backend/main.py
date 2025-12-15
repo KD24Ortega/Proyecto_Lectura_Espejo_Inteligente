@@ -2060,9 +2060,3 @@ async def get_user_voice_stats(
             status_code=500,
             detail=f"Error obteniendo estadísticas: {str(e)}"
         )
-        
-        
-        
-# ============================================================
-# Inicio y cierre de sesiones
-# ============================================================

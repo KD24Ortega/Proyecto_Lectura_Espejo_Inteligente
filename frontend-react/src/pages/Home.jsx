@@ -22,47 +22,6 @@ import {
   MiniToast 
 } from '../components/RecommendationNotifications';
 
-// Modal personalizado genérico
-const Modal = ({ isOpen, onClose, title, children, icon = 'ℹ️' }) => {
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{icon}</span>
-                <h2 className="text-3xl font-bold text-gray-800">{title}</h2>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition"
-              >
-                ✕
-              </button>
-            </div>
-            {children}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
-
 function Home() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('');
@@ -70,7 +29,6 @@ function Home() {
   const [emotionalState, setEmotionalState] = useState('sin_evaluacion');
   const [theme, setTheme] = useState(null);
   const [lastScores, setLastScores] = useState({ phq9: null, gad7: null });
-  const [showMirror, setShowMirror] = useState(false);
 
   // Estados para recomendaciones
   const [recommendations, setRecommendations] = useState([]);
@@ -187,40 +145,38 @@ function Home() {
     }, 15000);
   };
 
-  const handleLogout = async () => {
-    try {
-      const userId = localStorage.getItem('user_id');
+  // ============================================================
+  // LOGOUT OPTIMIZADO - NO BLOQUEA LA UI
+  // ============================================================
+  const handleLogout = () => {
+    const userId = localStorage.getItem('user_id');
+    
+    // 1. PRIMERO: Limpiar localStorage INMEDIATAMENTE (operación síncrona)
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('last_recognition');
+    localStorage.removeItem('last_recommendation_shown');
+    
+    console.log('🧹 LocalStorage limpiado');
+    
+    // 2. SEGUNDO: Navegar INMEDIATAMENTE (no esperar backend)
+    navigate('/');
+    
+    // 3. TERCERO: Cerrar sesión en BD en BACKGROUND (fire-and-forget)
+    if (userId) {
+      console.log('🔄 Cerrando sesión en BD (background)...');
       
-      // IMPORTANTE: Cerrar sesión en BD
-      if (userId) {
-        console.log('🔄 Cerrando sesión en BD para user_id:', userId);
-        
-        try {
-          await api.post('/session/end', {
-            user_id: parseInt(userId)
-          });
-          console.log('✅ Sesión cerrada correctamente en BD');
-        } catch (sessionError) {
-          console.error('⚠️ Error al cerrar sesión en BD:', sessionError);
-          // Continuar de todas formas
-        }
-      }
-      
-      // Limpiar localStorage
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('last_recognition');
-      localStorage.removeItem('last_recommendation_shown');
-      
-      console.log('🧹 LocalStorage limpiado');
-      
-      // Redirigir
-      navigate('/');
-      
-    } catch (error) {
-      console.error('❌ Error durante logout:', error);
-      localStorage.clear();
-      navigate('/');
+      // No usar await - ejecutar en background sin bloquear
+      api.post('/session/end', {
+        user_id: parseInt(userId)
+      })
+      .then(() => {
+        console.log('✅ Sesión cerrada en BD');
+      })
+      .catch((error) => {
+        console.error('⚠️ Error al cerrar sesión en BD:', error);
+        // No importa si falla, el usuario ya cerró sesión localmente
+      });
     }
   };
 
@@ -287,231 +243,6 @@ function Home() {
           setShowRecommendationModal(true);
         }}
       />
-
-      {/* Botón flotante del espejo */}
-      <button
-        onClick={() => setShowMirror(!showMirror)}
-        className={`fixed right-6 top-1/2 -translate-y-1/2 z-40 w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center ${
-          showMirror 
-            ? 'bg-red-500 hover:bg-red-600' 
-            : 'bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
-        } hover:scale-110`}
-        title={showMirror ? 'Ocultar espejo' : 'Ver espejo'}
-      >
-        <span className="text-3xl">{showMirror ? '✕' : '🪞'}</span>
-      </button>
-
-      {/* 🪞 Espejo virtual (Modal Mejorado) */}
-      <AnimatePresence>
-        {showMirror && (
-          <motion.div
-            key="mirror-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] flex items-center justify-center p-4"
-            aria-modal="true"
-            role="dialog"
-            onClick={() => setShowMirror(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setShowMirror(false);
-            }}
-            tabIndex={-1}
-          >
-            {/* Backdrop (más elegante) */}
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-
-            <motion.div
-              key="mirror-modal"
-              initial={{ opacity: 0, y: 30, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 30, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 260, damping: 22 }}
-              className="relative w-full max-w-5xl overflow-hidden rounded-3xl shadow-2xl border border-white/20 bg-white"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Borde “glass” con gradiente */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/10 to-pink-500/10" />
-                <div className="absolute inset-0 ring-1 ring-white/10" />
-              </div>
-
-              {/* Header pegajoso */}
-              <div className="relative flex items-center justify-between px-5 sm:px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center shadow-inner">
-                    <span className="text-2xl">🪞</span>
-                  </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold leading-tight">
-                      Espejo Virtual
-                    </h3>
-                    <p className="text-white/80 text-xs sm:text-sm">
-                      Tu reflejo en tiempo real · Ajusta tu postura y encuadre
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Botón “Ayuda” opcional */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Si quieres, aquí puedes alternar un panel de tips más grande
-                      // setShowMirrorHelp((v)=>!v)
-                    }}
-                    className="hidden sm:inline-flex px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 transition text-sm font-semibold"
-                    title="Consejos rápidos"
-                  >
-                    💡 Tips
-                  </button>
-
-                  {/* Cerrar */}
-                  <button
-                    type="button"
-                    onClick={() => setShowMirror(false)}
-                    className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 transition flex items-center justify-center text-xl"
-                    aria-label="Cerrar espejo"
-                    title="Cerrar (Esc)"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              {/* Contenido */}
-              <div className="relative bg-gray-950">
-                {/* Top bar: estado + acciones */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 sm:px-6 py-4 bg-black/30 border-b border-white/10">
-                  {/* Estado */}
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white text-xs sm:text-sm">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Cámara activa
-                    </span>
-
-                    <span className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs sm:text-sm">
-                      <span>📍</span>
-                      Centra tu rostro
-                    </span>
-                  </div>
-
-                  {/* Acciones (funcional “ligero”) */}
-                  <div className="flex items-center gap-2 justify-end">
-                    {/* Nota: si tu componente <Camera/> soporta props extra (mirrored / onCapture real),
-                        puedes conectarlo aquí. Si NO, estos botones igual sirven visualmente. */}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Si tu Camera soporta toggle espejo, podrías guardar estado:
-                        // setMirrorFlip(v=>!v)
-                      }}
-                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition"
-                      title="Espejo (voltear horizontal)"
-                    >
-                      ↔️ Espejo
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Si tu Camera expone una función de captura real, llámala aquí.
-                        // Si no, puedes mantener onCapture vacío como antes.
-                      }}
-                      className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-sm font-semibold transition shadow-lg"
-                      title="Capturar foto"
-                    >
-                      📸 Capturar
-                    </button>
-                  </div>
-                </div>
-
-                {/* Cámara (más responsivo) */}
-                <div className="relative w-full h-[62vh] max-h-[560px] min-h-[360px]">
-                  <Camera onCapture={() => {}} isActive={true} />
-
-                  {/* Grid overlay suave */}
-                  <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute inset-0 opacity-20">
-                      <div className="w-full h-full grid grid-cols-3">
-                        <div className="border-r border-white/20" />
-                        <div className="border-r border-white/20" />
-                        <div />
-                      </div>
-                      <div className="absolute inset-0 grid grid-rows-3">
-                        <div className="border-b border-white/20" />
-                        <div className="border-b border-white/20" />
-                        <div />
-                      </div>
-                    </div>
-
-                    {/* Marco facial aproximado */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-[240px] sm:w-[280px] h-[320px] sm:h-[360px] rounded-[48px] border-2 border-white/30 shadow-[0_0_0_9999px_rgba(0,0,0,0.12)]" />
-                    </div>
-                  </div>
-
-                  {/* Tips overlay (más bonito) */}
-                  <div className="absolute left-4 right-4 bottom-4">
-                    <div className="bg-black/55 backdrop-blur-md border border-white/15 rounded-2xl p-4 text-white shadow-xl">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">💡</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm sm:text-base font-semibold leading-snug">
-                            Consejos rápidos
-                          </p>
-                          <div className="mt-1 text-xs sm:text-sm text-white/85 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                            <span>• Buena luz frontal</span>
-                            <span>• Mantén la cámara a la altura de tus ojos</span>
-                            <span>• Rostro dentro del marco</span>
-                            <span>• Evita contraluz</span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setShowMirror(false)}
-                          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 transition text-xs sm:text-sm font-semibold"
-                          title="Cerrar"
-                        >
-                          Cerrar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-5 sm:px-6 py-4 bg-black/30 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <p className="text-xs sm:text-sm text-white/80">
-                    Tip: Puedes cerrar con <span className="font-semibold text-white">ESC</span>.
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowMirror(false)}
-                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowMirror(false)}
-                      className="px-4 py-2 rounded-xl bg-white text-gray-900 hover:bg-gray-100 text-sm font-bold transition shadow"
-                      title="Listo"
-                    >
-                      ✓ Listo
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Header */}
       <div className="flex justify-between items-center mb-8">

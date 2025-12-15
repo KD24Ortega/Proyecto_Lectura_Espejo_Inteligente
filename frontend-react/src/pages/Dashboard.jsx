@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
 import { getEmotionalState, getTheme } from "../utils/themeSystem";
+import BackgroundMusic from '../components/BackgroundMusic';
 
 /* =====================================================
    CONSTANTES / HELPERS (fuera del componente)
@@ -869,6 +870,9 @@ function Dashboard() {
     <div className={`min-h-screen bg-gradient-to-br ${theme?.colors?.primary || "from-blue-200 via-purple-200 to-pink-200"} p-6 transition-all duration-1000`}>
       {/* ✅ FaceMonitor diferido para mejorar el primer render */}
       {enableFace && <FaceMonitor isActive={true} />}
+
+      {/* Música de fondo */}
+            <BackgroundMusic musicFile={theme.music} volume={0.2} />
 
       <InfoModal
         isOpen={showInfo !== null}

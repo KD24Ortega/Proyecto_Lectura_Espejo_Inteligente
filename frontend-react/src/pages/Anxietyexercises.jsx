@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import FaceMonitor from "../components/FaceMonitor";
+import BackgroundMusic from '../components/BackgroundMusic';
 
 // ✅ Hook
 import useDynamicTheme from "../hooks/useDynamicTheme";
@@ -89,6 +90,9 @@ function AnxietyExercises() {
     >
       {/* ✅ Reconocimiento por cámara */}
       <FaceMonitor isActive={true} />
+
+      {/* ✅ Música de fondo */}
+      <BackgroundMusic musicFile={theme.music} volume={0.2} />
 
       <div className="max-w-4xl mx-auto">
         {/* Header */}

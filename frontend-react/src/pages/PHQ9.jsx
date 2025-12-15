@@ -251,7 +251,7 @@ function PHQ9() {
 
     const questionText = `Pregunta ${currentQuestion + 1} de ${
       questions.length
-    }. Durante las últimas dos semanas, ¿con qué frecuencia has sentido: ${
+    }. En los últimos días, ¿con qué frecuencia has sentido: ${
       questions[currentQuestion]
     }?`;
 
@@ -640,7 +640,7 @@ function PHQ9() {
                         </p>
                       </div>
                       <p className="text-xs text-purple-700 mb-2">
-                        Di: "cero", "uno", "dos" o "tres"
+                        Haz clic en el micrófono y di tu respuesta en voz alta.
                       </p>
 
                       {voiceTranscript && (
