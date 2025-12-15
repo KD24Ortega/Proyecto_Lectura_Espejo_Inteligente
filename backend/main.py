@@ -618,6 +618,8 @@ async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)
 # ==============================================
 # 📌 Reconocimiento facial SIN crear sesión (chequeo presencia)
 # ==============================================
+from fastapi.concurrency import run_in_threadpool
+
 @app.post("/face/recognize/check")
 async def recognize_face_check(
     request: Request,
@@ -635,7 +637,7 @@ async def recognize_face_check(
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    return face_service.recognize(np_img)
+    return await run_in_threadpool(face_service.recognize, np_img)
 
 # ============================================================
 # ENDPOINTS DE SESIONES (CORREGIDOS SIN ROUTER)

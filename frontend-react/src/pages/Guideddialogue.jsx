@@ -177,7 +177,8 @@ function GuidedDialogue() {
   if (isAnalyzing) {
     return (
       <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}>
-        <FaceMonitor isActive={true} />
+        <FaceMonitor isActive={!isAnalyzing} />
+
         <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
           <div className="w-20 h-20 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu diálogo…</h2>

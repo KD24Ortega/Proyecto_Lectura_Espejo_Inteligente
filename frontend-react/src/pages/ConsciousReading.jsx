@@ -159,7 +159,7 @@ function ConsciousReading() {
   if (isAnalyzing) {
     return (
       <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}>
-        <FaceMonitor isActive={true} />
+        <FaceMonitor isActive={!isAnalyzing} />
 
         <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-md">
           <div className="w-20 h-20 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>

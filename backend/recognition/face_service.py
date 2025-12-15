@@ -6,6 +6,7 @@
 
 import cv2
 import numpy as np
+import threading
 import face_recognition
 from mediapipe import solutions as mp_solutions
 from typing import Dict, List, Optional, Tuple
@@ -106,28 +107,25 @@ def assess_image_quality(frame) -> Dict[str, any]:
 
 
 class FaceRecognitionService:
-    
+    _detector_lock = threading.Lock()
+    _shared_detector = None
+
     def __init__(self, db: Session):
-        """
-        Inicializa el servicio de reconocimiento facial con acceso a base de datos
-        
-        Args:
-            db: Sesión de SQLAlchemy para acceso a la base de datos
-        """
-        print("🔵 Inicializando FaceRecognitionService v3.0 (Database Edition)...")
-        
         self.db = db
 
-        # MediaPipe para detección
-        self.mp_detection = mp_solutions.face_detection
-        self.detector = self.mp_detection.FaceDetection(
-            model_selection=1,  # Modelo 1 = mejor precisión
-            min_detection_confidence=0.6
-        )
+        if FaceRecognitionService._shared_detector is None:
+            with FaceRecognitionService._detector_lock:
+                if FaceRecognitionService._shared_detector is None:
+                    FaceRecognitionService._shared_detector = mp_solutions.face_detection.FaceDetection(
+                        model_selection=1,
+                        min_detection_confidence=0.6
+                    )
+
+        self.detector = FaceRecognitionService._shared_detector
         
         # Configuración de umbrales
         self.RECOGNITION_THRESHOLD = 0.50
-        self.MIN_CONFIDENCE = 0.55
+        self.MIN_CONFIDENCE = 0.50
         self.MARGIN_THRESHOLD = 0.08
         
         print(f"✅ Servicio inicializado (usando PostgreSQL)")
@@ -173,11 +171,10 @@ class FaceRecognitionService:
     # ============================================================
     # Detectar rostro
     # ============================================================
-    def _detect_face(self, frame) -> Optional[np.ndarray]:
-        """Detecta y extrae el rostro del frame"""
-        
+    def _detect_face(self, frame):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.detector.process(rgb)
+        with FaceRecognitionService._detector_lock:
+            results = self.detector.process(rgb)
 
         if not results.detections:
             return None
@@ -323,56 +320,29 @@ class FaceRecognitionService:
     # Reconocer usuario
     # ============================================================
     def recognize(self, frame: np.ndarray, require_quality_check: bool = True) -> Dict:
-        """
-        Reconoce un rostro comparando con encodings en la base de datos
-        
-        Args:
-            frame: Frame de la cámara
-            require_quality_check: Si True, valida calidad de imagen
-        
-        Returns:
-            Dict con found, user_id, user_name, confidence, y metadata
-        """
-        
-        # Verificar calidad
         if require_quality_check:
             quality = assess_image_quality(frame)
             if not quality["is_acceptable"]:
-                return {
-                    "found": False,
-                    "user": None,
-                    "user_id": None,
-                    "confidence": 0,
-                    "message": "Calidad de imagen insuficiente",
-                    "quality_info": quality
-                }
-        
-        # Convertir a RGB
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                return {"found": False, "user": None, "user_id": None, "confidence": 0, "message": "Calidad insuficiente", "quality_info": quality}
 
-        # Detectar caras
-        locations = face_recognition.face_locations(rgb, model="hog")
+        # ✅ recorte rápido con MediaPipe
+        face_img = self._detect_face(frame)
+        if face_img is None:
+            return {"found": False, "user": None, "user_id": None, "confidence": 0, "message": "No se detectó rostro"}
 
+        # ✅ mismo pipeline del registro
+        face_img = enhance_image(face_img)
+        face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+        face_aligned = align_face(face_rgb)
+
+        # ahora el encoding se hace sobre un recorte chico (más rápido y estable)
+        locations = face_recognition.face_locations(face_aligned, model="hog")
         if not locations:
-            return {
-                "found": False,
-                "user": None,
-                "user_id": None,
-                "confidence": 0,
-                "message": "No se detectó rostro"
-            }
+            return {"found": False, "user": None, "user_id": None, "confidence": 0, "message": "No se detectó rostro (recorte)"}
 
-        # Obtener encodings
-        encodings = face_recognition.face_encodings(rgb, locations)
-
+        encodings = face_recognition.face_encodings(face_aligned, locations)
         if not encodings:
-            return {
-                "found": True,
-                "user": None,
-                "user_id": None,
-                "confidence": 0,
-                "message": "No se pudo generar encoding"
-            }
+            return {"found": False, "user": None, "user_id": None, "confidence": 0, "message": "No se pudo generar encoding"}
 
         encoding = encodings[0]
 

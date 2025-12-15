@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
@@ -7,12 +7,95 @@ import Camera from './Camera';
 function FaceMonitor({ isActive = true }) {
   const navigate = useNavigate();
 
+  // ==========================
+  // Configuración
+  // ==========================
+  const TIMEOUT_MS = 15000;           // ✅ 15s
+  const CAPTURE_EVERY_MS = 900;       // frames llegan frecuente, pero requests NO (ver inFlight)
+  const REQUEST_TIMEOUT_MS = 8000;    // ✅ sube timeout (tu backend a veces tarda > 3.5s)
+  const MAX_INFLIGHT_MS = 9000;       // ✅ watchdog: si se pega, abort
+
   const [countdown, setCountdown] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const lastDetectionTimeRef = useRef(Date.now());
   const initializedRef = useRef(false);
   const currentUserRef = useRef(localStorage.getItem('user_name'));
+
+  const showModalRef = useRef(false);
+  const isActiveRef = useRef(isActive);
+
+  useEffect(() => { showModalRef.current = showModal; }, [showModal]);
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+
+  // Para throttle y control
+  const lastSentRef = useRef(0);
+
+  // Anti respuestas viejas
+  const requestIdRef = useRef(0);
+
+  // ✅ Control de request en vuelo
+  const inFlightRef = useRef(false);
+  const inFlightSinceRef = useRef(0);
+  const abortRef = useRef(null);
+
+  // ==========================
+  // Countdown estable
+  // ==========================
+  const deadlineRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
+  const lastSecRef = useRef(null);
+
+  const openModal = useCallback(() => {
+    showModalRef.current = true;
+    setShowModal(true);
+  }, []);
+
+  const clearCountdown = useCallback(() => {
+    deadlineRef.current = null;
+    lastSecRef.current = null;
+    setCountdown(null);
+
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, []);
+
+  const startCountdownIfNeeded = useCallback((reason = '') => {
+    if (showModalRef.current) return;     // ✅ si ya está cerrando, no reinicies
+    if (deadlineRef.current) return;      // ✅ ya corriendo
+
+    deadlineRef.current = Date.now() + TIMEOUT_MS;
+    console.log(`⏱️ FaceMonitor: countdown iniciado (15s). ${reason}`);
+
+    const tick = () => {
+      if (showModalRef.current) {
+        clearCountdown();
+        return;
+      }
+
+      const remainMs = deadlineRef.current - Date.now();
+      const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+
+      if (lastSecRef.current !== remainSec) {
+        lastSecRef.current = remainSec;
+        setCountdown(remainSec);
+
+        if (remainSec === 15 || remainSec === 10 || remainSec === 5 || remainSec <= 3) {
+          console.log(`⏳ FaceMonitor: quedan ${remainSec}s`);
+        }
+      }
+
+      if (remainMs <= 0) {
+        clearCountdown();
+        console.log('🛑 FaceMonitor: timeout alcanzado -> cerrando sesión');
+        openModal();
+      }
+    };
+
+    tick();
+    countdownIntervalRef.current = setInterval(tick, 200);
+  }, [clearCountdown, openModal]);
 
   // ==========================
   // Convertir base64 -> Blob
@@ -22,57 +105,130 @@ function FaceMonitor({ isActive = true }) {
     const mime = arr[0].match(/:(.*?);/)[1];
     const bstr = atob(arr[1]);
     const u8arr = new Uint8Array(bstr.length);
-
-    for (let i = 0; i < bstr.length; i++) {
-      u8arr[i] = bstr.charCodeAt(i);
-    }
-
+    for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
     return new Blob([u8arr], { type: mime });
   };
 
   // ==========================
-  // Procesar cada captura
+  // Debug: frame recibido
   // ==========================
-  const onCapture = async (dataURL) => {
-    if (!dataURL || !currentUserRef.current || showModal) return;
+  const lastFrameLogRef = useRef(0);
+
+  // ==========================
+  // Worker
+  // ==========================
+  const onCaptureWorker = async (dataURL) => {
+    if (!isActiveRef.current || !dataURL || showModalRef.current) return;
+
+    const now = Date.now();
+    if (now - lastFrameLogRef.current > 1000) {
+      lastFrameLogRef.current = now;
+      console.log('🎥 FaceMonitor: frame recibido');
+    }
+
+    // Throttle de entrada (no de requests)
+    if (now - lastSentRef.current < CAPTURE_EVERY_MS) return;
+    lastSentRef.current = now;
+
+    // ✅ Si hay request en vuelo, NO mandes otra (evita saturar backend)
+    if (inFlightRef.current) {
+      const stuckFor = Date.now() - inFlightSinceRef.current;
+      if (stuckFor > MAX_INFLIGHT_MS) {
+        console.log(`⚠️ FaceMonitor: request pegada (${stuckFor}ms) -> abortando`);
+        try { abortRef.current?.abort(); } catch {}
+        inFlightRef.current = false;
+        abortRef.current = null;
+        requestIdRef.current++; // invalida respuesta tardía
+      } else {
+        console.log('⏸️ FaceMonitor: request en vuelo, esperando...');
+        return;
+      }
+    }
+
+    const userNow = localStorage.getItem('user_name');
+    if (!userNow) {
+      console.log('⚠️ FaceMonitor: no hay user_name -> /');
+      navigate('/');
+      return;
+    }
+
+    if (currentUserRef.current !== userNow) {
+      console.log(`🔄 FaceMonitor: user cambió ${currentUserRef.current} -> ${userNow}`);
+      currentUserRef.current = userNow;
+      clearCountdown();
+      requestIdRef.current++; // invalida respuestas viejas
+    }
+
+    // Preparar request
+    const myRequestId = ++requestIdRef.current;
+    const t0 = performance.now();
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    inFlightRef.current = true;
+    inFlightSinceRef.current = Date.now();
 
     try {
       const blob = dataURLtoBlob(dataURL);
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
+      console.log(`📸 FaceMonitor: enviando checkPresence (req=${myRequestId})`);
+
       const res = await api.post('/face/recognize/check', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: REQUEST_TIMEOUT_MS,
+        signal: controller.signal,
       });
 
-      const result = res.data;
+      const dt = Math.round(performance.now() - t0);
 
-      // ✅ Usuario presente
-      if (result.found && result.user === currentUserRef.current) {
-        lastDetectionTimeRef.current = Date.now();
-        setCountdown(null); // Ocultar contador
-        console.log(`✓ ${result.user} presente`);
+      // Ignorar respuesta vieja
+      if (myRequestId !== requestIdRef.current) {
+        console.log(`🕒 FaceMonitor: respuesta vieja ignorada (req=${myRequestId}, ${dt}ms)`);
         return;
       }
 
-      // ⏱️ Tiempo sin detección
-      const elapsed = Date.now() - lastDetectionTimeRef.current;
-      const remain = Math.max(0, Math.ceil((10000 - elapsed) / 1000));
+      const result = res.data;
+      const expected = currentUserRef.current;
 
-      setCountdown(remain);
-
-      if (elapsed >= 10000) {
-        console.log('⏱️ Timeout - cerrando sesión');
-        setShowModal(true);
-        setCountdown(null);
-      } else {
-        console.log(`⚠️ No detectado (${remain}s restantes)`);
+      if (result?.found && result?.user === expected) {
+        console.log(`✅ FaceMonitor: presente -> ${result.user} (${dt}ms)`);
+        clearCountdown();
+        return;
       }
 
+      if (result?.found && result?.user && result.user !== expected) {
+        console.log(`🚫 FaceMonitor: detectado otro usuario (${result.user}) != (${expected}) (${dt}ms)`);
+        startCountdownIfNeeded(`Motivo: detectado ${result.user}`);
+        return;
+      }
+
+      console.log(`⚠️ FaceMonitor: usuario no detectado (${dt}ms)`);
+      startCountdownIfNeeded('Motivo: no detectado');
+
     } catch (err) {
+      // ✅ Si fue abort, NO lo trates como ausencia (evita countdown falso)
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+        console.log('🧯 FaceMonitor: request cancelada (abort) -> no cuenta como ausencia');
+        return;
+      }
+
+      console.log('❌ FaceMonitor: error/timeout en checkPresence');
+      startCountdownIfNeeded('Motivo: error/timeout');
       console.error('Error en checkPresence:', err);
+
+    } finally {
+      inFlightRef.current = false;
+      abortRef.current = null;
     }
   };
+
+  // ✅ callback estable para Camera
+  const onCaptureRef = useRef(onCaptureWorker);
+  useEffect(() => { onCaptureRef.current = onCaptureWorker; });
+  const onCaptureStable = useCallback((dataURL) => onCaptureRef.current(dataURL), []);
 
   // ==========================
   // Inicialización
@@ -82,30 +238,39 @@ function FaceMonitor({ isActive = true }) {
 
     const user = localStorage.getItem('user_name');
     if (!user) {
+      console.log('⚠️ FaceMonitor: no hay sesión -> /');
       navigate('/');
       return;
     }
 
     currentUserRef.current = user;
     initializedRef.current = true;
-    lastDetectionTimeRef.current = Date.now();
+    clearCountdown();
 
-    console.log('👁️ Monitoreo activado para:', user);
+    console.log('👁️ FaceMonitor: monitoreo activado para:', user);
 
     return () => {
       initializedRef.current = false;
+      clearCountdown();
+      try { abortRef.current?.abort(); } catch {}
+      console.log('🧹 FaceMonitor: desmontado -> limpiando');
     };
-  }, [isActive, navigate]);
+  }, [isActive, navigate, clearCountdown]);
 
   // ==========================
   // Logout definitivo
   // ==========================
   const finalizeLogout = () => {
+    console.log('🚪 FaceMonitor: cerrando sesión y limpiando localStorage');
+    try { abortRef.current?.abort(); } catch {}
+
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_name');
     localStorage.removeItem('last_recognition');
 
+    clearCountdown();
     setShowModal(false);
+    showModalRef.current = false;
     navigate('/');
   };
 
@@ -113,14 +278,9 @@ function FaceMonitor({ isActive = true }) {
 
   return (
     <>
-      {/* CÁMARA OCULTA */}
-      <Camera
-        isActive={isActive}
-        onCapture={onCapture}
-        hidden
-      />
+      {/* ✅ Importante: cuando showModal está activo, apaga Camera */}
+      <Camera isActive={isActive && !showModal} onCapture={onCaptureStable} hidden />
 
-     {/* CONTADOR EN PANTALLA */}
       <AnimatePresence>
         {countdown !== null && countdown > 0 && !showModal && (
           <motion.div
@@ -129,12 +289,11 @@ function FaceMonitor({ isActive = true }) {
             exit={{ y: -30, opacity: 0 }}
             className="fixed top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-xl font-bold z-[999]"
           >
-            ⏱️ Reconectando en {countdown}s
+            ⏱️ Verificando presencia... {countdown}s
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* MODAL FINAL */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -150,15 +309,10 @@ function FaceMonitor({ isActive = true }) {
               className="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl text-center space-y-4"
             >
               <div className="text-5xl">⏱️</div>
-
-              <h2 className="text-xl font-bold text-gray-800">
-                Sesión cerrada
-              </h2>
-
+              <h2 className="text-xl font-bold text-gray-800">Sesión cerrada</h2>
               <p className="text-gray-600">
-                No se detectó tu presencia por más de 10 segundos.
+                No se detectó tu presencia por más de 15 segundos.
               </p>
-
               <button
                 onClick={finalizeLogout}
                 className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition"
@@ -169,7 +323,6 @@ function FaceMonitor({ isActive = true }) {
           </motion.div>
         )}
       </AnimatePresence>
-
     </>
   );
 }
