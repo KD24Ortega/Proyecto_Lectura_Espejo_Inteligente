@@ -15,6 +15,7 @@ export default function ProfileSuccess() {
   useEffect(() => {
     const userName = localStorage.getItem("user_name");
     const userAge = localStorage.getItem("user_age");
+    const userBirthDate = localStorage.getItem("user_birth_date");
     const userEmail = localStorage.getItem("user_email");
     const userPhoto = localStorage.getItem("user_photo");
 
@@ -26,7 +27,20 @@ export default function ProfileSuccess() {
     }
 
     setName(userName);
-    setAge(userAge || "");
+    if (userAge) {
+      setAge(userAge);
+    } else if (userBirthDate) {
+      const d = new Date(userBirthDate);
+      if (!Number.isNaN(d.getTime())) {
+        const today = new Date();
+        let computed = today.getFullYear() - d.getFullYear();
+        const m = today.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+          computed -= 1;
+        }
+        if (computed >= 0) setAge(String(computed));
+      }
+    }
     setEmail(userEmail || "");
     setPhoto(userPhoto || "");
 

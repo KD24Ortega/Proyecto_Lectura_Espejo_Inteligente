@@ -5,11 +5,11 @@ load_dotenv()
 
 class Settings:
     # PostgreSQL
-    POSTGRES_USER = os.getenv("POSTGRES_USER", "mirror_user")
-    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "mirror_password_2024")
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "calmasense_user")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "calmasense_pass")
     POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-    POSTGRES_DB = os.getenv("POSTGRES_DB", "smart_mirror_db")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "calmasense_db")
     
     # SQLite (para migración)
     SQLITE_DB = "mirror.db"

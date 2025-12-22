@@ -12,19 +12,19 @@
 -- psql -U postgres
 
 -- Crear usuario
-CREATE USER mirror_user WITH PASSWORD 'mirror_pass';
+CREATE USER calmasense_user WITH PASSWORD 'calmasense_pass';
 
 -- Crear base de datos
-CREATE DATABASE smart_mirror_db OWNER mirror_user;
+CREATE DATABASE calmasense_db OWNER calmasense_user;
 
 -- Dar privilegios
-GRANT ALL PRIVILEGES ON DATABASE smart_mirror_db TO mirror_user;
+GRANT ALL PRIVILEGES ON DATABASE calmasense_db TO calmasense_user;
 
 -- Conectar a la DB
-\c smart_mirror_db
+\c calmasense_db
 
 -- Dar permisos al esquema
-GRANT ALL ON SCHEMA public TO mirror_user;
+GRANT ALL ON SCHEMA public TO calmasense_user;
 
 
 ## 3. INSTALAR DEPENDENCIAS
@@ -50,10 +50,10 @@ python -m backend.db.create_admin
 
 ```bash
 # Linux/macOS
-export DATABASE_URL="postgresql://mirror_user:mirror_pass@localhost:5432/smart_mirror_db"
+export DATABASE_URL="postgresql://calmasense_user:calmasense_pass@localhost:5432/calmasense_db"
 
 # Windows
-set DATABASE_URL=postgresql://mirror_user:mirror_pass@localhost:5432/smart_mirror_db
+set DATABASE_URL=postgresql://calmasense_user:calmasense_pass@localhost:5432/calmasense_db
 ```
 
 ## ESTRUCTURA DE TABLAS
@@ -98,17 +98,17 @@ CREATE TABLE voice_exercise_sessions (
 );
 
 
--- Dar permisos al usuario mirror_user
-GRANT ALL PRIVILEGES ON TABLE voice_exercise_sessions TO mirror_user;
-GRANT USAGE, SELECT ON SEQUENCE voice_exercise_sessions_id_seq TO mirror_user;
+-- Dar permisos al usuario calmasense_user
+GRANT ALL PRIVILEGES ON TABLE voice_exercise_sessions TO calmasense_user;
+GRANT USAGE, SELECT ON SEQUENCE voice_exercise_sessions_id_seq TO calmasense_user;
 
 -- También dar permisos a otras tablas relacionadas por si acaso
-GRANT ALL PRIVILEGES ON TABLE exercises TO mirror_user;
-GRANT ALL PRIVILEGES ON TABLE attendance_records TO mirror_user;
-GRANT ALL PRIVILEGES ON TABLE follow_ups TO mirror_user;
+GRANT ALL PRIVILEGES ON TABLE exercises TO calmasense_user;
+GRANT ALL PRIVILEGES ON TABLE attendance_records TO calmasense_user;
+GRANT ALL PRIVILEGES ON TABLE follow_ups TO calmasense_user;
 
 -- Dar permisos a TODAS las secuencias
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO mirror_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO calmasense_user;
 
 -- Verificar permisos
 SELECT grantee, privilege_type 

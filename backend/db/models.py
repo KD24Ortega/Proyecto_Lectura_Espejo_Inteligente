@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text, JSON, Enum
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Float, Text, JSON, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -61,7 +61,7 @@ class User(Base):
     full_name = Column(String(100), nullable=False, index=True)
     username = Column(String(50), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=True)
-    age = Column(Integer, nullable=True)
+    birth_date = Column(Date, nullable=True)
     gender = Column(String(20), nullable=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
     is_admin = Column(Boolean, default=False, index=True)

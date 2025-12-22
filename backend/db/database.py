@@ -3,10 +3,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://mirror_user:mirror_pass@localhost:5432/smart_mirror_db"
-)
+from .config import settings
+
+DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
 # ========================================
 # CONFIGURACIÓN OPTIMIZADA PARA CARGA

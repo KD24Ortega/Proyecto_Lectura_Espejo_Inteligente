@@ -44,7 +44,7 @@ function Register() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     full_name: '',
-    age: '',
+    birth_date: '',
     gender: '',
     email: ''
   });
@@ -72,17 +72,42 @@ function Register() {
     return null;
   };
 
-  const validateAge = (age) => {
-    const ageNum = parseInt(age);
-    if (!age) {
-      return 'La edad es obligatoria';
+  const calculateAgeFromBirthDate = (birthDateStr) => {
+    const d = new Date(birthDateStr);
+    if (Number.isNaN(d.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+      age -= 1;
     }
-    if (isNaN(ageNum)) {
-      return 'La edad debe ser un número';
+    return age;
+  };
+
+  const validateBirthDate = (birthDateStr) => {
+    if (!birthDateStr) {
+      return 'La fecha de nacimiento es obligatoria';
+    }
+
+    const d = new Date(birthDateStr);
+    if (Number.isNaN(d.getTime())) {
+      return 'La fecha de nacimiento no es válida';
+    }
+
+    const today = new Date();
+    if (d > today) {
+      return 'La fecha de nacimiento no puede ser futura';
+    }
+
+    const ageNum = calculateAgeFromBirthDate(birthDateStr);
+    if (ageNum === null) {
+      return 'La fecha de nacimiento no es válida';
     }
     if (ageNum < 13 || ageNum > 120) {
       return 'La edad debe estar entre 13 y 120 años';
     }
+
     return null;
   };
 
@@ -134,15 +159,6 @@ function Register() {
       }
     }
 
-    if (name === 'age') {
-      // Solo permitir números
-      processedValue = value.replace(/[^0-9]/g, '');
-      // Limitar a 3 dígitos
-      if (processedValue.length > 3) {
-        processedValue = processedValue.slice(0, 3);
-      }
-    }
-
     if (name === 'email') {
       // Convertir a minúsculas
       processedValue = value.toLowerCase().trim();
@@ -186,8 +202,8 @@ function Register() {
     const nameError = validateName(formData.full_name);
     if (nameError) newErrors.full_name = nameError;
 
-    const ageError = validateAge(formData.age);
-    if (ageError) newErrors.age = ageError;
+    const birthDateError = validateBirthDate(formData.birth_date);
+    if (birthDateError) newErrors.birth_date = birthDateError;
 
     const emailError = validateEmail(formData.email);
     if (emailError) newErrors.email = emailError;
@@ -241,14 +257,14 @@ function Register() {
 
       const fd = new FormData();
       fd.append("full_name", formData.full_name.trim());
-      fd.append("age", formData.age);
+      fd.append("birth_date", formData.birth_date);
       fd.append("gender", formData.gender);
       fd.append("email", formData.email.toLowerCase().trim());
       fd.append("file", blob, "face.jpg");
 
       console.log('📤 Enviando registro:', {
         full_name: formData.full_name.trim(),
-        age: formData.age,
+        birth_date: formData.birth_date,
         gender: formData.gender,
         email: formData.email
       });
@@ -262,7 +278,11 @@ function Register() {
 
         // Guardar datos en localStorage
         localStorage.setItem("user_name", response.data.full_name);
-        localStorage.setItem("user_age", formData.age);
+        localStorage.setItem("user_birth_date", formData.birth_date);
+        const computedAge = calculateAgeFromBirthDate(formData.birth_date);
+        if (computedAge !== null) {
+          localStorage.setItem("user_age", String(computedAge));
+        }
         localStorage.setItem("user_email", formData.email);
         localStorage.setItem("user_photo", capturedFrameRef.current);
 
@@ -416,23 +436,21 @@ function Register() {
               {/* Edad */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Edad *
+                  Fecha de nacimiento *
                 </label>
                 <input
-                  type="text"
-                  name="age"
-                  value={formData.age}
+                  type="date"
+                  name="birth_date"
+                  value={formData.birth_date}
                   onChange={handleInputChange}
                   className={`w-full bg-gray-50 p-3 rounded-lg border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.age ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                    errors.birth_date ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
-                  placeholder="Ej: 25"
-                  maxLength={3}
                 />
-                {errors.age && (
+                {errors.birth_date && (
                   <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
                     <span>⚠️</span>
-                    {errors.age}
+                    {errors.birth_date}
                   </p>
                 )}
               </div>
@@ -447,7 +465,7 @@ function Register() {
                     { v: 'm', t: 'Masculino', icon: '👨' },
                     { v: 'f', t: 'Femenino', icon: '👩' },
                     { v: 'otro', t: 'Otro', icon: '🧑' },
-                    { v: 'no', t: 'Prefiero no decir', icon: '🤐' }
+                    { v: 'no_decir', t: 'Prefiero no decir', icon: '🤐' }
                   ].map(opt => (
                     <button
                       key={opt.v}

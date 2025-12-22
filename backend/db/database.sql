@@ -8,19 +8,19 @@
 -- =====================
 
 -- Conectarse como superusuario postgres primero
--- CREATE DATABASE smart_mirror_db;
--- CREATE USER mirror_user WITH PASSWORD 'mirror_pass';
--- GRANT ALL PRIVILEGES ON DATABASE smart_mirror_db TO mirror_user;
+-- CREATE DATABASE calmasense_db;
+-- CREATE USER calmasense_user WITH PASSWORD 'calmasense_pass';
+-- GRANT ALL PRIVILEGES ON DATABASE calmasense_db TO calmasense_user;
 
--- Ahora conectarse a smart_mirror_db
--- \c smart_mirror_db
+-- Ahora conectarse a calmasense_db
+-- \c calmasense_db
 
 -- Dar permisos completos al usuario
-GRANT ALL PRIVILEGES ON SCHEMA public TO mirror_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO mirror_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO mirror_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO mirror_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO mirror_user;
+GRANT ALL PRIVILEGES ON SCHEMA public TO calmasense_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO calmasense_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO calmasense_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO calmasense_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO calmasense_user;
 
 
 -- =====================
@@ -42,7 +42,7 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     username VARCHAR(50) UNIQUE,
     password_hash VARCHAR(255),
-    age INTEGER,
+    birth_date DATE,
     gender VARCHAR(20),
     email VARCHAR(255) UNIQUE,
     is_admin BOOLEAN DEFAULT FALSE,
@@ -285,8 +285,8 @@ INSERT INTO exercises (title, description, category, exercise_type, duration_sec
 -- =====================================================
 
 -- Password hasheado para: admin123
-INSERT INTO users (full_name, username, password_hash, email, is_admin, created_at) VALUES
-('Administrador', 'admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIvAprzZ3i', 'admin@smartmirror.com', true, CURRENT_TIMESTAMP);
+-- INSERT INTO users (full_name, username, password_hash, email, is_admin, created_at) VALUES
+-- ('Administrador', 'admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIvAprzZ3i', 'admin@smartmirror.com', true, CURRENT_TIMESTAMP);
 
 
 -- =====================================================
@@ -306,7 +306,7 @@ SELECT id, title, category, exercise_type FROM exercises;
 SELECT grantee, privilege_type 
 FROM information_schema.role_table_grants 
 WHERE table_schema = 'public' 
-  AND grantee = 'mirror_user'
+    AND grantee = 'calmasense_user'
 LIMIT 10;
 
 -- Contar registros
@@ -322,14 +322,14 @@ SELECT 'assessments', COUNT(*) FROM assessments;
 -- =====================================================
 
 -- Usuario de prueba
-INSERT INTO users (full_name, age, gender, email, is_admin) VALUES
-('Usuario Prueba', 25, 'masculino', 'prueba@test.com', false);
+-- INSERT INTO users (full_name, birth_date, gender, email, is_admin) VALUES
+-- ('Usuario Prueba', '2000-01-01', 'masculino', 'prueba@test.com', false);
 
 -- Evaluaciones de prueba
-INSERT INTO assessments (user_id, type, score, severity, created_at) VALUES
-(2, 'phq9', 8, 'Depresión leve', CURRENT_TIMESTAMP - INTERVAL '7 days'),
-(2, 'gad7', 6, 'Ansiedad leve', CURRENT_TIMESTAMP - INTERVAL '7 days'),
-(2, 'phq9', 5, 'Depresión mínima', CURRENT_TIMESTAMP);
+-- INSERT INTO assessments (user_id, type, score, severity, created_at) VALUES
+-- (2, 'phq9', 8, 'Depresión leve', CURRENT_TIMESTAMP - INTERVAL '7 days'),
+-- (2, 'gad7', 6, 'Ansiedad leve', CURRENT_TIMESTAMP - INTERVAL '7 days'),
+-- (2, 'phq9', 5, 'Depresión mínima', CURRENT_TIMESTAMP);
 
 
 -- =====================================================
@@ -343,7 +343,7 @@ INSERT INTO assessments (user_id, type, score, severity, created_at) VALUES
 
 -- Notas importantes:
 -- - Todos los ENUMs están en MAYÚSCULAS (LOW, MODERATE, HIGH)
--- - Todos los permisos están dados al usuario mirror_user
+-- - Todos los permisos están dados al usuario calmasense_user
 -- - Se incluyen 6 ejercicios de ejemplo (3 ansiedad, 3 depresión)
 -- - Password del admin: admin123
 -- ALTER TABLE voice_exercise_sessions

@@ -25,6 +25,12 @@ function AdminDashboard() {
   const [selectedMetric, setSelectedMetric] = useState('evaluations');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState(null); // { type: 'success'|'error', text: string }
+
   useEffect(() => {
     checkAuth();
     loadDashboardData();
@@ -114,6 +120,66 @@ function AdminDashboard() {
     localStorage.removeItem('admin_name');
     sessionStorage.clear();
     navigate('/admin/login');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordChangeMessage(null);
+
+    const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+    if (!adminId) {
+      navigate('/admin/login');
+      return;
+    }
+
+    if (!currentPassword.trim()) {
+      setPasswordChangeMessage({ type: 'error', text: 'Ingresa tu contraseña actual.' });
+      return;
+    }
+    if (!newPassword.trim()) {
+      setPasswordChangeMessage({ type: 'error', text: 'Ingresa tu nueva contraseña.' });
+      return;
+    }
+    if (newPassword.trim().length < 8) {
+      setPasswordChangeMessage({ type: 'error', text: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeMessage({ type: 'error', text: 'La confirmación no coincide con la nueva contraseña.' });
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordChangeMessage({ type: 'error', text: 'La nueva contraseña debe ser diferente a la actual.' });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await api.post(`/admin/change-password?user_id=${adminId}`, {
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      if (res.data?.success) {
+        setPasswordChangeMessage({ type: 'success', text: 'Contraseña actualizada correctamente.' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      } else {
+        setPasswordChangeMessage({ type: 'error', text: 'No se pudo actualizar la contraseña.' });
+      }
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401) {
+        setPasswordChangeMessage({ type: 'error', text: 'Contraseña actual incorrecta.' });
+      } else if (status === 403) {
+        setPasswordChangeMessage({ type: 'error', text: 'Acceso denegado.' });
+      } else {
+        setPasswordChangeMessage({ type: 'error', text: 'Error al actualizar la contraseña. Intenta nuevamente.' });
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const getMetricData = () => {
@@ -661,6 +727,78 @@ function AdminDashboard() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Cambiar contraseña admin */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Seguridad</h3>
+            <span className="text-sm text-gray-500">Cambiar contraseña</span>
+          </div>
+
+          {passwordChangeMessage && (
+            <div
+              className={`mb-4 p-3 rounded-lg border text-sm font-medium ${
+                passwordChangeMessage.type === 'success'
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}
+            >
+              {passwordChangeMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="grid grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Contraseña actual</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Nueva contraseña</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Mínimo 8 caracteres"
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Confirmar</label>
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Repite la nueva contraseña"
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div className="col-span-3 flex justify-end">
+              <button
+                type="submit"
+                disabled={isChangingPassword}
+                className={`px-6 py-3 rounded-lg font-semibold transition shadow ${
+                  isChangingPassword
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+              </button>
+            </div>
+          </form>
         </div>
 
       </main>

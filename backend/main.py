@@ -7,7 +7,7 @@ from typing import List, Optional
 import numpy as np
 import cv2
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from backend.trends.trend_service import analyze_trends
 import json
 
@@ -157,6 +157,16 @@ except Exception as e:
 # -----------------------------
 # MODELOS CON VALIDACIÓN
 # -----------------------------
+
+
+def calculate_age_from_birth_date(birth_date: date, today: Optional[date] = None) -> int:
+    today = today or date.today()
+    years = today.year - birth_date.year
+    if (today.month, today.day) < (birth_date.month, birth_date.day):
+        years -= 1
+    return years
+
+
 class AssessmentRequest(BaseModel):
     user_id: int = Field(gt=0, description="ID del usuario debe ser mayor a 0")
     responses: List[int] = Field(min_length=7, max_length=9, description="Entre 7 y 9 respuestas")
@@ -182,7 +192,7 @@ class SessionStartRequest(BaseModel):
 
 class UserRegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=100)
-    age: Optional[int] = Field(None, ge=1, le=120)  # Entre 1 y 120 años
+    birth_date: date = Field(..., description="Fecha de nacimiento (YYYY-MM-DD)")
     gender: Optional[str] = Field(None)
     email: Optional[EmailStr] = None  # EmailStr valida formato de email automáticamente
     
@@ -191,6 +201,15 @@ class UserRegisterRequest(BaseModel):
         v = v.strip()
         if not v or len(v) < 2:
             raise ValueError('El nombre completo debe tener al menos 2 caracteres')
+        return v
+
+    @validator('birth_date')
+    def validate_birth_date(cls, v: date):
+        if v > date.today():
+            raise ValueError('La fecha de nacimiento no puede ser futura')
+        age_years = calculate_age_from_birth_date(v)
+        if age_years < 13 or age_years > 120:
+            raise ValueError('La edad debe estar entre 13 y 120 años')
         return v
 
 
@@ -461,6 +480,7 @@ async def get_active_sessions(
 async def register_face(
     file: UploadFile = File(...),
     full_name: str = Form(...),
+    birth_date: Optional[date] = Form(None),
     age: Optional[int] = Form(None),
     gender: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
@@ -474,8 +494,21 @@ async def register_face(
     if len(full_name) > 100:
         raise HTTPException(status_code=400, detail="El nombre completo es demasiado largo (máximo 100 caracteres)")
 
-    if age is not None and (age < 1 or age > 120):
-        raise HTTPException(status_code=400, detail="La edad debe estar entre 1 y 120 años")
+    if birth_date is None:
+        # Compatibilidad: si llega age (legacy), crear una fecha aproximada.
+        if age is not None:
+            if age < 1 or age > 120:
+                raise HTTPException(status_code=400, detail="La edad debe estar entre 1 y 120 años")
+            birth_date = date(date.today().year - age, 1, 1)
+        else:
+            raise HTTPException(status_code=400, detail="La fecha de nacimiento es obligatoria")
+
+    if birth_date > date.today():
+        raise HTTPException(status_code=400, detail="La fecha de nacimiento no puede ser futura")
+
+    age_years = calculate_age_from_birth_date(birth_date)
+    if age_years < 13 or age_years > 120:
+        raise HTTPException(status_code=400, detail="La edad debe estar entre 13 y 120 años")
 
     if gender is not None:
         allowed_genders = ["m", "f", "otro", "no_decir"]
@@ -515,7 +548,7 @@ async def register_face(
     # 1) Crear usuario primero
     user = models.User(
         full_name=full_name,
-        age=age,
+        birth_date=birth_date,
         gender=gender,
         email=email
     )
@@ -536,7 +569,8 @@ async def register_face(
         **result,
         "user_id": user.id,
         "full_name": user.full_name,
-        "age": user.age,
+        "birth_date": user.birth_date.isoformat() if user.birth_date else None,
+        "age": calculate_age_from_birth_date(user.birth_date) if user.birth_date else None,
         "gender": user.gender,
         "email": user.email
     }
@@ -596,12 +630,10 @@ async def register_user_production(
                     detail="El email ya está registrado"
                 )
         
-        # Validar edad
-        if user.age < 13 or user.age > 120:
-            raise HTTPException(
-                status_code=400,
-                detail="La edad debe estar entre 13 y 120 años"
-            )
+        # Validar fecha de nacimiento / edad
+        age_years = calculate_age_from_birth_date(user.birth_date)
+        if age_years < 13 or age_years > 120:
+            raise HTTPException(status_code=400, detail="La edad debe estar entre 13 y 120 años")
         
         # Validar nombre (sin ilike para permitir variaciones)
         if len(user.full_name) < 3:
@@ -632,7 +664,7 @@ async def register_user_production(
         new_user = models.User(
             full_name=user.full_name,
             username=username,
-            age=user.age,
+            birth_date=user.birth_date,
             gender=user.gender,
             email=user.email,
             is_admin=False
@@ -1118,7 +1150,8 @@ async def admin_get_all_users(user_id: int, db: Session = Depends(get_db)):
         response.append({
             "id": u.id,
             "full_name": u.full_name,
-            "age": u.age,
+            "birth_date": u.birth_date.isoformat() if u.birth_date else None,
+            "age": calculate_age_from_birth_date(u.birth_date) if u.birth_date else None,
             "gender": u.gender,
             "email": u.email,
             "created_at": u.created_at,
@@ -1155,7 +1188,8 @@ async def admin_get_user_details(target_user_id: int, user_id: int, db: Session 
         "user": {
             "id": user.id,
             "full_name": user.full_name,
-            "age": user.age,
+            "birth_date": user.birth_date.isoformat() if user.birth_date else None,
+            "age": calculate_age_from_birth_date(user.birth_date) if user.birth_date else None,
             "gender": user.gender,
             "email": user.email,
             "created_at": user.created_at
