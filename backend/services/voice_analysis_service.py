@@ -1,5 +1,5 @@
 # =====================================================
-#  SERVICIO DE ANÁLISIS DE VOZ PARA SMART MIRROR
+#  SERVICIO DE ANÁLISIS DE VOZ PARA CALMASENSE
 #  Integrado con FastAPI
 # =====================================================
 
@@ -205,31 +205,31 @@ def procesar_audio_archivo(archivo_bytes: bytes, genero: str = "neutro") -> Dict
         from pydub import AudioSegment
         import tempfile
         import os
+        import io
         
-        # Crear archivo temporal
-        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_input:
+        # Crear archivo temporal (la extensión puede ser engañosa; ffmpeg suele detectar por contenido)
+        with tempfile.NamedTemporaryFile(suffix='.tmp', delete=False) as temp_input:
             temp_input.write(archivo_bytes)
             temp_input_path = temp_input.name
         
         try:
             # Intentar cargar con pydub (soporta múltiples formatos)
             audio = AudioSegment.from_file(temp_input_path)
-            
-            # Convertir a WAV en memoria
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                temp_wav_path = temp_wav.name
-            
-            # Exportar como WAV mono a 16kHz
+
+            # Convertir a mono 16kHz (en memoria)
             audio = audio.set_channels(1).set_frame_rate(SAMPLE_RATE)
-            audio.export(temp_wav_path, format='wav')
-            
-            # Cargar con librosa
-            audio_data, sr = librosa.load(temp_wav_path, sr=SAMPLE_RATE)
-            
-            # Limpiar archivos temporales
+
+            # Extraer samples PCM en memoria (evita exportar WAV + volver a leer)
+            sample_width = audio.sample_width  # bytes por sample
+            samples = np.array(audio.get_array_of_samples())
+            # Normalizar a float32 en [-1, 1]
+            denom = float(1 << (8 * sample_width - 1)) if sample_width else 32768.0
+            audio_data = (samples.astype(np.float32) / denom)
+            sr = SAMPLE_RATE
+
+            # Limpiar archivo temporal de entrada
             os.unlink(temp_input_path)
-            os.unlink(temp_wav_path)
-            
+
             # Analizar
             resultado = analizar_voz_audio(audio_data, sr, genero)
             return resultado
@@ -238,8 +238,6 @@ def procesar_audio_archivo(archivo_bytes: bytes, genero: str = "neutro") -> Dict
             # Limpiar en caso de error
             if os.path.exists(temp_input_path):
                 os.unlink(temp_input_path)
-            if 'temp_wav_path' in locals() and os.path.exists(temp_wav_path):
-                os.unlink(temp_wav_path)
             raise e
         
     except Exception as e:

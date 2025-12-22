@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminDashboard() {
+  const { theme } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_users: 0,
@@ -130,7 +134,7 @@ function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg} transition-all duration-1000`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xl text-gray-600">Cargando dashboard...</p>
@@ -146,7 +150,7 @@ function AdminDashboard() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
       <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
@@ -158,7 +162,7 @@ function AdminDashboard() {
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
-              <h1 className="font-bold text-lg">Espejo Inteligente</h1>
+              <h1 className="font-bold text-lg">CalmaSense</h1>
               <p className="text-xs text-blue-300">Panel Administrativo</p>
             </div>
           </div>

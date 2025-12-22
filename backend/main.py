@@ -9,6 +9,7 @@ import cv2
 from collections import defaultdict
 from datetime import datetime, timedelta
 from backend.trends.trend_service import analyze_trends
+import json
 
 
 # Importar el servicio de análisis de voz
@@ -102,7 +103,7 @@ def check_rate_limit(client_ip: str, endpoint_type: str = "default"):
 # -----------------------------
 # INICIALIZAR API Y BASE DE DATOS
 # -----------------------------
-app = FastAPI(title="Smart Mirror Backend")
+app = FastAPI(title="CalmaSense Backend")
 Base.metadata.create_all(bind=engine)
 
 # 🔥 INICIALIZAR SUPER ADMINISTRADOR AUTOMÁTICAMENTE
@@ -115,7 +116,7 @@ init_super_admin()
 @app.get("/")
 async def root():
     return {
-        "message": "Smart Mirror API",
+        "message": "CalmaSense API",
         "version": "2.0",
         "frontend": "React app running on http://localhost:5173",
         "docs": "http://127.0.0.1:8000/docs"
@@ -131,13 +132,15 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://localhost:5173",      # ← React (Vite)
     "http://127.0.0.1:5173",      # ← React (Vite)
+    "http://localhost:5174",      # ← React (Vite) puerto alterno
+    "http://127.0.0.1:5174",      # ← React (Vite) puerto alterno
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,  # ✅ Solo orígenes específicos
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],  # ✅ Solo métodos necesarios
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],  # ✅ Incluye preflight
     allow_headers=["Content-Type", "Authorization"],  # ✅ Solo headers necesarios
     max_age=600,  # Cache de preflight requests por 10 minutos
 )
@@ -546,27 +549,74 @@ async def register_face(
 # ============================================================
 #  REGISTRO DE USUARIO (SOLO DATOS)
 # ============================================================
-@app.post("/users/register")
-async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)):
+# Rate limiting simple (en memoria)
+registration_attempts = defaultdict(list)
+
+@app.post("/users/register_production")
+async def register_user_production(
+    user: UserRegisterRequest, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
     """
-    Registra un nuevo usuario en la base de datos (sin rostro)
-    El rostro se registra después con /face/register
+    Versión de producción con:
+    - Rate limiting por IP
+    - Validaciones completas
+    - Logging de seguridad
     """
     try:
-        # Verificar si el email ya existe (si se proporciona)
+        # Rate limiting: máximo 5 registros por IP cada 10 minutos
+        client_ip = request.client.host
+        now = datetime.now()
+        recent_attempts = [
+            t for t in registration_attempts[client_ip] 
+            if now - t < timedelta(minutes=10)
+        ]
+        
+        if len(recent_attempts) >= 5:
+            raise HTTPException(
+                status_code=429,
+                detail="Demasiados intentos de registro. Intenta en 10 minutos."
+            )
+        
+        registration_attempts[client_ip].append(now)
+        
+        # Validar email
         if user.email:
+            # Validación de formato de email
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, user.email):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Formato de email inválido"
+                )
+            
             existing_user = db.query(models.User).filter(
                 models.User.email == user.email
             ).first()
             if existing_user:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=409,
                     detail="El email ya está registrado"
                 )
         
-        # Verificar si el nombre ya existe
+        # Validar edad
+        if user.age < 13 or user.age > 120:
+            raise HTTPException(
+                status_code=400,
+                detail="La edad debe estar entre 13 y 120 años"
+            )
+        
+        # Validar nombre (sin ilike para permitir variaciones)
+        if len(user.full_name) < 3:
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre debe tener al menos 3 caracteres"
+            )
+        
         existing_name = db.query(models.User).filter(
-            models.User.full_name.ilike(user.full_name)
+            models.User.full_name == user.full_name
         ).first()
         if existing_name:
             raise HTTPException(
@@ -574,12 +624,11 @@ async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)
                 detail=f"El usuario '{user.full_name}' ya está registrado"
             )
         
-        # Generar username único basado en el nombre
+        # Generar username único
         base_username = user.full_name.lower().replace(" ", "_")
         username = base_username
         counter = 1
         
-        # Verificar que el username sea único
         while db.query(models.User).filter(models.User.username == username).first():
             username = f"{base_username}_{counter}"
             counter += 1
@@ -598,6 +647,9 @@ async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)
         db.commit()
         db.refresh(new_user)
         
+        # Log de auditoría
+        print(f"✅ Usuario registrado: {new_user.username} (ID: {new_user.id}) desde IP: {client_ip}")
+        
         return {
             "success": True,
             "message": "Usuario registrado exitosamente",
@@ -610,6 +662,7 @@ async def register_user(user: UserRegisterRequest, db: Session = Depends(get_db)
         raise
     except Exception as e:
         db.rollback()
+        print(f"❌ Error en register_user: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error al registrar usuario: {str(e)}"
@@ -688,16 +741,36 @@ async def start_session(
 
 @app.post("/session/end")
 async def end_session(
-    request: SessionEndRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
     Cierra todas las sesiones activas del usuario
     """
     try:
+        # Soporta:
+        # - axios/fetch JSON: Content-Type: application/json
+        # - navigator.sendBeacon: suele llegar como text/plain (sin preflight)
+        payload = None
+        try:
+            payload = await request.json()
+        except Exception:
+            body = (await request.body()) or b""
+            body_text = body.decode("utf-8", errors="ignore").strip()
+            if body_text:
+                try:
+                    payload = json.loads(body_text)
+                except Exception:
+                    payload = None
+
+        if not isinstance(payload, dict) or "user_id" not in payload:
+            raise HTTPException(status_code=422, detail="user_id es requerido")
+
+        user_id = int(payload["user_id"])
+
         # Buscar sesiones activas
         active_sessions = db.query(models.SessionLog).filter(
-            models.SessionLog.user_id == request.user_id,
+            models.SessionLog.user_id == user_id,
             models.SessionLog.is_active == True
         ).all()
         
@@ -717,7 +790,7 @@ async def end_session(
         
         db.commit()
         
-        print(f"✅ Sesiones cerradas para user_id {request.user_id}: {sessions_closed}")
+        print(f"✅ Sesiones cerradas para user_id {user_id}: {sessions_closed}")
         
         return {
             "success": True,
@@ -1348,11 +1421,11 @@ async def send_notification_email(
 
     try:
         resend.Emails.send({
-            "from": "Smart Mirror <onboarding@resend.dev>",
+            "from": "CalmaSense <onboarding@resend.dev>",
             "to": [user.email],
-            "subject": "Seguimiento Clínico - Smart Mirror",
+            "subject": "Seguimiento Clínico - CalmaSense",
             "html": f"""
-                <h3>Notificación Smart Mirror</h3>
+                <h3>Notificación CalmaSense</h3>
                 <p>{html_message}</p>
             """
         })
@@ -1516,20 +1589,20 @@ async def mark_user_attended(
         try:
             # Usar tu sistema de emails (Resend o similar)
             email_message = f"""
-            <h2>Confirmación de Atención - Smart Mirror</h2>
+            <h2>Confirmación de Atención - CalmaSense</h2>
             <p>Estimado/a {user.full_name},</p>
             <p>Te confirmamos que tu sesión ha sido registrada exitosamente.</p>
             <p>Fecha: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}</p>
             {f'<p>Próximo seguimiento programado: {payload.followup_date}</p>' if payload.schedule_followup else ''}
             <p>Si tienes alguna duda, no dudes en contactarnos.</p>
-            <p>Saludos,<br>Equipo Smart Mirror</p>
+            <p>Saludos,<br>Equipo CalmaSense</p>
             """
             
             # Ejemplo con Resend (ajusta según tu implementación)
             # resend.Emails.send({
-            #     "from": "Smart Mirror <onboarding@resend.dev>",
+            #     "from": "CalmaSense <onboarding@resend.dev>",
             #     "to": [user.email],
-            #     "subject": "Confirmación de Atención - Smart Mirror",
+            #     "subject": "Confirmación de Atención - CalmaSense",
             #     "html": email_message
             # })
             

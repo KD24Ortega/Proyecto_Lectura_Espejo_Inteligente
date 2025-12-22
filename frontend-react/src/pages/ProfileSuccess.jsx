@@ -20,8 +20,8 @@ export default function ProfileSuccess() {
 
     // Validar que existan datos
     if (!userName) {
-      console.warn('⚠️ No hay datos de usuario, redirigiendo a registro');
-      navigate('/register');
+      console.warn("⚠️ No hay datos de usuario, redirigiendo a registro");
+      navigate("/register");
       return;
     }
 
@@ -33,22 +33,15 @@ export default function ProfileSuccess() {
     // Mostrar confetti
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 3000);
-
   }, [navigate]);
 
   const handleStartNow = () => {
-    console.log('🚀 Iniciando primera evaluación PHQ-9');
+    console.log("🚀 Iniciando primera evaluación PHQ-9");
     navigate("/phq9");
-  };
-
-  const handleLater = () => {
-    console.log('⏸️ Usuario pospone evaluación, yendo a home');
-    navigate("/home");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center px-4 relative overflow-hidden">
-
       {/* Confetti animado */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50">
@@ -60,20 +53,20 @@ export default function ProfileSuccess() {
                 x: Math.random() * window.innerWidth,
                 y: -20,
                 rotate: 0,
-                opacity: 1
+                opacity: 1,
               }}
               animate={{
                 y: window.innerHeight + 20,
                 rotate: 360,
-                opacity: 0
+                opacity: 0,
               }}
               transition={{
                 duration: 2 + Math.random() * 2,
                 ease: "linear",
-                delay: Math.random() * 0.5
+                delay: Math.random() * 0.5,
               }}
             >
-              {['🎉', '✨', '🎊', '⭐', '💫'][Math.floor(Math.random() * 5)]}
+              {["🎉", "✨", "🎊", "⭐", "💫"][Math.floor(Math.random() * 5)]}
             </motion.div>
           ))}
         </div>
@@ -85,7 +78,6 @@ export default function ProfileSuccess() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8 text-center"
       >
-
         {/* Icono de éxito animado */}
         <motion.div
           initial={{ scale: 0 }}
@@ -122,23 +114,18 @@ export default function ProfileSuccess() {
           transition={{ delay: 0.5 }}
           className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border-2 border-blue-200"
         >
-
           {/* Foto de perfil */}
           <div className="relative w-32 h-32 mx-auto mb-4">
             <div className="w-full h-full rounded-full border-4 border-blue-500 overflow-hidden bg-gradient-to-br from-blue-200 to-purple-200 shadow-xl">
               {photo ? (
-                <img
-                  src={photo}
-                  alt="Perfil"
-                  className="w-full h-full object-cover"
-                />
+                <img src={photo} alt="Perfil" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-6xl text-blue-600">
                   {name.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
-            
+
             {/* Badge verificado */}
             <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
               <span className="text-2xl">✓</span>
@@ -146,9 +133,7 @@ export default function ProfileSuccess() {
           </div>
 
           {/* Datos del usuario */}
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            {name}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">{name}</h2>
 
           <div className="flex flex-col gap-2 text-gray-600">
             {age && (
@@ -170,7 +155,6 @@ export default function ProfileSuccess() {
             <span>✨</span>
             <span>Perfil verificado</span>
           </div>
-
         </motion.div>
 
         {/* Pregunta */}
@@ -188,34 +172,22 @@ export default function ProfileSuccess() {
           </p>
         </motion.div>
 
-        {/* Botones */}
+        {/* ✅ Solo un botón */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="flex flex-col sm:flex-row gap-4"
+          className="flex"
         >
-
-          <button
-            onClick={handleLater}
-            className="flex-1 px-6 py-4 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition border-2 border-gray-200 hover:border-gray-300"
-          >
-            <span className="flex items-center justify-center gap-2">
-              <span>⏸️</span>
-              <span>Más tarde</span>
-            </span>
-          </button>
-
           <button
             onClick={handleStartNow}
-            className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <span className="flex items-center justify-center gap-2">
               <span>🚀</span>
               <span>Empezar ahora</span>
             </span>
           </button>
-
         </motion.div>
 
         {/* Info adicional */}
@@ -232,7 +204,7 @@ export default function ProfileSuccess() {
           </p>
         </motion.div>
 
-        {/* Footer con mensaje motivacional */}
+        {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -241,9 +213,7 @@ export default function ProfileSuccess() {
         >
           Estamos aquí para apoyarte en cada paso 💙
         </motion.p>
-
       </motion.div>
-
     </div>
   );
 }

@@ -16,36 +16,64 @@ import api from '../services/api';
 export default function SessionManager({ children }) {
   const location = useLocation();
 
+  /**
+   * Función auxiliar para cerrar sesión
+   */
+  const endSession = async (userId) => {
+    try {
+      await api.post('/session/end', { user_id: userId });
+      console.log('✅ Sesión cerrada para user_id:', userId);
+    } catch (error) {
+      console.error('⚠️ Error cerrando sesión:', error);
+    }
+  };
+
   useEffect(() => {
     // ============================================================
     // 1. Cerrar sesión al cerrar pestaña/navegador
     // ============================================================
-    const handleBeforeUnload = (event) => {
+    const sendEndSessionBeacon = () => {
       const userId = localStorage.getItem('user_id');
       
       if (userId) {
-        // Usar sendBeacon para request asíncrono confiable
-        // (funciona incluso cuando la página se está cerrando)
+        // Usar sendBeacon (más confiable durante cierre/refresh).
+        // Importante: enviar como text/plain para evitar preflight CORS.
         const data = JSON.stringify({ user_id: parseInt(userId) });
-        const blob = new Blob([data], { type: 'application/json' });
-        
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        
-        navigator.sendBeacon(
-          `${apiUrl}/session/end`,
-          blob
-        );
-        
-        console.log('🚪 Sesión cerrada al cerrar pestaña/navegador');
+        const blob = new Blob([data], { type: 'text/plain;charset=UTF-8' });
+
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+        if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+          navigator.sendBeacon(`${apiUrl}/session/end`, blob);
+        } else {
+          // Fallback best-effort
+          fetch(`${apiUrl}/session/end`, {
+            method: 'POST',
+            body: data,
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            keepalive: true,
+          }).catch(() => {});
+        }
       }
+    };
+
+    const handleBeforeUnload = () => {
+      sendEndSessionBeacon();
+    };
+
+    const handlePageHide = () => {
+      // pagehide es más confiable en algunos navegadores que beforeunload
+      sendEndSessionBeacon();
     };
 
     // Agregar event listener
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
 
     // Cleanup
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, []);
 
@@ -63,18 +91,6 @@ export default function SessionManager({ children }) {
       }
     }
   }, [location.pathname]);
-
-  /**
-   * Función auxiliar para cerrar sesión
-   */
-  const endSession = async (userId) => {
-    try {
-      await api.post('/session/end', { user_id: userId });
-      console.log('✅ Sesión cerrada para user_id:', userId);
-    } catch (error) {
-      console.error('⚠️ Error cerrando sesión:', error);
-    }
-  };
 
   return <>{children}</>;
 }

@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminLogin() {
+  const { theme } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
@@ -202,7 +206,7 @@ function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-6">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex items-center justify-center p-6`}>
       
       {/* Modal */}
       <AnimatePresence>
@@ -241,7 +245,7 @@ function AdminLogin() {
               Panel Administrativo
             </h1>
             <p className="text-sm text-gray-500">
-              Espejo Inteligente - Sistema de Monitoreo
+              CalmaSense - Sistema de Monitoreo
             </p>
           </div>
 

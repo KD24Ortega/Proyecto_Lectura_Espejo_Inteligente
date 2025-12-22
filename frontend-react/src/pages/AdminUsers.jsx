@@ -3,8 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import api from '../services/api';
+import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminUsers() {
+  const { theme } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
@@ -33,8 +37,8 @@ function AdminUsers() {
     loadUsers();
     loadActiveSessions(); // NUEVO
     
-    // Actualizar sesiones activas cada 30 segundos
-    const interval = setInterval(loadActiveSessions, 30000);
+    // Actualizar sesiones activas periódicamente
+    const interval = setInterval(loadActiveSessions, 10000);
     
     // Leer parámetro de búsqueda de la URL
     const searchParams = new URLSearchParams(location.search);
@@ -240,7 +244,7 @@ function AdminUsers() {
       const doc = new jsPDF("p","mm","a4");
 
       doc.setFontSize(18);
-      doc.text("SMART MIRROR - REPORTE CLÍNICO",105,15,{align:"center"});
+      doc.text("CALMASENSE - REPORTE CLÍNICO",105,15,{align:"center"});
 
       doc.setFontSize(10);
       doc.text(`Fecha: ${new Date().toLocaleDateString()}`,105,22,{align:"center"});
@@ -293,7 +297,7 @@ function AdminUsers() {
 
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(9);
-      doc.text("Documento generado automáticamente por Smart Mirror", 105, pageHeight - 12, { align:"center" });
+      doc.text("Documento generado automáticamente por CalmaSense", 105, pageHeight - 12, { align:"center" });
 
       const safeName = profile.full_name.replace(/\s+/g,"_");
       doc.save(`reporte_${safeName}.pdf`);
@@ -313,7 +317,7 @@ Estamos realizando un seguimiento de tus resultados recientes en PHQ-9 y GAD-7.
 Si necesitas apoyo adicional, no dudes en comunicarte con nosotros.
 
 Atentamente,
-Equipo del Espejo Inteligente.
+Equipo de CalmaSense.
 `;
 
       await api.post("/notifications/email", {
@@ -376,7 +380,7 @@ Equipo del Espejo Inteligente.
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg} transition-all duration-1000`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xl text-gray-600">Cargando usuarios...</p>
@@ -386,7 +390,7 @@ Equipo del Espejo Inteligente.
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
       <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
@@ -398,7 +402,7 @@ Equipo del Espejo Inteligente.
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
-              <h1 className="font-bold text-lg">Espejo Inteligente</h1>
+              <h1 className="font-bold text-lg">CalmaSense</h1>
               <p className="text-xs text-blue-300">Panel Administrativo</p>
             </div>
           </div>

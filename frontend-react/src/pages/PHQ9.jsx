@@ -20,6 +20,10 @@ function PHQ9() {
   const [answers, setAnswers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ✅ NUEVO: Verificar si es primera vez
+  const [isFirstTest, setIsFirstTest] = useState(false);
+  const [checkingFirstTest, setCheckingFirstTest] = useState(true);
+
   // ✅ evita doble envío
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,10 +59,41 @@ function PHQ9() {
   }, []);
 
   useEffect(() => {
+    checkIfFirstTest();
     loadQuestions();
     initSpeechRecognition();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ============================================
+  // VERIFICAR SI ES PRIMERA VEZ
+  // ============================================
+  const checkIfFirstTest = async () => {
+    try {
+      const userId = localStorage.getItem("user_id");
+      
+      if (!userId) {
+        setIsFirstTest(false);
+        setCheckingFirstTest(false);
+        return;
+      }
+
+      // Verificar si el usuario tiene PHQ-9 previo
+      const response = await api.get(`/assessments/last/${userId}`);
+      
+      // ✅ Solo verificar si tiene PHQ-9 (no importa GAD-7)
+      const hasPhq9 = response.data.phq9 && response.data.phq9.score !== null;
+      
+      setIsFirstTest(!hasPhq9); // Es primera vez si NO tiene PHQ-9
+      setCheckingFirstTest(false);
+      
+    } catch (error) {
+      console.error("Error al verificar primer test:", error);
+      // Si hay error, asumir que NO es primera vez (permitir salir)
+      setIsFirstTest(false);
+      setCheckingFirstTest(false);
+    }
+  };
 
   // ============================================
   // COMPONENTE MODAL REUTILIZABLE
@@ -373,6 +408,19 @@ function PHQ9() {
 
   const handleExit = () => {
     if (isSubmitting) return;
+    
+    // ✅ NUEVO: Si es primera vez, mostrar mensaje especial
+    if (isFirstTest) {
+      showModalMessage({
+        type: "info",
+        title: "Test obligatorio",
+        message:
+          "Este es tu primer test y es necesario completarlo para establecer tu línea base emocional. Por favor, continúa respondiendo las preguntas.",
+        onConfirm: closeModal,
+      });
+      return;
+    }
+    
     setShowExitConfirm(true);
   };
 
@@ -417,9 +465,9 @@ function PHQ9() {
   };
 
   // ============================================
-  // LOADING (theme + preguntas)
+  // LOADING (theme + preguntas + verificación)
   // ============================================
-  if (isThemeLoading || isLoading) {
+  if (isThemeLoading || isLoading || checkingFirstTest) {
     return (
       <div
         className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg}`}
@@ -477,16 +525,25 @@ function PHQ9() {
 
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={handleExit}
-            disabled={isSubmitting}
-            className={`font-medium flex items-center gap-2 transition-colors hover:scale-105 ${
-              isSubmitting ? "text-white/40 cursor-not-allowed" : "text-white/90 hover:text-white"
-            }`}
-          >
-            <span className="text-2xl">←</span>
-            <span>Salir</span>
-          </button>
+          {/* ✅ NUEVO: Mostrar botón de salir solo si NO es primera vez */}
+          {!isFirstTest ? (
+            <button
+              onClick={handleExit}
+              disabled={isSubmitting}
+              className={`font-medium flex items-center gap-2 transition-colors hover:scale-105 ${
+                isSubmitting ? "text-white/40 cursor-not-allowed" : "text-white/90 hover:text-white"
+              }`}
+            >
+              <span className="text-2xl">←</span>
+              <span>Salir</span>
+            </button>
+          ) : (
+            /* ✅ NUEVO: Si es primera vez, mostrar mensaje en lugar del botón */
+            <div className="flex items-center gap-2 text-white/90">
+              <span className="text-xl">📋</span>
+              <span className="text-sm font-medium">Primer test - Obligatorio</span>
+            </div>
+          )}
 
           <motion.div
             initial={{ scale: 0 }}

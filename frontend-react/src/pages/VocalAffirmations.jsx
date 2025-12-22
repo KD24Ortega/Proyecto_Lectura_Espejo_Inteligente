@@ -159,19 +159,24 @@ function VocalAffirmations() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const progressPercent = ((index + (isRecording ? 1 : 0)) / AFFIRMATIONS.length) * 100;
+  const progressPercent =
+    ((index + (isRecording ? 1 : 0)) / AFFIRMATIONS.length) * 100;
 
   // ─────────────────────────────────────────────
   // ✅ LOADING THEME (evita el fondo “tarde”)
   // ─────────────────────────────────────────────
   if (isThemeLoading) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}>
+      <div
+        className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}
+      >
         <FaceMonitor isActive={true} />
 
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-white/80 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xl text-white drop-shadow-lg">Cargando ejercicio...</p>
+          <p className="text-xl text-white drop-shadow-lg">
+            Cargando ejercicio...
+          </p>
         </div>
       </div>
     );
@@ -182,12 +187,16 @@ function VocalAffirmations() {
   // ─────────────────────────────────────────────
   if (isAnalyzing) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}>
+      <div
+        className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}
+      >
         <FaceMonitor isActive={!isAnalyzing} />
 
         <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
           <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu voz…</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Analizando tu voz…
+          </h2>
           <p className="text-gray-600">Procesando tu afirmación vocal</p>
         </div>
       </div>
@@ -212,7 +221,9 @@ function VocalAffirmations() {
               <span>Volver a ejercicios</span>
             </button>
 
-            <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">✅ Ejercicio Completado</h1>
+            <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
+              ✅ Ejercicio Completado
+            </h1>
             <p className="text-white/90 drop-shadow">
               Duración: {formatTime(timeElapsed)} | Afirmaciones leídas: {phrasesRead}
             </p>
@@ -227,23 +238,33 @@ function VocalAffirmations() {
             <div className="grid md:grid-cols-2 gap-4 mb-6">
               <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
-                <p className="text-2xl font-bold text-teal-600">{analysisResults.pitch_mean} Hz</p>
-                <p className="text-xs text-gray-500 mt-1">Variabilidad: {analysisResults.pitch_std}</p>
+                <p className="text-2xl font-bold text-teal-600">
+                  {analysisResults.pitch_mean} Hz
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Variabilidad: {analysisResults.pitch_std}
+                </p>
               </div>
 
               <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
-                <p className="text-2xl font-bold text-green-600">{(analysisResults.energy * 100).toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {(analysisResults.energy * 100).toFixed(1)}%
+                </p>
               </div>
 
               <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
-                <p className="text-2xl font-bold text-blue-600">{(analysisResults.voice_ratio * 100).toFixed(0)}%</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {(analysisResults.voice_ratio * 100).toFixed(0)}%
+                </p>
               </div>
 
               <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
-                <p className="text-2xl font-bold text-orange-600">{analysisResults.hnr.toFixed(1)} dB</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {analysisResults.hnr.toFixed(1)} dB
+                </p>
               </div>
             </div>
 
@@ -258,11 +279,19 @@ function VocalAffirmations() {
             >
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-3xl">
-                  {analysisResults.risk_level === "LOW" ? "✅" : analysisResults.risk_level === "MODERATE" ? "⚠️" : "🔴"}
+                  {analysisResults.risk_level === "LOW"
+                    ? "✅"
+                    : analysisResults.risk_level === "MODERATE"
+                    ? "⚠️"
+                    : "🔴"}
                 </span>
                 <div>
-                  <p className="font-bold text-gray-800 text-lg">Estado emocional detectado</p>
-                  <p className="text-sm text-gray-600">Puntuación: {analysisResults.score.toFixed(1)}/10</p>
+                  <p className="font-bold text-gray-800 text-lg">
+                    Estado emocional detectado
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Puntuación: {analysisResults.score.toFixed(1)}/10
+                  </p>
                 </div>
               </div>
             </div>
@@ -310,8 +339,12 @@ function VocalAffirmations() {
                 <span className="text-3xl">💬</span>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">Afirmación Vocal Dirigida</h1>
-                <p className="text-gray-600 mt-1">Fortalece tu autoestima con afirmaciones positivas</p>
+                <h1 className="text-3xl font-bold text-gray-800">
+                  Afirmación Vocal Dirigida
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Fortalece tu autoestima con afirmaciones positivas
+                </p>
               </div>
             </div>
           </div>
@@ -337,7 +370,9 @@ function VocalAffirmations() {
           </div>
 
           {isRecording && (
-            <p className="text-sm text-gray-500 mt-2 text-center">¡Vas muy bien! Continúa leyendo las afirmaciones</p>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              ¡Vas muy bien! Continúa leyendo las afirmaciones
+            </p>
           )}
         </div>
 
@@ -359,13 +394,17 @@ function VocalAffirmations() {
                 transition={{ duration: 0.3 }}
                 className="relative"
               >
-                <span className="absolute -top-6 -left-8 text-8xl text-teal-200 font-serif opacity-50">"</span>
+                <span className="absolute -top-6 -left-8 text-8xl text-teal-200 font-serif opacity-50">
+                  "
+                </span>
 
                 <p className="text-center text-3xl md:text-4xl font-bold text-gray-800 leading-relaxed px-12">
                   {AFFIRMATIONS[index]}
                 </p>
 
-                <span className="absolute -bottom-10 -right-8 text-8xl text-teal-200 font-serif opacity-50">"</span>
+                <span className="absolute -bottom-10 -right-8 text-8xl text-teal-200 font-serif opacity-50">
+                  "
+                </span>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -386,7 +425,9 @@ function VocalAffirmations() {
               <div className="w-px h-12 bg-gray-300"></div>
 
               <div>
-                <p className="text-3xl font-bold text-blue-600">{formatTime(timeElapsed)}</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {formatTime(timeElapsed)}
+                </p>
                 <p className="text-sm text-gray-600 text-center">Tiempo</p>
               </div>
 
@@ -394,11 +435,14 @@ function VocalAffirmations() {
 
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-semibold text-gray-700">Grabando</span>
+                <span className="text-sm font-semibold text-gray-700">
+                  Grabando
+                </span>
               </div>
             </motion.div>
           )}
 
+          {/* ✅ Controles SOLO cuando está grabando (sin banco de afirmaciones) */}
           {isRecording && (
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
@@ -443,51 +487,13 @@ function VocalAffirmations() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-teal-50">
-          <h3 className="font-bold text-gray-800 mb-5 text-lg flex items-center gap-2">
-            <span>📋</span>
-            <span>Banco de Afirmaciones</span>
-          </h3>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            {AFFIRMATIONS.map((text, i) => (
-              <motion.button
-                key={i}
-                onClick={() => !isRecording && setIndex(i)}
-                disabled={isRecording}
-                whileHover={!isRecording ? { scale: 1.02 } : {}}
-                whileTap={!isRecording ? { scale: 0.98 } : {}}
-                className={`p-4 rounded-xl border-2 text-left transition-all relative ${
-                  i === index
-                    ? "bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-400 text-teal-800 shadow-md"
-                    : isRecording
-                    ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-teal-300 hover:shadow-sm cursor-pointer"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
-                      i === index ? "bg-teal-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="flex-1">{text}</span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-
-          {isRecording && (
-            <p className="text-sm text-gray-500 mt-4 text-center italic">
-              Las afirmaciones no se pueden seleccionar durante la grabación
-            </p>
-          )}
-        </div>
-
+        {/* ✅ CTA para iniciar (se mantiene) */}
         {!isRecording && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-6"
+          >
             <p className="text-white/90 mb-6 drop-shadow">
               Presiona Iniciar para comenzar
               <br />
@@ -504,6 +510,7 @@ function VocalAffirmations() {
           </motion.div>
         )}
 
+        {/* ✅ Instrucciones (se mantienen) */}
         {!isRecording && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

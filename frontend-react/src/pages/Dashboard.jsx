@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
-import { getEmotionalState, getTheme } from "../utils/themeSystem";
 import BackgroundMusic from '../components/BackgroundMusic';
+import useDynamicTheme from "../hooks/useDynamicTheme";
 
 /* =====================================================
    CONSTANTES / HELPERS (fuera del componente)
@@ -17,9 +17,44 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 const safeUpper = (v) => (typeof v === "string" ? v.toUpperCase() : v);
 
+const getMaxVoiceRiskLevel = (sessions) => {
+  const arr = Array.isArray(sessions) ? sessions : [];
+  if (!arr.length) return "LOW";
+
+  const order = { LOW: 0, MODERATE: 1, HIGH: 2 };
+  let max = "LOW";
+  for (const s of arr) {
+    const r = safeUpper(s?.risk_level) || "LOW";
+    const rr = order[r] !== undefined ? r : "LOW";
+    if (order[rr] > order[max]) max = rr;
+  }
+  return max;
+};
+
 const safeNum = (v, fallback = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
+};
+
+const buildXAxisLabels = (dates, target = 6) => {
+  const arr = Array.isArray(dates) ? dates : [];
+  if (!arr.length) return [];
+  if (arr.length <= target) return arr;
+
+  // puntos espaciados (incluye inicio y fin)
+  const idxs = Array.from({ length: target }, (_, i) =>
+    Math.round((i / (target - 1)) * (arr.length - 1))
+  );
+
+  const unique = [];
+  const seen = new Set();
+  for (const i of idxs) {
+    if (!seen.has(i)) {
+      unique.push(arr[i]);
+      seen.add(i);
+    }
+  }
+  return unique;
 };
 
 /* =====================================================
@@ -457,6 +492,8 @@ const getClinicalMessage = (result) => {
 function Dashboard() {
   const navigate = useNavigate();
 
+  const { theme } = useDynamicTheme();
+
   const [userName, setUserName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -467,9 +504,6 @@ function Dashboard() {
 
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [showInfo, setShowInfo] = useState(null);
-
-  // Theme dinámico (arranca con sin evaluación para evitar nulls)
-  const [theme, setTheme] = useState(getTheme("sin_evaluacion"));
 
   // ✅ Para evitar setState luego de un cambio rápido de timeRange
   const requestSeqRef = useRef(0);
@@ -524,23 +558,6 @@ function Dashboard() {
       if (mySeq === requestSeqRef.current) setIsLoading(false);
     }
   }, [navigate, timeRange]);
-
-  // Actualizar theme cuando hay nuevos trendsData (igual que Home)
-  useEffect(() => {
-    if (!trendsData) {
-      setTheme(getTheme("sin_evaluacion"));
-      return;
-    }
-
-    const phqScores = trendsData?.phq9?.scores || [];
-    const gadScores = trendsData?.gad7?.scores || [];
-
-    const phqLast = phqScores.length > 0 ? phqScores[phqScores.length - 1] : null;
-    const gadLast = gadScores.length > 0 ? gadScores[gadScores.length - 1] : null;
-
-    const state = getEmotionalState(phqLast, gadLast);
-    setTheme(getTheme(state));
-  }, [trendsData]);
 
   const getMultimodalStatus = useCallback((score) => {
     if (score >= 80) return "excellent";
@@ -764,31 +781,15 @@ function Dashboard() {
     return `0,100 ${gadPoints.map((p) => `${p.x},${p.y}`).join(" ")} 100,100`;
   }, [gadPoints]);
 
-  const xAxisDates = useMemo(() => {
-    const d = (safePhq?.dates && safePhq.dates.length) ? safePhq.dates : (safeGad?.dates || []);
-    return Array.isArray(d) ? d : [];
-  }, [safeGad?.dates, safePhq?.dates]);
+  const phqXAxisLabels = useMemo(
+    () => buildXAxisLabels(safePhq?.dates || [], 6),
+    [safePhq?.dates]
+  );
 
-  const xAxisLabels = useMemo(() => {
-    if (!xAxisDates.length) return [];
-    const target = 6;
-    if (xAxisDates.length <= target) return xAxisDates;
-
-    // 6 puntos espaciados (incluye inicio y fin)
-    const idxs = Array.from({ length: target }, (_, i) =>
-      Math.round((i / (target - 1)) * (xAxisDates.length - 1))
-    );
-
-    const unique = [];
-    const seen = new Set();
-    for (const i of idxs) {
-      if (!seen.has(i)) {
-        unique.push(xAxisDates[i]);
-        seen.add(i);
-      }
-    }
-    return unique;
-  }, [xAxisDates]);
+  const gadXAxisLabels = useMemo(
+    () => buildXAxisLabels(safeGad?.dates || [], 6),
+    [safeGad?.dates]
+  );
 
   const handleHoverPoint = useCallback((payload) => {
     setHoveredPoint(payload);
@@ -922,6 +923,66 @@ function Dashboard() {
             </button>
           </div>
         </motion.div>
+
+        {/* 🚨 Panel de emergencia (usa tools/emergencyNumber del tema) */}
+        {theme?.emergency && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${theme?.colors?.card || "bg-red-50/95 border-4 border-red-500"} rounded-2xl shadow-xl p-6 mb-6`}
+            role="alert"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className={`text-lg font-bold ${theme?.colors?.accent || "text-red-700"}`}>
+                  {theme?.name || "🚨 ALTO RIESGO"}
+                </p>
+                <p className={`${theme?.colors?.text || "text-gray-900"} text-sm mt-1`}>
+                  Si te sientes en peligro o necesitas ayuda inmediata, busca apoyo ahora.
+                </p>
+              </div>
+
+              {theme?.emergencyNumber && (
+                (() => {
+                  const firstNumber = String(theme.emergencyNumber).match(/\d+/)?.[0];
+                  const href = firstNumber ? `tel:${firstNumber}` : null;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-600">Línea de ayuda</p>
+                        <p className={`font-bold ${theme?.colors?.accent || "text-red-700"}`}>{theme.emergencyNumber}</p>
+                      </div>
+                      {href && (
+                        <a
+                          href={href}
+                          className={`px-4 py-2 rounded-xl text-white font-semibold bg-gradient-to-r ${theme?.colors?.button || "from-red-600 to-red-700"}`}
+                        >
+                          Llamar
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {Array.isArray(theme?.tools) && theme.tools.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-800 mb-2">Acciones sugeridas</p>
+                <div className="flex flex-wrap gap-2">
+                  {theme.tools.map((t) => (
+                    <span
+                      key={t}
+                      className="px-3 py-1 rounded-full bg-white/80 border border-gray-200 text-sm text-gray-800"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* SCORE MULTIMODAL */}
         {multimodal && (
@@ -1272,7 +1333,7 @@ function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Gráfica Lineal Comparativa */}
+        {/* Gráficas de Tendencia (separadas) */}
         {(phqScores.length > 0 || gadScores.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1286,7 +1347,7 @@ function Dashboard() {
                   Evolución Temporal
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Seguimiento de tus evaluaciones en el tiempo
+                  Tendencias separadas de PHQ-9 y GAD-7
                 </p>
               </div>
               <button
@@ -1297,221 +1358,280 @@ function Dashboard() {
               </button>
             </div>
 
-            <div className="relative h-96 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-8">
-              {/* Eje Y */}
-              <div className="absolute left-4 top-8 bottom-20 flex flex-col justify-between text-sm text-gray-600 font-medium">
-                <span>27</span>
-                <span>20</span>
-                <span>15</span>
-                <span>10</span>
-                <span>5</span>
-                <span>0</span>
-              </div>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* PHQ-9 */}
+              {phqScores.length > 0 && (
+                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-8">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="font-semibold text-gray-800">PHQ-9 (Depresión)</p>
+                    <p className="text-sm text-gray-600">
+                      Actual: <span className="font-semibold">{phqScores[phqScores.length - 1]}</span>
+                    </p>
+                  </div>
 
-              {/* Grid */}
-              <div className="absolute left-16 right-8 top-8 bottom-20">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  {/* Eje Y */}
+                  <div className="absolute left-4 top-16 bottom-20 flex flex-col justify-between text-sm text-gray-600 font-medium">
+                    <span>27</span>
+                    <span>20</span>
+                    <span>15</span>
+                    <span>10</span>
+                    <span>5</span>
+                    <span>0</span>
+                  </div>
+
+                  {/* Grid */}
+                  <div className="absolute left-16 right-8 top-16 bottom-20">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="absolute w-full border-t border-gray-300 border-dashed"
+                        style={{ top: `${i * 20}%` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* SVG Chart */}
                   <div
-                    key={i}
-                    className="absolute w-full border-t border-gray-300 border-dashed"
-                    style={{ top: `${i * 20}%` }}
-                  />
-                ))}
-              </div>
-
-              {/* SVG Chart */}
-              <div
-                className="absolute left-16 right-8 top-8 bottom-20"
-                onMouseLeave={clearHover}
-              >
-                <svg
-                  className="w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                >
-                  <defs>
-                    <linearGradient id="phq9Gradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
-                    </linearGradient>
-                    <linearGradient id="gad7Gradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.05" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Área PHQ-9 */}
-                  {phqPolygon && <polygon points={phqPolygon} fill="url(#phq9Gradient)" />}
-
-                  {/* Área GAD-7 */}
-                  {gadPolygon && <polygon points={gadPolygon} fill="url(#gad7Gradient)" />}
-
-                  {/* Línea PHQ-9 */}
-                  {phqPoints.length > 1 && (
-                    <polyline
-                      points={phqPolyline}
-                      fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="0.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-
-                  {/* Puntos PHQ-9 */}
-                  {phqPoints.map((p) => {
-                    const isHovered =
-                      hoveredPoint?.type === "phq9" && hoveredPoint?.index === p.index;
-
-                    return (
-                      <circle
-                        key={`phq9-${p.index}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={isHovered ? "2" : "1.2"}
-                        fill="#3b82f6"
-                        stroke="white"
-                        strokeWidth="0.4"
-                        vectorEffect="non-scaling-stroke"
-                        className="cursor-pointer transition-all"
-                        onMouseEnter={() =>
-                          handleHoverPoint({
-                            type: "phq9",
-                            index: p.index,
-                            score: p.score,
-                            date: safePhq?.dates?.[p.index],
-                          })
-                        }
-                      />
-                    );
-                  })}
-
-                  {/* Línea GAD-7 */}
-                  {gadPoints.length > 1 && (
-                    <polyline
-                      points={gadPolyline}
-                      fill="none"
-                      stroke="#14b8a6"
-                      strokeWidth="0.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-
-                  {/* Puntos GAD-7 */}
-                  {gadPoints.map((p) => {
-                    const isHovered =
-                      hoveredPoint?.type === "gad7" && hoveredPoint?.index === p.index;
-
-                    return (
-                      <circle
-                        key={`gad7-${p.index}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={isHovered ? "2" : "1.2"}
-                        fill="#14b8a6"
-                        stroke="white"
-                        strokeWidth="0.4"
-                        vectorEffect="non-scaling-stroke"
-                        className="cursor-pointer transition-all"
-                        onMouseEnter={() =>
-                          handleHoverPoint({
-                            type: "gad7",
-                            index: p.index,
-                            score: p.score,
-                            date: safeGad?.dates?.[p.index],
-                          })
-                        }
-                      />
-                    );
-                  })}
-
-                  {/* Tooltip */}
-                  {hoveredPoint && (
-                    <foreignObject
-                      x={clamp(
-                        (hoveredPoint.index /
-                          Math.max(
-                            (hoveredPoint.type === "phq9"
-                              ? phqPoints.length
-                              : gadPoints.length) - 1,
-                            1
-                          )) *
-                          100 -
-                          15,
-                        0,
-                        70
-                      )}
-                      y={clamp(
-                        hoveredPoint.type === "phq9"
-                          ? 100 - (safeNum(hoveredPoint.score) / MAX_PHQ9) * 100 - 25
-                          : 100 - (safeNum(hoveredPoint.score) / MAX_GAD7) * 100 - 25,
-                        0,
-                        80
-                      )}
-                      width="30"
-                      height="20"
+                    className="absolute left-16 right-8 top-16 bottom-20"
+                    onMouseLeave={clearHover}
+                  >
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
                     >
-                      <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
-                        <p className="font-bold text-gray-800">
-                          {hoveredPoint.type === "phq9" ? "PHQ-9" : "GAD-7"}:{" "}
-                          {hoveredPoint.score}
-                        </p>
-                        <p className="text-gray-600">
-                          {hoveredPoint.date
-                            ? new Date(hoveredPoint.date).toLocaleDateString("es-ES")
-                            : "—"}
-                        </p>
-                      </div>
-                    </foreignObject>
-                  )}
-                </svg>
-              </div>
+                      <defs>
+                        <linearGradient id="phq9Gradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                        </linearGradient>
+                      </defs>
 
-              {/* Eje X */}
-              <div className="absolute left-16 right-8 bottom-12 flex justify-between text-xs text-gray-600">
-                {xAxisLabels.map((date, index) => (
-                  <span key={index}>
-                    {date
-                      ? new Date(date).toLocaleDateString("es-ES", {
-                          day: "2-digit",
-                          month: "short",
-                        })
-                      : "—"}
-                  </span>
-                ))}
-              </div>
+                      {/* Área */}
+                      {phqPolygon && <polygon points={phqPolygon} fill="url(#phq9Gradient)" />}
 
-              {/* Leyenda */}
-              <div className="absolute top-8 right-8 bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg border-2 border-gray-200">
-                <p className="text-xs text-gray-600 mb-3 font-semibold">LEYENDA</p>
-                <div className="flex flex-col gap-2 text-sm">
-                  {phqScores.length > 0 && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-                      <div>
-                        <p className="font-medium text-gray-700">PHQ-9</p>
-                        <p className="text-xs text-gray-500">
-                          Actual: {phqScores[phqScores.length - 1]}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {gadScores.length > 0 && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded-full bg-teal-500"></div>
-                      <div>
-                        <p className="font-medium text-gray-700">GAD-7</p>
-                        <p className="text-xs text-gray-500">
-                          Actual: {gadScores[gadScores.length - 1]}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                      {/* Línea */}
+                      {phqPoints.length > 1 && (
+                        <polyline
+                          points={phqPolyline}
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="0.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      )}
+
+                      {/* Puntos */}
+                      {phqPoints.map((p) => {
+                        const isHovered =
+                          hoveredPoint?.type === "phq9" && hoveredPoint?.index === p.index;
+
+                        return (
+                          <circle
+                            key={`phq9-${p.index}`}
+                            cx={p.x}
+                            cy={p.y}
+                            r={isHovered ? "2" : "1.2"}
+                            fill="#3b82f6"
+                            stroke="white"
+                            strokeWidth="0.4"
+                            vectorEffect="non-scaling-stroke"
+                            className="cursor-pointer transition-all"
+                            onMouseEnter={() =>
+                              handleHoverPoint({
+                                type: "phq9",
+                                index: p.index,
+                                score: p.score,
+                                date: safePhq?.dates?.[p.index],
+                              })
+                            }
+                          />
+                        );
+                      })}
+
+                      {/* Tooltip */}
+                      {hoveredPoint?.type === "phq9" && (
+                        <foreignObject
+                          x={clamp(
+                            (hoveredPoint.index / Math.max(phqPoints.length - 1, 1)) * 100 - 15,
+                            0,
+                            70
+                          )}
+                          y={clamp(
+                            100 - (safeNum(hoveredPoint.score) / MAX_PHQ9) * 100 - 25,
+                            0,
+                            80
+                          )}
+                          width="30"
+                          height="20"
+                        >
+                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
+                            <p className="font-bold text-gray-800">PHQ-9: {hoveredPoint.score}</p>
+                            <p className="text-gray-600">
+                              {hoveredPoint.date
+                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES")
+                                : "—"}
+                            </p>
+                          </div>
+                        </foreignObject>
+                      )}
+                    </svg>
+                  </div>
+
+                  {/* Eje X */}
+                  <div className="absolute left-16 right-8 bottom-12 flex justify-between text-xs text-gray-600">
+                    {phqXAxisLabels.map((date, index) => (
+                      <span key={index}>
+                        {date
+                          ? new Date(date).toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "short",
+                            })
+                          : "—"}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* GAD-7 */}
+              {gadScores.length > 0 && (
+                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-teal-50 rounded-2xl p-8">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="font-semibold text-gray-800">GAD-7 (Ansiedad)</p>
+                    <p className="text-sm text-gray-600">
+                      Actual: <span className="font-semibold">{gadScores[gadScores.length - 1]}</span>
+                    </p>
+                  </div>
+
+                  {/* Eje Y */}
+                  <div className="absolute left-4 top-16 bottom-20 flex flex-col justify-between text-sm text-gray-600 font-medium">
+                    <span>21</span>
+                    <span>17</span>
+                    <span>13</span>
+                    <span>9</span>
+                    <span>5</span>
+                    <span>0</span>
+                  </div>
+
+                  {/* Grid */}
+                  <div className="absolute left-16 right-8 top-16 bottom-20">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="absolute w-full border-t border-gray-300 border-dashed"
+                        style={{ top: `${i * 20}%` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* SVG Chart */}
+                  <div
+                    className="absolute left-16 right-8 top-16 bottom-20"
+                    onMouseLeave={clearHover}
+                  >
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient id="gad7Gradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.05" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Área */}
+                      {gadPolygon && <polygon points={gadPolygon} fill="url(#gad7Gradient)" />}
+
+                      {/* Línea */}
+                      {gadPoints.length > 1 && (
+                        <polyline
+                          points={gadPolyline}
+                          fill="none"
+                          stroke="#14b8a6"
+                          strokeWidth="0.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      )}
+
+                      {/* Puntos */}
+                      {gadPoints.map((p) => {
+                        const isHovered =
+                          hoveredPoint?.type === "gad7" && hoveredPoint?.index === p.index;
+
+                        return (
+                          <circle
+                            key={`gad7-${p.index}`}
+                            cx={p.x}
+                            cy={p.y}
+                            r={isHovered ? "2" : "1.2"}
+                            fill="#14b8a6"
+                            stroke="white"
+                            strokeWidth="0.4"
+                            vectorEffect="non-scaling-stroke"
+                            className="cursor-pointer transition-all"
+                            onMouseEnter={() =>
+                              handleHoverPoint({
+                                type: "gad7",
+                                index: p.index,
+                                score: p.score,
+                                date: safeGad?.dates?.[p.index],
+                              })
+                            }
+                          />
+                        );
+                      })}
+
+                      {/* Tooltip */}
+                      {hoveredPoint?.type === "gad7" && (
+                        <foreignObject
+                          x={clamp(
+                            (hoveredPoint.index / Math.max(gadPoints.length - 1, 1)) * 100 - 15,
+                            0,
+                            70
+                          )}
+                          y={clamp(
+                            100 - (safeNum(hoveredPoint.score) / MAX_GAD7) * 100 - 25,
+                            0,
+                            80
+                          )}
+                          width="30"
+                          height="20"
+                        >
+                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-teal-500 text-xs whitespace-nowrap">
+                            <p className="font-bold text-gray-800">GAD-7: {hoveredPoint.score}</p>
+                            <p className="text-gray-600">
+                              {hoveredPoint.date
+                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES")
+                                : "—"}
+                            </p>
+                          </div>
+                        </foreignObject>
+                      )}
+                    </svg>
+                  </div>
+
+                  {/* Eje X */}
+                  <div className="absolute left-16 right-8 bottom-12 flex justify-between text-xs text-gray-600">
+                    {gadXAxisLabels.map((date, index) => (
+                      <span key={index}>
+                        {date
+                          ? new Date(date).toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "short",
+                            })
+                          : "—"}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

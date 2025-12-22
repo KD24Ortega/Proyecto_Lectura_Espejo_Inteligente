@@ -11,7 +11,8 @@ function GuidedDialogue() {
 
   // ✅ THEME dinámico (igual que AnxietyExercises)
   const { theme, isThemeLoading } = useDynamicTheme();
-  const bg = theme?.colors?.primary || "from-emerald-100 via-teal-100 to-cyan-100";
+  const bg =
+    theme?.colors?.primary || "from-emerald-100 via-teal-100 to-cyan-100";
 
   // PREGUNTAS REFLEXIVAS
   const QUESTIONS = [
@@ -26,7 +27,7 @@ function GuidedDialogue() {
     { id: 9, text: "¿Qué pensamiento quisieras cambiar?", category: "Reflexión" },
     { id: 10, text: "¿Qué valoras de ti hoy?", category: "Autoestima" },
     { id: 11, text: "¿Cuál es tu mejor cualidad?", category: "Autoestima" },
-    { id: 12, text: "¿Qué te dirías a ti mismo si fueras tu amigo?", category: "Autocompasión" }
+    { id: 12, text: "¿Qué te dirías a ti mismo si fueras tu amigo?", category: "Autocompasión" },
   ];
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -109,7 +110,10 @@ function GuidedDialogue() {
   // ─────────────────────────────────────────────
   const finishSession = () => {
     clearInterval(timerRef.current);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
@@ -135,7 +139,7 @@ function GuidedDialogue() {
       fd.append("completed", true);
 
       const response = await api.post("/api/voice/sessions", fd, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setAnalysisResults(response.data);
@@ -162,7 +166,9 @@ function GuidedDialogue() {
   // ─────────────────────────────────────────────
   if (isThemeLoading) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}>
+      <div
+        className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}
+      >
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-white/80 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xl text-white drop-shadow-lg">Cargando diálogo...</p>
@@ -176,12 +182,16 @@ function GuidedDialogue() {
   // ─────────────────────────────────────────────
   if (isAnalyzing) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}>
+      <div
+        className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}
+      >
         <FaceMonitor isActive={!isAnalyzing} />
 
         <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
           <div className="w-20 h-20 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu diálogo…</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Analizando tu diálogo…
+          </h2>
           <p className="text-gray-600">Procesando tus respuestas</p>
         </div>
       </div>
@@ -206,9 +216,12 @@ function GuidedDialogue() {
               <span>Volver a ejercicios</span>
             </button>
 
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">✅ Diálogo Completado</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              ✅ Diálogo Completado
+            </h1>
             <p className="text-gray-600">
-              Duración: {formatTime(timeElapsed)} | Preguntas respondidas: {answeredQuestions.length}
+              Duración: {formatTime(timeElapsed)} | Preguntas respondidas:{" "}
+              {answeredQuestions.length}
             </p>
           </div>
 
@@ -221,8 +234,12 @@ function GuidedDialogue() {
             <div className="grid md:grid-cols-2 gap-4 mb-6">
               <div className="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
-                <p className="text-2xl font-bold text-emerald-600">{analysisResults.pitch_mean} Hz</p>
-                <p className="text-xs text-gray-500 mt-1">Variabilidad: {analysisResults.pitch_std}</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {analysisResults.pitch_mean} Hz
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Variabilidad: {analysisResults.pitch_std}
+                </p>
               </div>
 
               <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
@@ -241,7 +258,9 @@ function GuidedDialogue() {
 
               <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
-                <p className="text-2xl font-bold text-teal-600">{analysisResults.hnr.toFixed(1)} dB</p>
+                <p className="text-2xl font-bold text-teal-600">
+                  {analysisResults.hnr.toFixed(1)} dB
+                </p>
               </div>
             </div>
 
@@ -263,8 +282,12 @@ function GuidedDialogue() {
                     : "🔴"}
                 </span>
                 <div>
-                  <p className="font-bold text-gray-800 text-lg">Estado emocional detectado</p>
-                  <p className="text-sm text-gray-600">Puntuación: {analysisResults.score.toFixed(1)}/10</p>
+                  <p className="font-bold text-gray-800 text-lg">
+                    Estado emocional detectado
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Puntuación: {analysisResults.score.toFixed(1)}/10
+                  </p>
                 </div>
               </div>
             </div>
@@ -314,7 +337,9 @@ function GuidedDialogue() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">Diálogo Guiado</h1>
-                <p className="text-gray-600 mt-1">Preguntas reflexivas para conectar con tus emociones</p>
+                <p className="text-gray-600 mt-1">
+                  Preguntas reflexivas para conectar con tus emociones
+                </p>
               </div>
             </div>
           </div>
@@ -344,7 +369,9 @@ function GuidedDialogue() {
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-semibold text-gray-700">Sesión activa</span>
               </div>
-              <span className="text-2xl font-bold text-teal-600">{formatTime(timeElapsed)}</span>
+              <span className="text-2xl font-bold text-teal-600">
+                {formatTime(timeElapsed)}
+              </span>
             </div>
           </div>
         )}
@@ -355,8 +382,11 @@ function GuidedDialogue() {
             <span className="px-4 py-2 bg-amber-100 text-amber-700 rounded-full font-semibold text-sm">
               {currentQuestion.category}
             </span>
+
+            {/* ✅ SE QUITA el texto visual (0/12 respondidas) y similares */}
+            {/* Solo dejamos el indicador simple de pregunta actual */}
             <span className="text-gray-400 font-semibold">
-              {currentQuestionIndex + 1} / {QUESTIONS.length}
+              Pregunta {currentQuestionIndex + 1}
             </span>
           </div>
 
@@ -430,7 +460,9 @@ function GuidedDialogue() {
               )}
 
               <button
-                onClick={() => setCurrentQuestionIndex((i) => Math.min(QUESTIONS.length - 1, i + 1))}
+                onClick={() =>
+                  setCurrentQuestionIndex((i) => Math.min(QUESTIONS.length - 1, i + 1))
+                }
                 disabled={currentQuestionIndex === QUESTIONS.length - 1 || recordingQuestion}
                 className={`px-8 py-3 rounded-xl font-semibold transition ${
                   currentQuestionIndex === QUESTIONS.length - 1 || recordingQuestion
@@ -467,51 +499,8 @@ function GuidedDialogue() {
           </div>
         </div>
 
-        {/* LISTA DE PREGUNTAS */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-50">
-          <h3 className="font-bold text-gray-800 mb-5 text-lg flex items-center gap-2">
-            <span>📋</span>
-            <span>Preguntas del Diálogo ({answeredQuestions.length}/{QUESTIONS.length} respondidas)</span>
-          </h3>
-
-          <div className="grid gap-3">
-            {QUESTIONS.map((q, idx) => (
-              <motion.button
-                key={q.id}
-                onClick={() => !isRecording && setCurrentQuestionIndex(idx)}
-                disabled={isRecording}
-                whileHover={!isRecording ? { scale: 1.01 } : {}}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  idx === currentQuestionIndex
-                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-400 shadow-md"
-                    : answeredQuestions.includes(idx)
-                    ? "bg-green-50 border-green-300"
-                    : isRecording
-                    ? "bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed"
-                    : "bg-white border-gray-200 hover:border-emerald-300 cursor-pointer"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      answeredQuestions.includes(idx)
-                        ? "bg-green-500 text-white"
-                        : idx === currentQuestionIndex
-                        ? "bg-emerald-500 text-white"
-                        : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {answeredQuestions.includes(idx) ? "✓" : idx + 1}
-                  </span>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-800">{q.text}</p>
-                    <p className="text-xs text-gray-500 mt-1">{q.category}</p>
-                  </div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </div>
+        {/* ✅ SE ELIMINA COMPLETAMENTE la LISTA de preguntas con “(0/12 respondidas)” */}
+        {/* (La lógica answeredQuestions se mantiene porque se usa en resultados) */}
 
         {!isRecording && (
           <motion.div

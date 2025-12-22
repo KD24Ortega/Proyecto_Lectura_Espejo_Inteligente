@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminAlerts() {
+  const { theme } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -166,7 +170,7 @@ function AdminAlerts() {
 
   const handleContactUser = (user) => {
     if (user.email) {
-      const subject = encodeURIComponent('Seguimiento Urgente - Espejo Inteligente');
+      const subject = encodeURIComponent('Seguimiento Urgente - CalmaSense');
       const body = encodeURIComponent(`Estimado/a ${user.full_name},\n\nNos comunicamos para hacer un seguimiento de tu estado...\n\nSaludos,\n${adminName}`);
       window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`;
     } else {
@@ -203,7 +207,7 @@ function AdminAlerts() {
     if (action === 'email') {
       const emails = selectedUsers.map(u => u.email).filter(e => e).join(',');
       if (emails) {
-        window.location.href = `mailto:${emails}?subject=${encodeURIComponent('Seguimiento - Espejo Inteligente')}`;
+        window.location.href = `mailto:${emails}?subject=${encodeURIComponent('Seguimiento - CalmaSense')}`;
       } else {
         alert('Ninguno de los usuarios seleccionados tiene email');
       }
@@ -256,7 +260,7 @@ function AdminAlerts() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg} transition-all duration-1000`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xl text-gray-600">Cargando alertas...</p>
@@ -266,7 +270,7 @@ function AdminAlerts() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
       <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
@@ -278,7 +282,7 @@ function AdminAlerts() {
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
-              <h1 className="font-bold text-lg">Espejo Inteligente</h1>
+              <h1 className="font-bold text-lg">CalmaSense</h1>
               <p className="text-xs text-blue-300">Panel Administrativo</p>
             </div>
           </div>

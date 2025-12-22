@@ -4,8 +4,12 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import api from '../services/api';
+import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminUserProfile() {
+  const { theme } = useDynamicTheme();
+  const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
   const navigate = useNavigate();
   const { userId } = useParams();
 
@@ -15,8 +19,10 @@ function AdminUserProfile() {
   const [adminName, setAdminName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estado de actividad (sesión activa/inactiva)
+  const [isUserActive, setIsUserActive] = useState(false);
+
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('both');
   const [timeRange, setTimeRange] = useState(8);
 
   const [showNotes, setShowNotes] = useState(false);
@@ -45,6 +51,11 @@ function AdminUserProfile() {
   // -------------------------
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+  const toNum = (v, fallback = null) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   const apiGetTryPaths = async (paths) => {
     let lastErr = null;
     for (const p of paths) {
@@ -58,6 +69,17 @@ function AdminUserProfile() {
       }
     }
     throw lastErr || new Error('No se pudo resolver ninguna ruta.');
+  };
+
+  const toBool = (v) => {
+    if (v === true) return true;
+    if (v === false || v === null || v === undefined) return false;
+    if (typeof v === 'number') return v === 1;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      return s === 'true' || s === '1' || s === 'yes' || s === 'si';
+    }
+    return Boolean(v);
   };
 
   const normalizeVoiceScoreTo100 = (raw) => {
@@ -115,16 +137,17 @@ function AdminUserProfile() {
   };
 
   const getSeverityInfo = (score, type) => {
-    if (score === null || score === undefined) {
+    const val = toNum(score, null);
+    if (val === null) {
       return { text: 'Sin evaluación', color: 'bg-gray-200 text-gray-600', max: type === 'phq9' ? 27 : 21 };
     }
 
     const max = type === 'phq9' ? 27 : 21;
     let severity, color;
 
-    if (score < 5) { severity = 'Mínima'; color = 'bg-green-100 text-green-700'; }
-    else if (score < 10) { severity = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
-    else if (score < 15) { severity = 'Moderada'; color = 'bg-orange-100 text-orange-700'; }
+    if (val < 5) { severity = 'Mínima'; color = 'bg-green-100 text-green-700'; }
+    else if (val < 10) { severity = 'Leve'; color = 'bg-blue-100 text-blue-700'; }
+    else if (val < 15) { severity = 'Moderada'; color = 'bg-orange-100 text-orange-700'; }
     else { severity = 'Severa'; color = 'bg-red-100 text-red-700'; }
 
     return { text: severity, color, max };
@@ -138,9 +161,9 @@ function AdminUserProfile() {
     const recent = history.slice(-3);
     const older = history.slice(0, Math.min(3, Math.max(0, history.length - 3)));
 
-    const recentAvg = recent.reduce((sum, a) => sum + (a?.score ?? 0), 0) / recent.length;
+    const recentAvg = recent.reduce((sum, a) => sum + (toNum(a?.score, 0) ?? 0), 0) / recent.length;
     const olderAvg = older.length > 0
-      ? older.reduce((sum, a) => sum + (a?.score ?? 0), 0) / older.length
+      ? older.reduce((sum, a) => sum + (toNum(a?.score, 0) ?? 0), 0) / older.length
       : recentAvg;
 
     const change = recentAvg - olderAvg;
@@ -173,6 +196,10 @@ function AdminUserProfile() {
 
     checkAuth();
     loadUserProfile();
+    loadUserActiveStatus();
+
+    const interval = setInterval(loadUserActiveStatus, 10000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -228,6 +255,22 @@ function AdminUserProfile() {
     }
   };
 
+  const loadUserActiveStatus = async () => {
+    try {
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+      if (!adminId) return;
+
+      const res = await api.get(`/admin/sessions/active?user_id=${adminId}`);
+      const uid = Number(userId);
+      const sessions = Array.isArray(res.data) ? res.data : [];
+      const active = sessions.some((s) => Number(s?.user_id) === uid && toBool(s?.is_active));
+      setIsUserActive(active);
+    } catch (error) {
+      console.error('Error al cargar estado activo del usuario:', error);
+      setIsUserActive(false);
+    }
+  };
+
   const loadTrendsAnalysis = async () => {
     try {
       const days = timeRange * 7;
@@ -260,7 +303,7 @@ function AdminUserProfile() {
           `/voice/sessions/user/${userId}?days=${days}&limit=50`,
           `/api/voice/sessions/user/${userId}?days=${days}&limit=50`,
         ]);
-      } catch (e) {
+      } catch {
         backendFiltered = false;
         sessionsRes = await apiGetTryPaths([
           `/voice/sessions/user/${userId}?limit=50`,
@@ -367,17 +410,19 @@ function AdminUserProfile() {
 
   const emotionalIndex = useMemo(() => {
     const phqAvg = phq9History.length > 0
-      ? phq9History.reduce((s, a) => s + a.score, 0) / phq9History.length
+      ? phq9History.reduce((s, a) => s + (toNum(a?.score, 0) ?? 0), 0) / phq9History.length
       : null;
 
     const gadAvg = gad7History.length > 0
-      ? gad7History.reduce((s, a) => s + a.score, 0) / gad7History.length
+      ? gad7History.reduce((s, a) => s + (toNum(a?.score, 0) ?? 0), 0) / gad7History.length
       : null;
 
-    const normPHQ9 = phqAvg !== null ? (phqAvg / 27) * 100 : 0;
-    const normGAD7 = gadAvg !== null ? (gadAvg / 21) * 100 : 0;
+    const parts = [];
+    if (phqAvg !== null) parts.push((phqAvg / 27) * 100);
+    if (gadAvg !== null) parts.push((gadAvg / 21) * 100);
 
-    return Number(((normPHQ9 + normGAD7) / 2).toFixed(1));
+    if (!parts.length) return 0;
+    return Number((parts.reduce((a, b) => a + b, 0) / parts.length).toFixed(1));
   }, [phq9History, gad7History]);
 
   const voiceScore100 = useMemo(() => {
@@ -396,8 +441,10 @@ function AdminUserProfile() {
   const tooltipCoords = useMemo(() => {
     if (!hoveredPoint) return null;
     const len = hoveredPoint.type === 'phq9' ? phq9History.length : gad7History.length;
-    const x = (hoveredPoint.index / Math.max(len - 1, 1)) * 100;
-    const y = 100 - (hoveredPoint.score / hoveredPoint.max) * 100;
+    const x = len <= 1 ? 50 : (hoveredPoint.index / Math.max(len - 1, 1)) * 100;
+    const score = toNum(hoveredPoint.score, 0) ?? 0;
+    const max = toNum(hoveredPoint.max, 1) ?? 1;
+    const y = 100 - (score / max) * 100;
     const fx = clamp(x - 15, 0, 70);
     const fy = clamp(y - 25, 0, 80);
     return { x: fx, y: fy };
@@ -501,8 +548,8 @@ function AdminUserProfile() {
         return;
       }
 
-      const phq = typeof lastPhq9?.score === 'number' ? lastPhq9.score : null;
-      const gad = typeof lastGad7?.score === 'number' ? lastGad7.score : null;
+      const phq = toNum(lastPhq9?.score, null);
+      const gad = toNum(lastGad7?.score, null);
 
       let recommendation = "Sin datos suficientes.";
       if (phq !== null || gad !== null) {
@@ -514,7 +561,8 @@ function AdminUserProfile() {
       const message = `
 Estimado/a ${user.user.full_name},
 
-Nos comunicamos desde el sistema Smart Mirror para dar seguimiento a su bienestar emocional.
+Nos comunicamos desde el sistema CalmaSense para dar seguimiento a su bienestar emocional.
+
 
 Resultados más recientes:
 
@@ -525,7 +573,7 @@ Recomendación:
 ${recommendation}
 
 Saludos,
-Equipo Smart Mirror
+Equipo CalmaSense
 
 Administrador: ${adminName}
 `;
@@ -570,7 +618,7 @@ Administrador: ${adminName}
 
   const handleSelectPoint = (type, index, score, date) => {
     const max = type === 'phq9' ? 27 : 21;
-    setHoveredPoint({ type, index, score, date, max });
+    setHoveredPoint({ type, index, score: toNum(score, 0) ?? 0, date, max });
   };
 
   // -------------------------
@@ -589,14 +637,15 @@ Administrador: ${adminName}
     const gad7 = assessments.filter(a => a.type === "gad7");
 
     const avg = (arr) =>
-      arr.length ? (arr.reduce((s, a) => s + a.score, 0) / arr.length).toFixed(1) : null;
+      arr.length ? (arr.reduce((s, a) => s + (toNum(a?.score, 0) ?? 0), 0) / arr.length).toFixed(1) : null;
 
     const phq9_avg = avg(phq9);
     const gad7_avg = avg(gad7);
 
-    const normPHQ9 = phq9_avg ? (Number(phq9_avg) / 27) * 100 : 0;
-    const normGAD7 = gad7_avg ? (Number(gad7_avg) / 21) * 100 : 0;
-    const emotionalIndexPdf = Number(((normPHQ9 + normGAD7) / 2).toFixed(1));
+    const parts = [];
+    if (phq9_avg !== null) parts.push((Number(phq9_avg) / 27) * 100);
+    if (gad7_avg !== null) parts.push((Number(gad7_avg) / 21) * 100);
+    const emotionalIndexPdf = parts.length ? Number((parts.reduce((a, b) => a + b, 0) / parts.length).toFixed(1)) : 0;
 
     let status = "Estable";
     if (emotionalIndexPdf >= 60) status = "Severo";
@@ -629,7 +678,7 @@ Administrador: ${adminName}
     const doc = new jsPDF("p", "mm", "a4");
 
     doc.setFontSize(18);
-    doc.text("SMART MIRROR - REPORTE CLÍNICO", 105, 15, { align: "center" });
+    doc.text("CALMASENSE - REPORTE CLÍNICO", 105, 15, { align: "center" });
 
     doc.setFontSize(10);
     doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" });
@@ -741,7 +790,7 @@ Administrador: ${adminName}
     const pageHeight = doc.internal.pageSize.height;
     doc.setFontSize(9);
     doc.text(
-      "Documento generado automáticamente por Smart Mirror",
+      "Documento generado automáticamente por CalmaSense",
       105,
       pageHeight - 12,
       { align: "center" }
@@ -754,21 +803,13 @@ Administrador: ${adminName}
   // -------------------------
   // Render
   // -------------------------
-  const yAxisLabels = [
-    { phq: 27, gad: 21 },
-    { phq: 20, gad: 16 },
-    { phq: 14, gad: 11 },
-    { phq: 7,  gad: 5 },
-    { phq: 0,  gad: 0 },
-  ];
-
   const showMain = !isLoading && !!user;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000`}>
       {/* Pantalla de carga */}
       {isLoading && (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg} transition-all duration-1000`}>
           <div className="flex flex-col items-center gap-4">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-xl text-gray-600">Cargando perfil...</p>
@@ -778,7 +819,7 @@ Administrador: ${adminName}
 
       {/* Usuario no encontrado */}
       {!isLoading && !user && (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${bg} transition-all duration-1000`}>
           <div className="text-center">
             <span className="text-6xl mb-4 block">😕</span>
             <p className="text-2xl font-bold text-red-600 mb-2">Usuario no encontrado</p>
@@ -794,7 +835,7 @@ Administrador: ${adminName}
 
       {/* UI principal */}
       {showMain && (
-        <div className="min-h-screen bg-gray-100 flex">
+        <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
           {/* Sidebar */}
           <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
             <div className="p-6 border-b border-blue-700">
@@ -803,7 +844,7 @@ Administrador: ${adminName}
                   <span className="text-2xl">🛡️</span>
                 </div>
                 <div>
-                  <h1 className="font-bold text-lg">Espejo Inteligente</h1>
+                  <h1 className="font-bold text-lg">CalmaSense</h1>
                   <p className="text-xs text-blue-300">Panel Administrativo</p>
                 </div>
               </div>
@@ -938,9 +979,9 @@ Administrador: ${adminName}
                     </div>
 
                     <div className="text-right">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        Activo
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium mb-2 ${isUserActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`w-2 h-2 rounded-full ${isUserActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                        {isUserActive ? 'Activo' : 'Inactivo'}
                       </span>
                       {daysSinceLastEval !== null && (
                         <p className="text-xs text-gray-500">
@@ -950,16 +991,16 @@ Administrador: ${adminName}
                     </div>
                   </div>
 
-                  {(lastPhq9?.score >= 10 || lastGad7?.score >= 10) && (
+                  {((toNum(lastPhq9?.score, 0) ?? 0) >= 10 || (toNum(lastGad7?.score, 0) ?? 0) >= 10) && (
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
                         <span className="text-2xl flex-shrink-0">⚠️</span>
                         <div className="flex-1">
                           <p className="font-semibold text-orange-800 mb-1">
-                            Usuario con niveles {lastPhq9?.score >= 15 || lastGad7?.score >= 15 ? 'severos' : 'moderados'}
+                            Usuario con niveles {(toNum(lastPhq9?.score, 0) ?? 0) >= 15 || (toNum(lastGad7?.score, 0) ?? 0) >= 15 ? 'severos' : 'moderados'}
                           </p>
                           <p className="text-sm text-orange-700 mb-3">
-                            {lastPhq9?.score >= 15 || lastGad7?.score >= 15
+                            {(toNum(lastPhq9?.score, 0) ?? 0) >= 15 || (toNum(lastGad7?.score, 0) ?? 0) >= 15
                               ? 'Requiere intervención inmediata. Considerar derivación profesional urgente.'
                               : 'Monitoreo recomendado. Considerar seguimiento en las próximas semanas.'}
                           </p>
@@ -1237,16 +1278,6 @@ Administrador: ${adminName}
 
                 <div className="flex gap-2">
                   <select
-                    value={selectedMetric}
-                    onChange={(e) => setSelectedMetric(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value="both">Ambas métricas</option>
-                    <option value="phq9">Solo PHQ-9</option>
-                    <option value="gad7">Solo GAD-7</option>
-                  </select>
-
-                  <select
                     value={timeRange}
                     onChange={(e) => setTimeRange(Number(e.target.value))}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
@@ -1258,117 +1289,177 @@ Administrador: ${adminName}
                 </div>
               </div>
 
-              <div
-                ref={chartRef}
-                className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
-                onMouseLeave={() => setHoveredPoint(null)}
-              >
-                <div className="absolute left-4 top-6 bottom-12 flex flex-col justify-between text-sm text-gray-600">
-                  {yAxisLabels.map((l, idx) => (
-                    <span key={idx}>
-                      {idx === yAxisLabels.length - 1 ? '0' : `${l.phq}/${l.gad}`}
-                    </span>
-                  ))}
-                </div>
+              <div ref={chartRef} className="grid lg:grid-cols-2 gap-6">
+                {/* PHQ-9 */}
+                <div
+                  className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="font-semibold text-gray-800">PHQ-9</p>
+                    <p className="text-xs text-gray-600">Max: 27</p>
+                  </div>
 
-                <div className="absolute left-16 right-6 top-6 bottom-12">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 25}%` }} />
-                  ))}
-                </div>
+                  <div className="absolute left-4 top-12 bottom-12 flex flex-col justify-between text-sm text-gray-600">
+                    {[27, 20, 15, 10, 5, 0].map((v) => (
+                      <span key={v}>{v}</span>
+                    ))}
+                  </div>
 
-                <div className="absolute left-16 right-6 top-6 bottom-12">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    {(selectedMetric === 'both' || selectedMetric === 'phq9') && phq9History.length > 1 && (
-                      <>
+                  <div className="absolute left-16 right-6 top-12 bottom-12">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 20}%` }} />
+                    ))}
+                  </div>
+
+                  <div className="absolute left-16 right-6 top-12 bottom-12">
+                    <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {phq9History.length > 1 && (
                         <polyline
-                          points={phq9History.map((a, i) => {
-                            const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
-                            const y = 100 - (a.score / 27) * 100;
-                            return `${x},${y}`;
-                          }).join(' ')}
+                          points={phq9History
+                            .map((a, i) => {
+                              const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
+                              const s = clamp(toNum(a?.score, 0) ?? 0, 0, 27);
+                              const y = 100 - (s / 27) * 100;
+                              return `${x},${y}`;
+                            })
+                            .join(' ')}
                           fill="none"
                           stroke="#10b981"
                           strokeWidth="0.8"
                           strokeLinecap="round"
                           vectorEffect="non-scaling-stroke"
                         />
+                      )}
 
-                        {phq9History.map((a, i) => {
-                          const x = (i / Math.max(phq9History.length - 1, 1)) * 100;
-                          const y = 100 - (a.score / 27) * 100;
+                      {phq9History.length > 0 && (
+                        phq9History.map((a, i) => {
+                          const len = phq9History.length;
+                          const x = len <= 1 ? 50 : (i / Math.max(len - 1, 1)) * 100;
+                          const s = clamp(toNum(a?.score, 0) ?? 0, 0, 27);
+                          const y = 100 - (s / 27) * 100;
+
                           return (
                             <circle
                               key={`phq9-${i}`}
                               cx={x}
                               cy={y}
-                              r={hoveredPoint?.type === 'phq9' && hoveredPoint?.index === i ? "2.5" : "1.5"}
+                              r={hoveredPoint?.type === 'phq9' && hoveredPoint?.index === i ? "2.5" : "1.8"}
                               fill="#10b981"
                               stroke="white"
                               strokeWidth="0.5"
                               vectorEffect="non-scaling-stroke"
                               className="cursor-pointer"
-                              onMouseEnter={() => handleSelectPoint('phq9', i, a.score, a.created_at)}
+                              onMouseEnter={() => handleSelectPoint('phq9', i, s, a.created_at)}
                             />
                           );
-                        })}
-                      </>
-                    )}
+                        })
+                      )}
 
-                    {(selectedMetric === 'both' || selectedMetric === 'gad7') && gad7History.length > 1 && (
-                      <>
+                      {hoveredPoint?.type === 'phq9' && tooltipCoords && (
+                        <foreignObject x={tooltipCoords.x} y={tooltipCoords.y} width="30" height="20">
+                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-emerald-500 text-xs whitespace-nowrap">
+                            <p className="font-bold text-gray-800">PHQ-9: {hoveredPoint.score}</p>
+                            <p className="text-gray-600">
+                              {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
+                            </p>
+                          </div>
+                        </foreignObject>
+                      )}
+                    </svg>
+                  </div>
+
+                  {phq9History.length === 0 && (
+                    <div className="absolute left-16 right-6 top-12 bottom-12 flex items-center justify-center text-sm text-gray-600">
+                      Sin evaluaciones PHQ-9 en este rango.
+                    </div>
+                  )}
+                </div>
+
+                {/* GAD-7 */}
+                <div
+                  className="relative h-80 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6"
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="font-semibold text-gray-800">GAD-7</p>
+                    <p className="text-xs text-gray-600">Max: 21</p>
+                  </div>
+
+                  <div className="absolute left-4 top-12 bottom-12 flex flex-col justify-between text-sm text-gray-600">
+                    {[21, 17, 13, 9, 5, 0].map((v) => (
+                      <span key={v}>{v}</span>
+                    ))}
+                  </div>
+
+                  <div className="absolute left-16 right-6 top-12 bottom-12">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 20}%` }} />
+                    ))}
+                  </div>
+
+                  <div className="absolute left-16 right-6 top-12 bottom-12">
+                    <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {gad7History.length > 1 && (
                         <polyline
-                          points={gad7History.map((a, i) => {
-                            const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
-                            const y = 100 - (a.score / 21) * 100; // ✅ GAD-7 max 21
-                            return `${x},${y}`;
-                          }).join(' ')}
+                          points={gad7History
+                            .map((a, i) => {
+                              const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
+                              const s = clamp(toNum(a?.score, 0) ?? 0, 0, 21);
+                              const y = 100 - (s / 21) * 100;
+                              return `${x},${y}`;
+                            })
+                            .join(' ')}
                           fill="none"
                           stroke="#3b82f6"
                           strokeWidth="0.8"
                           strokeLinecap="round"
                           vectorEffect="non-scaling-stroke"
                         />
+                      )}
 
-                        {gad7History.map((a, i) => {
-                          const x = (i / Math.max(gad7History.length - 1, 1)) * 100;
-                          const y = 100 - (a.score / 21) * 100; // ✅ GAD-7 max 21
+                      {gad7History.length > 0 && (
+                        gad7History.map((a, i) => {
+                          const len = gad7History.length;
+                          const x = len <= 1 ? 50 : (i / Math.max(len - 1, 1)) * 100;
+                          const s = clamp(toNum(a?.score, 0) ?? 0, 0, 21);
+                          const y = 100 - (s / 21) * 100;
+
                           return (
                             <circle
                               key={`gad7-${i}`}
                               cx={x}
                               cy={y}
-                              r={hoveredPoint?.type === 'gad7' && hoveredPoint?.index === i ? "2.5" : "1.5"}
+                              r={hoveredPoint?.type === 'gad7' && hoveredPoint?.index === i ? "2.5" : "1.8"}
                               fill="#3b82f6"
                               stroke="white"
                               strokeWidth="0.5"
                               vectorEffect="non-scaling-stroke"
                               className="cursor-pointer"
-                              onMouseEnter={() => handleSelectPoint('gad7', i, a.score, a.created_at)}
+                              onMouseEnter={() => handleSelectPoint('gad7', i, s, a.created_at)}
                             />
                           );
-                        })}
-                      </>
-                    )}
+                        })
+                      )}
 
-                    {hoveredPoint && tooltipCoords && (
-                      <foreignObject
-                        x={tooltipCoords.x}
-                        y={tooltipCoords.y}
-                        width="30"
-                        height="20"
-                      >
-                        <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
-                          <p className="font-bold text-gray-800">
-                            {hoveredPoint.type === 'phq9' ? 'PHQ-9' : 'GAD-7'}: {hoveredPoint.score}
-                          </p>
-                          <p className="text-gray-600">
-                            {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
-                          </p>
-                        </div>
-                      </foreignObject>
-                    )}
-                  </svg>
+                      {hoveredPoint?.type === 'gad7' && tooltipCoords && (
+                        <foreignObject x={tooltipCoords.x} y={tooltipCoords.y} width="30" height="20">
+                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
+                            <p className="font-bold text-gray-800">GAD-7: {hoveredPoint.score}</p>
+                            <p className="text-gray-600">
+                              {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
+                            </p>
+                          </div>
+                        </foreignObject>
+                      )}
+                    </svg>
+                  </div>
+
+                  {gad7History.length === 0 && (
+                    <div className="absolute left-16 right-6 top-12 bottom-12 flex items-center justify-center text-sm text-gray-600">
+                      Sin evaluaciones GAD-7 en este rango.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -13,9 +13,14 @@ export const getEmotionalState = (phq9Score, gad7Score, voiceRisk = 'LOW') => {
     return 'sin_evaluacion';
   }
 
-  // Normalizar
-  const phq = phq9Score ?? 0;
-  const gad = gad7Score ?? 0;
+  // Normalizar (evita comparaciones con strings)
+  const toNum = (v, fallback = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const phq = phq9Score === null ? 0 : toNum(phq9Score, 0);
+  const gad = gad7Score === null ? 0 : toNum(gad7Score, 0);
   const risk = (voiceRisk || 'LOW').toUpperCase();
 
   // ---------------------------------

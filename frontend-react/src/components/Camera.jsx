@@ -3,36 +3,60 @@ import { useRef, useEffect, useState } from 'react';
 function Camera({ onCapture, isActive = true, hidden = false }) {
   const videoRef = useRef(null);
   const [error, setError] = useState(null);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
-    if (!isActive) return;
+    let cancelled = false;
 
-    // Iniciar cámara
+    const stopCamera = () => {
+      const currentStream = streamRef.current;
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoRef.current.srcObject = null;
+      }
+    };
+
+    // Si se desactiva, detener inmediatamente
+    if (!isActive) {
+      stopCamera();
+      return;
+    }
+
+    // Iniciar c1mara
     const startCamera = async () => {
       try {
+        // Evitar streams duplicados si el efecto se re-ejecuta
+        stopCamera();
+
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 }
         });
-        
+
+        if (cancelled) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
-        setStream(mediaStream);
         setError(null);
       } catch (err) {
-        console.error('Error al acceder a la cámara:', err);
-        setError('No se pudo acceder a la cámara. Verifica los permisos.');
+        console.error('Error al acceder a la c1mara:', err);
+        setError('No se pudo acceder a la c1mara. Verifica los permisos.');
       }
     };
 
     startCamera();
 
-    // Cleanup: detener cámara al desmontar
+    // Cleanup: detener c1mara al desmontar o cambiar isActive
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      cancelled = true;
+      stopCamera();
     };
   }, [isActive]);
 

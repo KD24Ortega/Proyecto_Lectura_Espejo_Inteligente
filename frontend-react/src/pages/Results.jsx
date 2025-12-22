@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 // ✅ Reconocimiento facial
 import FaceMonitor from "../components/FaceMonitor";
@@ -23,6 +24,11 @@ function Results() {
   const [nextTest, setNextTest] = useState("");
   const [estimatedTime, setEstimatedTime] = useState("3 minutos");
 
+  // ✅ NUEVO: Estados para verificar tests
+  const [isFirstEver, setIsFirstEver] = useState(false); // Primera vez haciendo tests
+  const [needsOtherTest, setNeedsOtherTest] = useState(false); // Necesita hacer el otro test de esta sesión
+  const [checkingTests, setCheckingTests] = useState(true);
+
   useEffect(() => {
     // Obtener datos del test desde location.state o localStorage
     const state = location.state;
@@ -38,12 +44,15 @@ function Results() {
         setEstimatedTime("3 minutos");
       } else if (state.type === "gad7") {
         setMaxScore(21);
-        setNextTest("");
-        setEstimatedTime("");
+        setNextTest("PHQ-9");
+        setEstimatedTime("3 minutos");
       }
 
       // Configurar etiqueta y color según severidad
       configureSeverity(state.severity, state.type);
+      
+      // ✅ Verificar estado de tests
+      checkTestStatus(state.type);
     } else {
       // Intentar recuperar de localStorage
       const lastType = localStorage.getItem("last_test_type");
@@ -61,11 +70,12 @@ function Results() {
           setEstimatedTime("3 minutos");
         } else {
           setMaxScore(21);
-          setNextTest("");
-          setEstimatedTime("");
+          setNextTest("PHQ-9");
+          setEstimatedTime("3 minutos");
         }
 
         configureSeverity(lastSeverity, lastType);
+        checkTestStatus(lastType);
       } else {
         // No hay datos, regresar al home
         navigate("/home");
@@ -73,6 +83,92 @@ function Results() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, navigate]);
+
+  // ============================================
+  // VERIFICAR ESTADO DE LOS TESTS
+  // ============================================
+  const checkTestStatus = async (currentTestType) => {
+    try {
+      const userId = localStorage.getItem("user_id");
+      
+      if (!userId) {
+        setCheckingTests(false);
+        return;
+      }
+
+      // Obtener tests previos del usuario
+      const response = await api.get(`/assessments/last/${userId}`);
+      
+      const hasPhq9Ever = response.data.phq9 && response.data.phq9.score !== null;
+      const hasGad7Ever = response.data.gad7 && response.data.gad7.score !== null;
+
+      // ✅ Verificar si los tests son de HOY
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      let phq9Today = false;
+      let gad7Today = false;
+      
+      if (hasPhq9Ever && response.data.phq9.timestamp) {
+        const phq9Date = new Date(response.data.phq9.timestamp).toISOString().split('T')[0];
+        phq9Today = phq9Date === today;
+      }
+      
+      if (hasGad7Ever && response.data.gad7.timestamp) {
+        const gad7Date = new Date(response.data.gad7.timestamp).toISOString().split('T')[0];
+        gad7Today = gad7Date === today;
+      }
+
+      // ✅ LÓGICA CORRECTA:
+      if (currentTestType === "phq9") {
+        // Acaba de completar PHQ-9
+        
+        if (!hasGad7Ever) {
+          // NO tiene GAD-7 NUNCA → OBLIGATORIO hacer GAD-7
+          setIsFirstEver(true);
+          setNeedsOtherTest(true);
+        } else {
+          // Ya tiene GAD-7 previo → Verificar si lo hizo HOY
+          setIsFirstEver(false);
+          
+          if (!gad7Today) {
+            // No lo hizo hoy → SUGERIR (opcional)
+            setNeedsOtherTest(true);
+          } else {
+            // Ya lo hizo hoy → Ya completó ambos
+            setNeedsOtherTest(false);
+          }
+        }
+        
+      } else if (currentTestType === "gad7") {
+        // Acaba de completar GAD-7
+        
+        if (!hasPhq9Ever) {
+          // NO tiene PHQ-9 NUNCA → OBLIGATORIO hacer PHQ-9
+          setIsFirstEver(true);
+          setNeedsOtherTest(true);
+        } else {
+          // Ya tiene PHQ-9 previo → Verificar si lo hizo HOY
+          setIsFirstEver(false);
+          
+          if (!phq9Today) {
+            // No lo hizo hoy → SUGERIR (opcional)
+            setNeedsOtherTest(true);
+          } else {
+            // Ya lo hizo hoy → Ya completó ambos
+            setNeedsOtherTest(false);
+          }
+        }
+      }
+
+      setCheckingTests(false);
+      
+    } catch (error) {
+      console.error("Error al verificar estado de tests:", error);
+      setIsFirstEver(false);
+      setNeedsOtherTest(false);
+      setCheckingTests(false);
+    }
+  };
 
   const configureSeverity = (sev, type) => {
     const severityConfig = {
@@ -150,7 +246,7 @@ function Results() {
     if (testType === "phq9") {
       navigate("/gad7");
     } else {
-      navigate("/home");
+      navigate("/phq9");
     }
   };
 
@@ -173,6 +269,20 @@ function Results() {
     if (primary) return `bg-gradient-to-br ${primary}`;
     return "bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50";
   }, [theme]);
+
+  // ============================================
+  // LOADING
+  // ============================================
+  if (checkingTests) {
+    return (
+      <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando progreso...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${bgClass} flex items-center justify-center p-4 transition-all duration-1000`}>
@@ -214,55 +324,122 @@ function Results() {
           </div>
         </div>
 
-        {/* Numero 3: Pregunta para siguiente test */}
-        {testType === "phq9" && (
-          <div className="text-center mb-6">
-            <p className="text-gray-700 text-base mb-1">
-              ¿Listo para la evaluacion de ansiedad?
-            </p>
-            <p className="text-gray-500 text-sm">({nextTest} - 7 preguntas)</p>
-          </div>
-        )}
+        {/* ============================================
+            CASO 1: PRIMERA VEZ ABSOLUTA
+            ============================================ */}
+        {isFirstEver && (
+          <>
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <p className="text-blue-900 font-semibold mb-1">
+                    Un paso más para completar tu perfil
+                  </p>
+                  <p className="text-blue-700 text-sm">
+                    Para establecer tu línea base emocional, necesitas completar el test {nextTest}.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-        {/* Numero 4 y 5: Botones de accion */}
-        <div className="flex gap-4 mb-4">
-          <button
-            onClick={handleTakeBreak}
-            className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:shadow-lg"
-          >
-            Tomar un descanso
-          </button>
-
-          {testType === "phq9" && (
             <button
               onClick={handleContinue}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold transition-all hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg flex items-center justify-center gap-2"
             >
-              Continuar <span>→</span>
+              Continuar con {nextTest} <span>→</span>
             </button>
-          )}
-        </div>
 
-        {/* Numero 6: Tiempo estimado */}
-        {testType === "phq9" && (
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
-              <span>⏱️</span>
-              <span>Tiempo estimado: {estimatedTime}</span>
+            <div className="text-center mt-4">
+              <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
+                <span>⏱️</span>
+                <span>Tiempo estimado: {estimatedTime}</span>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Si es GAD-7, mostrar mensaje de finalizado */}
-        {testType === "gad7" && (
-          <div className="text-center">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg"
-            >
-              ✓ Finalizar y ver Dashboard
-            </button>
-          </div>
+        {/* ============================================
+            CASO 2: NO ES PRIMERA VEZ - NECESITA HACER EL OTRO TEST
+            ============================================ */}
+        {!isFirstEver && needsOtherTest && (
+          <>
+            <div className="text-center mb-6">
+              <p className="text-gray-700 text-base mb-1">
+                ¿Quieres completar tu evaluacion de hoy?
+              </p>
+              <p className="text-gray-500 text-sm">
+                ({nextTest} - {testType === "phq9" ? "7" : "9"} preguntas)
+              </p>
+            </div>
+
+            <div className="flex gap-4 mb-4">
+              <button
+                onClick={handleTakeBreak}
+                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:shadow-lg"
+              >
+                Tomar un descanso
+              </button>
+
+              <button
+                onClick={handleContinue}
+                className={`flex-1 px-6 py-4 ${
+                  testType === "phq9"
+                    ? "bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
+                    : "bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
+                } text-white rounded-xl font-semibold transition-all hover:shadow-lg flex items-center justify-center gap-2`}
+              >
+                Continuar <span>→</span>
+              </button>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
+                <span>⏱️</span>
+                <span>Tiempo estimado: {estimatedTime}</span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ============================================
+            CASO 3: YA COMPLETÓ AMBOS TESTS
+            ============================================ */}
+        {!isFirstEver && !needsOtherTest && (
+          <>
+            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">✨</span>
+                <div>
+                  <p className="text-green-900 font-semibold mb-1">
+                    ¡Evaluacion completa!
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    Listo!. Puedes ver tu progreso en el dashboard.
+                  </p>
+                  <p className="text-green-700 text-sm mt-2">
+                    Te recomendamos realizar el siguiente test, si aun no lo has hecho el dia de hoy 😀.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate("/home")}
+                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:shadow-lg"
+              >
+                Ir al inicio
+              </button>
+
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all hover:shadow-lg"
+              >
+                Ver Dashboard
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

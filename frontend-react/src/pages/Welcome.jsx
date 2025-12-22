@@ -66,8 +66,10 @@ const Robot = ({ isVisible, userName, isNewUser, navigate }) => (
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <p className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent mb-2">
-            ✅ ¡Bienvenido de nuevo, {userName}!
+          <p className="text-3xl font-bold mb-2">
+            <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
+              ✅ ¡Bienvenido de nuevo a CalmaSense, {userName}!
+            </span>
           </p>
           <p className="text-gray-600">
             Redirigiendo a tu dashboard…
@@ -79,7 +81,7 @@ const Robot = ({ isVisible, userName, isNewUser, navigate }) => (
           animate={{ opacity: 1, scale: 1 }}
         >
           <p className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent mb-2">
-            👋 ¡Hola! Parece que eres nuevo
+            👋 ¡Hola! Bienvenido a CalmaSense
           </p>
           <p className="text-gray-600 mb-4">
             Vamos a registrarte en el sistema…
@@ -401,11 +403,15 @@ export default function Welcome() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center pt-16"
       >
-        <h1 className="text-[56px] text-[#1a1a1a] mb-4 font-bold">
-          ¡Bienvenido!
+        <h1 className="text-[56px] mb-4 font-bold tracking-tight">
+          <span className="text-gray-900">¡Bienvenido a </span>
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+            CalmaSense
+          </span>
+          <span className="text-gray-900">!</span>
         </h1>
-        <p className="text-[28px] text-[#4a5568]">
-          Soy tu asistente de bienestar
+        <p className="text-[28px] text-gray-600">
+          Tu asistente de bienestar
         </p>
       </motion.div>
 

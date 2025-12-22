@@ -50,6 +50,37 @@ function FaceMonitor({ isActive = true }) {
     setShowModal(true);
   }, []);
 
+  const endSessionSentRef = useRef(false);
+
+  const endSessionInBackground = useCallback((reason = '') => {
+    if (endSessionSentRef.current) return;
+
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
+
+    endSessionSentRef.current = true;
+
+    const payload = JSON.stringify({ user_id: parseInt(userId) });
+    const blob = new Blob([payload], { type: 'text/plain;charset=UTF-8' });
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        navigator.sendBeacon(`${apiUrl}/session/end`, blob);
+      } else {
+        fetch(`${apiUrl}/session/end`, {
+          method: 'POST',
+          body: payload,
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          keepalive: true,
+        }).catch(() => {});
+      }
+      console.log(`🚪 FaceMonitor: sesión marcada como cerrada (${reason})`);
+    } catch {
+      // best-effort
+    }
+  }, []);
+
   const clearCountdown = useCallback(() => {
     deadlineRef.current = null;
     lastSecRef.current = null;
@@ -89,13 +120,14 @@ function FaceMonitor({ isActive = true }) {
       if (remainMs <= 0) {
         clearCountdown();
         console.log('🛑 FaceMonitor: timeout alcanzado -> cerrando sesión');
+        endSessionInBackground('timeout ausencia 15s');
         openModal();
       }
     };
 
     tick();
     countdownIntervalRef.current = setInterval(tick, 200);
-  }, [clearCountdown, openModal]);
+  }, [clearCountdown, openModal, endSessionInBackground]);
 
   // ==========================
   // Convertir base64 -> Blob
@@ -246,12 +278,14 @@ function FaceMonitor({ isActive = true }) {
     currentUserRef.current = user;
     initializedRef.current = true;
     clearCountdown();
+    endSessionSentRef.current = false;
 
     console.log('👁️ FaceMonitor: monitoreo activado para:', user);
 
     return () => {
       initializedRef.current = false;
       clearCountdown();
+      endSessionSentRef.current = false;
       try { abortRef.current?.abort(); } catch {}
       console.log('🧹 FaceMonitor: desmontado -> limpiando');
     };
@@ -263,6 +297,9 @@ function FaceMonitor({ isActive = true }) {
   const finalizeLogout = () => {
     console.log('🚪 FaceMonitor: cerrando sesión y limpiando localStorage');
     try { abortRef.current?.abort(); } catch {}
+
+    // Asegura que el backend también quede como inactivo (por si no se envió antes)
+    endSessionInBackground('logout UI');
 
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_name');

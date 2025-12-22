@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import SessionManager from './components/SessionManager';
+import useDynamicTheme from "./hooks/useDynamicTheme";
 
 // ✅ Carga inmediata solo para la landing (opcional)
 import Welcome from "./pages/Welcome";
@@ -32,7 +33,7 @@ const GuidedDialogue = lazy(() => import("./pages/Guideddialogue"));
 // ✅ Loader simple (puedes poner tu UI bonita aquí)
 function AppLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-transparent">
       Cargando...
     </div>
   );
@@ -42,36 +43,55 @@ function App() {
   return (
     <BrowserRouter>
       <SessionManager>
-        <Suspense fallback={<AppLoader />}>
-          <Routes>
-            <Route path="/" element={<Welcome />} />
+        <ThemedShell>
+          <Suspense fallback={<AppLoader />}>
+            <Routes>
+              <Route path="/" element={<Welcome />} />
 
-            <Route path="/register" element={<Register />} />
-            <Route path="/profile-success" element={<ProfileSuccess />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/phq9" element={<PHQ9 />} />
-            <Route path="/gad7" element={<GAD7 />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/profile-success" element={<ProfileSuccess />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/phq9" element={<PHQ9 />} />
+              <Route path="/gad7" element={<GAD7 />} />
+              <Route path="/results" element={<Results />} />
+              <Route path="/dashboard" element={<Dashboard />} />
 
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/user/:userId" element={<AdminUserProfile />} />
-            <Route path="/admin/alerts" element={<AdminAlerts />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/user/:userId" element={<AdminUserProfile />} />
+              <Route path="/admin/alerts" element={<AdminAlerts />} />
 
-            <Route path="/exercises/anxiety" element={<AnxietyExercises />} />
-            <Route path="/exercises/depression" element={<DepressionExercises />} />
-            <Route path="/anxiety/breathing-vocalization" element={<BreathingVocalization />} />
-            <Route path="/anxiety/conscious-reading" element={<ConsciousReading />} />
-            <Route path="/depression/vocal-affirmations" element={<VocalAffirmations />} />
-            <Route path="/anxiety/vocal-practice" element={<VocalPractice />} />
-            <Route path="/depression/prosodic-reading" element={<ProsodicReading />} />
-            <Route path="/depression/guided-dialogue" element={<GuidedDialogue />} />
-          </Routes>
-        </Suspense>
+              <Route path="/exercises/anxiety" element={<AnxietyExercises />} />
+              <Route path="/exercises/depression" element={<DepressionExercises />} />
+              <Route path="/anxiety/breathing-vocalization" element={<BreathingVocalization />} />
+              <Route path="/anxiety/conscious-reading" element={<ConsciousReading />} />
+              <Route path="/depression/vocal-affirmations" element={<VocalAffirmations />} />
+              <Route path="/anxiety/vocal-practice" element={<VocalPractice />} />
+              <Route path="/depression/prosodic-reading" element={<ProsodicReading />} />
+              <Route path="/depression/guided-dialogue" element={<GuidedDialogue />} />
+            </Routes>
+          </Suspense>
+        </ThemedShell>
       </SessionManager>
     </BrowserRouter>
+  );
+}
+
+function ThemedShell({ children }) {
+  const location = useLocation();
+  const { theme } = useDynamicTheme();
+
+  const isWelcome = location.pathname === "/" || location.pathname === "/welcome";
+  if (isWelcome) {
+    return <div className="min-h-screen">{children}</div>;
+  }
+
+  const bg = theme?.colors?.primary || "from-gray-400 via-gray-500 to-slate-600";
+  return (
+    <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000`}>
+      {children}
+    </div>
   );
 }
 

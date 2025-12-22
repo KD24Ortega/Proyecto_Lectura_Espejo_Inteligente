@@ -1,5 +1,5 @@
 -- =====================================================
---  BASE DE DATOS COMPLETA - SMART MIRROR
+--  BASE DE DATOS COMPLETA - CALMASENSE
 --  Ejecutar en orden para crear todo desde cero
 -- =====================================================
 
