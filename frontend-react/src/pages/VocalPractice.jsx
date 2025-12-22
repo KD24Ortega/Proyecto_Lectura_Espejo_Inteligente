@@ -6,6 +6,9 @@ import api from "../services/api";
 // ✅ Reconocimiento
 import FaceMonitor from "../components/FaceMonitor";
 
+// ✅ Música de fondo
+import BackgroundMusic from "../components/BackgroundMusic";
+
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
@@ -40,6 +43,14 @@ function VocalPractice() {
   // ✅ THEME dinámico
   const { theme, isThemeLoading } = useDynamicTheme();
   const bg = theme?.colors?.primary || "from-teal-100 via-cyan-100 to-blue-100";
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? "bgm:pause" : "bgm:resume"));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bgm:resume"));
+    };
+  }, [isRecording]);
 
   useEffect(() => {
     // Inicializar Web Audio API
@@ -243,6 +254,8 @@ function VocalPractice() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu voz…</h2>
           <p className="text-gray-600">Procesando tu práctica vocal</p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -344,6 +357,8 @@ function VocalPractice() {
             </button>
           </div>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -570,6 +585,8 @@ function VocalPractice() {
           <p className="text-5xl font-bold text-orange-600">{completedSequences}</p>
         </div>
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }

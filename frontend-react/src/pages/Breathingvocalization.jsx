@@ -6,6 +6,9 @@ import api from '../services/api';
 // ✅ Reconocimiento (igual que Dashboard/Home)
 import FaceMonitor from '../components/FaceMonitor';
 
+// ✅ Música de fondo
+import BackgroundMusic from '../components/BackgroundMusic';
+
 // ✅ Hook de theme dinámico
 import useDynamicTheme from '../hooks/useDynamicTheme';
 
@@ -25,6 +28,14 @@ function BreathingVocalization() {
   // ✅ THEME dinámico
   const { theme, isThemeLoading } = useDynamicTheme();
   const bg = theme?.colors?.primary || 'from-blue-100 via-purple-100 to-pink-100';
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? 'bgm:pause' : 'bgm:resume'));
+    return () => {
+      window.dispatchEvent(new CustomEvent('bgm:resume'));
+    };
+  }, [isRecording]);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -312,6 +323,8 @@ function BreathingVocalization() {
           </div>
 
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -334,6 +347,8 @@ function BreathingVocalization() {
             Estamos procesando los biomarcadores vocales de tu ejercicio
           </p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -590,6 +605,8 @@ function BreathingVocalization() {
         </div>
 
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }

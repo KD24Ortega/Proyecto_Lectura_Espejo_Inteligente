@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 function BackgroundMusic({ musicFile, volume = 0.3 }) {
   const audioRef = useRef(null);
+  const userPausedRef = useRef(false);
+  const autoPausedRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -14,19 +16,58 @@ function BackgroundMusic({ musicFile, volume = 0.3 }) {
     audio.volume = volume;
     audioRef.current = audio;
 
+    userPausedRef.current = false;
+    autoPausedRef.current = false;
+    setHasError(false);
+
     audio.onerror = () => {
       console.warn('No se pudo cargar el archivo de audio:', musicFile);
       setHasError(true);
+      setIsPlaying(false);
     };
 
-    audio.play().catch(err => {
-      console.log('Autoplay bloqueado:', err.message);
-      setIsPlaying(false);
-    });
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch((err) => {
+        // Suele pasar por políticas de autoplay. Se reproducirá cuando haya interacción del usuario.
+        console.log('Autoplay bloqueado:', err?.message || err);
+        setIsPlaying(false);
+      });
 
-    setIsPlaying(true);
+    const handlePause = () => {
+      if (!audioRef.current) return;
+      if (!audioRef.current.paused) {
+        autoPausedRef.current = true;
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    const handleResume = () => {
+      if (!audioRef.current) return;
+      // Solo reanudar si fue una pausa automática (ej: micrófono), y el usuario no la pausó manualmente.
+      if (autoPausedRef.current && !userPausedRef.current) {
+        audioRef.current
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+            autoPausedRef.current = false;
+          })
+          .catch((err) => {
+            console.log('Error al reanudar música:', err?.message || err);
+          });
+      }
+    };
+
+    window.addEventListener('bgm:pause', handlePause);
+    window.addEventListener('bgm:resume', handleResume);
 
     return () => {
+      window.removeEventListener('bgm:pause', handlePause);
+      window.removeEventListener('bgm:resume', handleResume);
       audio.pause();
       audio.src = '';
     };
@@ -36,13 +77,21 @@ function BackgroundMusic({ musicFile, volume = 0.3 }) {
     if (!audioRef.current) return;
 
     if (isPlaying) {
+      userPausedRef.current = true;
+      autoPausedRef.current = false;
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(err => {
-        console.log('Error al reproducir:', err.message);
-      });
-      setIsPlaying(true);
+      userPausedRef.current = false;
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.log('Error al reproducir:', err?.message || err);
+          setIsPlaying(false);
+        });
     }
   };
 

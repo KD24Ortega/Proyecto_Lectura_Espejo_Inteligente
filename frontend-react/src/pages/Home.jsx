@@ -231,11 +231,11 @@ function Home() {
 
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <div className={`${theme?.colors?.card || 'bg-white/90'} rounded-2xl shadow-xl px-6 py-5`}>
+        <div className="px-1 py-1">
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`text-4xl font-bold ${theme?.colors?.text || 'text-gray-800'} mb-2`}
+            className="text-4xl font-bold text-white text-outline-black mb-2"
           >
             ¡Hola, {userName}! 👋
           </motion.h1>
@@ -243,7 +243,7 @@ function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className={`${theme?.colors?.text || 'text-gray-800'} text-lg opacity-80`}
+            className="text-white/90 text-lg drop-shadow-sm"
           >
             {theme.welcomeMessage}
           </motion.p>

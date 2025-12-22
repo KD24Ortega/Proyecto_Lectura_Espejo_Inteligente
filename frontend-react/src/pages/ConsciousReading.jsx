@@ -6,6 +6,9 @@ import api from "../services/api";
 // ✅ Reconocimiento
 import FaceMonitor from "../components/FaceMonitor";
 
+// ✅ Música de fondo
+import BackgroundMusic from "../components/BackgroundMusic";
+
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
@@ -37,6 +40,14 @@ function ConsciousReading() {
   // ✅ THEME dinámico
   const { theme, isThemeLoading } = useDynamicTheme();
   const bg = theme?.colors?.primary || "from-purple-100 via-pink-100 to-blue-100";
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? "bgm:pause" : "bgm:resume"));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bgm:resume"));
+    };
+  }, [isRecording]);
 
   // AUTO ROTACIÓN
   useEffect(() => {
@@ -166,6 +177,8 @@ function ConsciousReading() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu voz...</h2>
           <p className="text-gray-600">Procesando los biomarcadores vocales de tu lectura</p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -277,6 +290,8 @@ function ConsciousReading() {
             </button>
           </div>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -472,6 +487,8 @@ function ConsciousReading() {
           </div>
         )}
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }

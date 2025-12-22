@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 
 import FaceMonitor from "../components/FaceMonitor";
+import BackgroundMusic from "../components/BackgroundMusic";
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
 function GuidedDialogue() {
@@ -42,6 +43,14 @@ function GuidedDialogue() {
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? "bgm:pause" : "bgm:resume"));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bgm:resume"));
+    };
+  }, [isRecording]);
 
   useEffect(() => {
     return () => {
@@ -194,6 +203,8 @@ function GuidedDialogue() {
           </h2>
           <p className="text-gray-600">Procesando tus respuestas</p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -308,6 +319,8 @@ function GuidedDialogue() {
             </button>
           </div>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -543,6 +556,8 @@ function GuidedDialogue() {
           </motion.div>
         )}
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }

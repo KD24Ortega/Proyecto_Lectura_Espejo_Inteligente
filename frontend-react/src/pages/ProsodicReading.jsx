@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 
 import FaceMonitor from "../components/FaceMonitor";
+import BackgroundMusic from "../components/BackgroundMusic";
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
 function ProsodicReading() {
@@ -52,6 +53,14 @@ function ProsodicReading() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [showResults, setShowResults] = useState(false);
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? "bgm:pause" : "bgm:resume"));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bgm:resume"));
+    };
+  }, [isRecording]);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -187,6 +196,8 @@ function ProsodicReading() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu lectura…</h2>
           <p className="text-gray-600">Procesando tu expresividad vocal</p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -287,6 +298,8 @@ function ProsodicReading() {
             </button>
           </div>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -510,6 +523,8 @@ function ProsodicReading() {
           </div>
         </div>
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }

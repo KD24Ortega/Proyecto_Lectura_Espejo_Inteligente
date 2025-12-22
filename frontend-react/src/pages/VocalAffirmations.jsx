@@ -6,6 +6,9 @@ import api from "../services/api";
 // ✅ Reconocimiento
 import FaceMonitor from "../components/FaceMonitor";
 
+// ✅ Música de fondo
+import BackgroundMusic from "../components/BackgroundMusic";
+
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
@@ -40,6 +43,14 @@ function VocalAffirmations() {
   // ✅ THEME dinámico (igual que GuidedDialogue)
   const { theme, isThemeLoading } = useDynamicTheme();
   const bg = theme?.colors?.primary || "from-teal-100 via-cyan-100 to-blue-100";
+
+  // Pausar música mientras el micrófono esté activo
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(isRecording ? "bgm:pause" : "bgm:resume"));
+    return () => {
+      window.dispatchEvent(new CustomEvent("bgm:resume"));
+    };
+  }, [isRecording]);
 
   // AUTO ROTACIÓN
   useEffect(() => {
@@ -199,6 +210,8 @@ function VocalAffirmations() {
           </h2>
           <p className="text-gray-600">Procesando tu afirmación vocal</p>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -312,6 +325,8 @@ function VocalAffirmations() {
             </button>
           </div>
         </div>
+
+        <BackgroundMusic musicFile={theme?.music} volume={0.2} />
       </div>
     );
   }
@@ -549,6 +564,8 @@ function VocalAffirmations() {
           </motion.div>
         )}
       </div>
+
+      <BackgroundMusic musicFile={theme?.music} volume={0.2} />
     </div>
   );
 }
