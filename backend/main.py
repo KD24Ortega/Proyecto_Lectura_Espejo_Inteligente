@@ -38,11 +38,6 @@ from backend.recognition.face_service import FaceRecognitionService
 from backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from backend.db.init_admin import init_super_admin
 
-from backend.webrtc.webrtc_service import (
-    handle_webrtc_offer,
-    presence_state
-)
-
 # -----------------------------
 # SERVICIO EMAIL
 # -----------------------------
@@ -1340,60 +1335,6 @@ async def get_last_assessments(user_id: int, db: Session = Depends(get_db)):
             "severity": last_gad7.severity if last_gad7 else None,
             "timestamp": last_gad7.created_at.isoformat() if last_gad7 else None
         }
-    }
-
-from fastapi import Body
-
-# ==============================================
-# 📡 WebRTC: recibir OFFER y devolver ANSWER
-# ==============================================
-@app.post("/webrtc/offer")
-async def webrtc_offer(
-    data: dict = Body(...)
-):
-    """
-    Recibe la SDP offer desde el frontend y devuelve la SDP answer.
-    """
-    client_id = data.get("client_id")
-    offer_sdp = data.get("sdp")
-    offer_type = data.get("type")
-
-    if not client_id or not offer_sdp or not offer_type:
-        raise HTTPException(status_code=400, detail="Faltan campos en la oferta WebRTC")
-
-    answer = await handle_webrtc_offer(offer_sdp, offer_type, client_id)
-    return answer
-
-
-# ==============================================
-# 📊 Endpoint para consultar presencia por client_id
-# ==============================================
-@app.get("/presence/{client_id}")
-async def get_presence(client_id: str):
-    """
-    Devuelve el último estado de presencia para un client_id.
-    """
-    state = presence_state.get(client_id)
-
-    if not state:
-        return {
-            "found": False,
-            "user": None,
-            "confidence": 0.0,
-            "last_update": None
-        }
-
-    # Serializar datetime a string
-    last_update = state.get("last_update")
-    if last_update is not None:
-        last_update = last_update.isoformat()
-
-    return {
-        "found": state.get("found", False),
-        "user": state.get("user"),
-        "confidence": state.get("confidence", 0.0),
-        "last_update": last_update,
-        "error": state.get("error")  # opcional
     }
 
 

@@ -64,11 +64,20 @@ function Camera({ onCapture, isActive = true, hidden = false }) {
   const captureFrame = () => {
     if (!videoRef.current) return null;
 
+    // A veces el video aún no está listo y devuelve dimensiones 0,
+    // lo que termina produciendo data URLs inválidas (p.ej. "data:,"),
+    // y rompe el parser en FaceMonitor.
+    const vw = videoRef.current.videoWidth;
+    const vh = videoRef.current.videoHeight;
+    if (!vw || !vh) return null;
+    if (videoRef.current.readyState < 2) return null; // HAVE_CURRENT_DATA
+
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    canvas.width = vw;
+    canvas.height = vh;
     
     const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
     ctx.drawImage(videoRef.current, 0, 0);
     
     return canvas.toDataURL('image/jpeg');

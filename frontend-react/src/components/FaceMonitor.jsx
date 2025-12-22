@@ -133,8 +133,19 @@ function FaceMonitor({ isActive = true }) {
   // Convertir base64 -> Blob
   // ==========================
   const dataURLtoBlob = (dataURL) => {
+    if (typeof dataURL !== 'string') return null;
+
     const arr = dataURL.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
+    if (arr.length < 2) return null;
+
+    // Ejemplo esperado: data:image/jpeg;base64,xxxx
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch || !mimeMatch[1]) return null;
+    const mime = mimeMatch[1];
+
+    // Si es algo como "data:," o no tiene payload base64
+    if (!arr[1]) return null;
+
     const bstr = atob(arr[1]);
     const u8arr = new Uint8Array(bstr.length);
     for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
@@ -203,6 +214,10 @@ function FaceMonitor({ isActive = true }) {
 
     try {
       const blob = dataURLtoBlob(dataURL);
+      if (!blob) {
+        // Frame inválido / video aún no listo: no cuenta como ausencia
+        return;
+      }
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
