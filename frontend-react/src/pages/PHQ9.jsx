@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
 
+// ✅ Fallback STT (Vosk en backend)
+import { recordAudioBlob } from "../utils/voskFallback";
+
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
 
@@ -36,6 +39,9 @@ function PHQ9() {
   const [showVoiceConfirm, setShowVoiceConfirm] = useState(false);
   const [detectedAnswer, setDetectedAnswer] = useState(null);
 
+  // ✅ Modo voz continuo (responder todas las preguntas sin presionar cada vez)
+  const [voiceAutoMode, setVoiceAutoMode] = useState(false);
+
   // Estados de modales
   const [showModal, setShowModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -50,6 +56,132 @@ function PHQ9() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const recognitionRef = useRef(null);
+  const currentQuestionRef = useRef(0);
+  const answersRef = useRef([]);
+  const questionsRef = useRef([]);
+  const voiceAutoModeRef = useRef(false);
+  const voiceRequestIdRef = useRef(0);
+  const activeVoiceRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion;
+  }, [currentQuestion]);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
+
+  useEffect(() => {
+    voiceAutoModeRef.current = voiceAutoMode;
+  }, [voiceAutoMode]);
+
+  const runVoskFallback = async () => {
+    const requestId = ++voiceRequestIdRef.current;
+    activeVoiceRequestIdRef.current = requestId;
+    try {
+      setIsListening(true);
+      setShowVoiceConfirm(false);
+      setDetectedAnswer(null);
+      setVoiceTranscript("Grabando audio...");
+
+      const audioBlob = await recordAudioBlob({ seconds: 4 });
+      setVoiceTranscript("Transcribiendo...");
+
+      const fd = new FormData();
+      fd.append("file", audioBlob, "speech.webm");
+
+      const tr = await api.post("/voice/transcribe", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (requestId !== activeVoiceRequestIdRef.current) return;
+
+      const transcript = (tr.data?.text || "").trim();
+      if (!transcript) {
+        setVoiceTranscript("No entendí. Intenta de nuevo.");
+        return;
+      }
+
+      setVoiceTranscript(`Escuché: "${transcript}"`);
+
+      const response = await api.post(
+        `/voice/map-response?text=${encodeURIComponent(transcript)}`
+      );
+
+      if (requestId !== activeVoiceRequestIdRef.current) return;
+
+      const score = response.data.score;
+
+      const answerLabels = [
+        "Ningún día",
+        "Varios días",
+        "Más de la mitad de los días",
+        "Casi todos los días",
+      ];
+
+      handleVoiceScore({ transcript, score, answerLabels });
+    } catch (error) {
+      console.error("Fallback Vosk error:", error);
+      setVoiceTranscript("Error al escuchar. Intenta de nuevo.");
+    } finally {
+      setIsListening(false);
+    }
+  };
+
+  const stopVoiceAutoMode = () => {
+    setVoiceAutoMode(false);
+    // Invalida cualquier request en curso
+    activeVoiceRequestIdRef.current = ++voiceRequestIdRef.current;
+    try {
+      recognitionRef.current?.abort?.();
+      recognitionRef.current?.stop?.();
+    } catch {
+      // noop
+    }
+    setIsListening(false);
+  };
+
+  const handleVoiceScore = ({ transcript, score, answerLabels }) => {
+    // Si el usuario detuvo mientras procesábamos, ignorar.
+    if (!voiceAutoModeRef.current && !showVoiceConfirm) {
+      // noop
+    }
+
+    setVoiceTranscript(`Escuché: "${transcript}"`);
+
+    if (voiceAutoModeRef.current) {
+      const idx = currentQuestionRef.current;
+      const finalAnswers = Array.isArray(answersRef.current)
+        ? [...answersRef.current]
+        : [];
+      finalAnswers[idx] = score;
+      answersRef.current = finalAnswers;
+      setAnswers(finalAnswers);
+
+      setShowVoiceConfirm(false);
+      setDetectedAnswer(null);
+
+      window.setTimeout(() => {
+        if (!voiceAutoModeRef.current) return;
+        const qs = questionsRef.current || [];
+        if (idx < qs.length - 1) {
+          setCurrentQuestion((prev) => prev + 1);
+          setVoiceTranscript("");
+        } else {
+          submitTest(finalAnswers);
+        }
+      }, 350);
+
+      return;
+    }
+
+    setDetectedAnswer({ score, label: answerLabels[score] });
+    setShowVoiceConfirm(true);
+  };
 
   // ✅ opcional: evita que FaceMonitor frene el primer render
   const [enableFace, setEnableFace] = useState(false);
@@ -230,6 +362,7 @@ function PHQ9() {
       };
 
       recognitionRef.current.onresult = async (event) => {
+        const requestId = activeVoiceRequestIdRef.current;
         const transcript = event.results[0][0].transcript;
         setVoiceTranscript(`Escuché: "${transcript}"`);
 
@@ -237,6 +370,9 @@ function PHQ9() {
           const response = await api.post(
             `/voice/map-response?text=${encodeURIComponent(transcript)}`
           );
+
+          if (requestId !== activeVoiceRequestIdRef.current) return;
+
           const score = response.data.score;
 
           const answerLabels = [
@@ -246,8 +382,7 @@ function PHQ9() {
             "Casi todos los días",
           ];
 
-          setDetectedAnswer({ score, label: answerLabels[score] });
-          setShowVoiceConfirm(true);
+          handleVoiceScore({ transcript, score, answerLabels });
         } catch (error) {
           console.error("Error al mapear respuesta:", error);
           setVoiceTranscript("No entendí. Intenta de nuevo.");
@@ -263,6 +398,11 @@ function PHQ9() {
           setVoiceTranscript("No se detectó audio. Intenta de nuevo.");
         } else {
           setVoiceTranscript("Error al escuchar. Intenta de nuevo.");
+
+          // Si el error es de servicio/red del SpeechRecognition, intentar fallback con Vosk.
+          if (event.error === "network" || event.error === "service-not-allowed" || event.error === "service-not-available") {
+            runVoskFallback();
+          }
         }
       };
 
@@ -312,14 +452,12 @@ function PHQ9() {
   };
 
   const startVoiceRecognition = () => {
+    const requestId = ++voiceRequestIdRef.current;
+    activeVoiceRequestIdRef.current = requestId;
+
     if (!recognitionRef.current) {
-      showModalMessage({
-        type: "warning",
-        title: "Función no disponible",
-        message:
-          "Tu navegador no soporta reconocimiento de voz. Por favor, responde haciendo clic en las opciones.",
-        onConfirm: closeModal,
-      });
+      // Fallback automático a Vosk (backend)
+      runVoskFallback();
       return;
     }
 
@@ -328,13 +466,8 @@ function PHQ9() {
       recognitionRef.current.start();
     } catch (error) {
       console.error("Error al iniciar reconocimiento:", error);
-      showModalMessage({
-        type: "error",
-        title: "Error de micrófono",
-        message:
-          "No se pudo iniciar el reconocimiento de voz. Verifica los permisos de tu micrófono.",
-        onConfirm: closeModal,
-      });
+      // Si falla iniciar SpeechRecognition, intentar fallback.
+      runVoskFallback();
     }
   };
 
@@ -345,6 +478,7 @@ function PHQ9() {
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = value;
     setAnswers(newAnswers);
+    answersRef.current = newAnswers;
 
     setVoiceTranscript("");
     setShowVoiceConfirm(false);
@@ -356,6 +490,7 @@ function PHQ9() {
       const newAnswers = [...answers];
       newAnswers[currentQuestion] = detectedAnswer.score;
       setAnswers(newAnswers);
+      answersRef.current = newAnswers;
 
       setShowVoiceConfirm(false);
       setVoiceTranscript("");
@@ -427,7 +562,7 @@ function PHQ9() {
   // ============================================
   // ENVÍO DEL TEST
   // ============================================
-  const submitTest = async () => {
+  const submitTest = async (responsesOverride) => {
     if (isSubmitting) return;
 
     try {
@@ -435,9 +570,11 @@ function PHQ9() {
 
       const userId = localStorage.getItem("user_id") || 1;
 
+      const responsesToSend = responsesOverride ?? answers;
+
       const response = await api.post("/phq9/submit", {
         user_id: parseInt(userId),
-        responses: answers,
+        responses: responsesToSend,
       });
 
       localStorage.setItem("last_test_type", "phq9");
@@ -463,6 +600,23 @@ function PHQ9() {
       setIsSubmitting(false);
     }
   };
+
+  // Auto-iniciar escucha en cada pregunta cuando el modo continuo está activo
+  useEffect(() => {
+    if (!voiceAutoMode) return;
+    if (isSubmitting) return;
+    if (isListening) return;
+    if (showVoiceConfirm) return;
+    if (answers[currentQuestion] !== null) return;
+
+    const t = window.setTimeout(() => {
+      if (!voiceAutoModeRef.current) return;
+      startVoiceRecognition();
+    }, 250);
+
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceAutoMode, currentQuestion]);
 
   // ============================================
   // LOADING (theme + preguntas + verificación)
@@ -697,8 +851,25 @@ function PHQ9() {
                         </p>
                       </div>
                       <p className="text-xs text-purple-700 mb-2">
-                        Haz clic en el micrófono y di tu respuesta en voz alta.
+                        {voiceAutoMode
+                          ? "Modo continuo activado: responde en voz alta y avanzaremos automáticamente."
+                          : "Haz clic en el micrófono y di tu respuesta en voz alta."}
                       </p>
+
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => (voiceAutoMode ? stopVoiceAutoMode() : setVoiceAutoMode(true))}
+                          disabled={isSubmitting}
+                          className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border-2 shadow-sm ${
+                            voiceAutoMode
+                              ? "bg-red-500 hover:bg-red-600 text-white border-red-300"
+                              : "bg-white/80 hover:bg-white text-purple-900 border-purple-200"
+                          } ${isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:scale-[1.02]"}`}
+                        >
+                          {voiceAutoMode ? "Detener modo continuo" : "Activar modo continuo"}
+                        </button>
+                      </div>
 
                       {voiceTranscript && (
                         <motion.p

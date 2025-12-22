@@ -5,6 +5,8 @@ import io
 import subprocess
 import tempfile
 import os
+import re
+import unicodedata
 
 class TranscriptionService:
     def __init__(self):
@@ -60,15 +62,66 @@ class TranscriptionService:
     
     def map_response_to_score(self, text: str) -> int:
         """Mapea texto a puntuación 0-3"""
-        text = text.lower().strip()
-        
-        if any(word in text for word in ["nada", "nunca", "no", "cero", "ningún"]):
+        if not text:
             return 0
-        elif any(word in text for word in ["varios", "algunos", "pocos", "uno", "dos", "1", "2"]):
+
+        text = text.lower().strip()
+
+        # Normalizar acentos para mejorar coincidencias (ningún -> ningun)
+        normalized = unicodedata.normalize("NFKD", text)
+        normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+        # 1) Prioridad: el usuario dice explícitamente el número 0-3
+        m = re.search(r"\b([0-3])\b", normalized)
+        if m:
+            return int(m.group(1))
+
+        # 2) Palabras numéricas (español) para 0-3
+        number_words = {
+            0: ["cero", "nada", "ninguno", "ninguna", "ningun"],
+            1: ["uno", "una"],
+            2: ["dos"],
+            3: ["tres"],
+        }
+        for score, words in number_words.items():
+            for w in words:
+                if re.search(rf"\b{re.escape(w)}\b", normalized):
+                    return score
+
+        # 3) Heurísticas por frase (fallback)
+        if any(phrase in normalized for phrase in [
+            "ningun dia",
+            "ninguna vez",
+            "nunca",
+        ]):
+            return 0
+
+        if any(phrase in normalized for phrase in [
+            "varios dias",
+            "algunos dias",
+            "pocos dias",
+        ]):
             return 1
-        elif any(word in text for word in ["mitad", "medio", "bastante", "tres", "3"]):
+
+        if any(phrase in normalized for phrase in [
+            "mas de la mitad",
+            "la mitad",
+            "medio",
+            "bastante",
+        ]):
             return 2
-        elif any(word in text for word in ["siempre", "todos", "diario", "mucho", "cuatro", "4"]):
+
+        if any(phrase in normalized for phrase in [
+            "casi todos",
+            "todos los dias",
+            "siempre",
+            "diario",
+            "mucho",
+        ]):
             return 3
-        
+
+        # 4) Último recurso: mantener compatibilidad con el viejo mapeo de 'cuatro/4' -> 3
+        if re.search(r"\b(4|cuatro)\b", normalized):
+            return 3
+
         return 0
