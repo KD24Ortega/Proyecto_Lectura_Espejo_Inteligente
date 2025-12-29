@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine.url import make_url
 import os
 
 from .config import settings
@@ -14,12 +15,25 @@ def _normalize_database_url(url: str) -> str:
     return url
 
 
+def _sanitize_database_url(url: str) -> str:
+    """Return a URL safe to print in logs (no password)."""
+    try:
+        parsed = make_url(url)
+        if parsed.password is not None:
+            parsed = parsed.set(password="***")
+        return str(parsed)
+    except Exception:
+        # Fallback: best-effort redaction
+        return url.replace(os.getenv("PGPASSWORD", ""), "***") if url else url
+
+
 def get_database_url() -> str:
     """Resolve the database URL from env vars (Railway-friendly) with safe fallbacks."""
     # Railway / common provider conventions
-    for key in ("DATABASE_URL", "POSTGRES_URL", "RAILWAY_DATABASE_URL"):
+    for key in ("DATABASE_URL", "POSTGRES_URL", "RAILWAY_DATABASE_URL", "DATABASE_PUBLIC_URL"):
         value = os.getenv(key)
         if value:
+            os.environ["DB_URL_SOURCE"] = key
             return _normalize_database_url(value)
 
     # Standard libpq env vars
@@ -29,15 +43,24 @@ def get_database_url() -> str:
         pgpassword = os.getenv("PGPASSWORD") or settings.POSTGRES_PASSWORD
         pgport = os.getenv("PGPORT") or settings.POSTGRES_PORT
         pgdatabase = os.getenv("PGDATABASE") or settings.POSTGRES_DB
+        os.environ["DB_URL_SOURCE"] = "PG*"
         return _normalize_database_url(
             f"postgresql://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}"
         )
 
     # Local/dev fallback
+    os.environ["DB_URL_SOURCE"] = "settings.DATABASE_URL"
     return _normalize_database_url(settings.DATABASE_URL)
 
 
 DATABASE_URL = get_database_url()
+
+# Log once at import time (safe, no password) to make Railway misconfigurations obvious.
+try:
+    print(f"✅ DB config source: {os.getenv('DB_URL_SOURCE', 'unknown')}")
+    print(f"✅ DB config url: {_sanitize_database_url(DATABASE_URL)}")
+except Exception:
+    pass
 
 # ========================================
 # CONFIGURACIÓN OPTIMIZADA PARA CARGA

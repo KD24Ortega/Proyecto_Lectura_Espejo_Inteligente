@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, date
 from backend.trends.trend_service import analyze_trends
 import json
+import os
 
 
 # Importar el servicio de análisis de voz
@@ -102,6 +103,13 @@ app = FastAPI(title="CalmaSense Backend")
 def _startup_db_init():
     # Initialize schema + super admin at startup (not at import time).
     # If DATABASE_URL isn't configured in Railway, this will fail fast with a clear error.
+    has_direct_url = bool(os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("RAILWAY_DATABASE_URL"))
+    has_pg_vars = bool(os.getenv("PGHOST") or os.getenv("PGDATABASE") or os.getenv("PGUSER"))
+    if not (has_direct_url or has_pg_vars):
+        print("⚠️  DB env vars not found (DATABASE_URL/PG*). Skipping DB init.")
+        print("⚠️  Railway: add a Postgres plugin and reference its DATABASE_URL (or PG* vars) into this backend service.")
+        return
+
     try:
         Base.metadata.create_all(bind=engine)
         init_super_admin()
