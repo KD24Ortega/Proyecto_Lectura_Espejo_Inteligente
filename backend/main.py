@@ -96,10 +96,14 @@ def check_rate_limit(client_ip: str, endpoint_type: str = "default"):
 # INICIALIZAR API Y BASE DE DATOS
 # -----------------------------
 app = FastAPI(title="CalmaSense Backend")
-Base.metadata.create_all(bind=engine)
 
-# 🔥 INICIALIZAR SUPER ADMINISTRADOR AUTOMÁTICAMENTE
-init_super_admin()
+
+@app.on_event("startup")
+def _startup_db_init():
+    # Initialize schema + super admin at startup (not at import time).
+    # If DATABASE_URL isn't configured in Railway, this will fail fast with a clear error.
+    Base.metadata.create_all(bind=engine)
+    init_super_admin()
 
 # 🔥 SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
 #app.mount("/static", StaticFiles(directory="frontend"), name="static")

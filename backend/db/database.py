@@ -5,7 +5,39 @@ import os
 
 from .config import settings
 
-DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+
+def _normalize_database_url(url: str) -> str:
+    # Some providers use the deprecated scheme "postgres://".
+    # SQLAlchemy expects "postgresql://".
+    if url.startswith("postgres://"):
+        return "postgresql://" + url[len("postgres://") :]
+    return url
+
+
+def get_database_url() -> str:
+    """Resolve the database URL from env vars (Railway-friendly) with safe fallbacks."""
+    # Railway / common provider conventions
+    for key in ("DATABASE_URL", "POSTGRES_URL", "RAILWAY_DATABASE_URL"):
+        value = os.getenv(key)
+        if value:
+            return _normalize_database_url(value)
+
+    # Standard libpq env vars
+    pghost = os.getenv("PGHOST")
+    if pghost:
+        pguser = os.getenv("PGUSER") or settings.POSTGRES_USER
+        pgpassword = os.getenv("PGPASSWORD") or settings.POSTGRES_PASSWORD
+        pgport = os.getenv("PGPORT") or settings.POSTGRES_PORT
+        pgdatabase = os.getenv("PGDATABASE") or settings.POSTGRES_DB
+        return _normalize_database_url(
+            f"postgresql://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}"
+        )
+
+    # Local/dev fallback
+    return _normalize_database_url(settings.DATABASE_URL)
+
+
+DATABASE_URL = get_database_url()
 
 # ========================================
 # CONFIGURACIÓN OPTIMIZADA PARA CARGA

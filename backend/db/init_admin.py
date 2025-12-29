@@ -4,7 +4,7 @@ Se ejecuta automáticamente al iniciar el servidor
 """
 import os
 
-from backend.db.database import SessionLocal, Base, engine
+from backend.db.database import SessionLocal
 from backend.db.models import User
 from backend.auth import hash_password
 
@@ -16,9 +16,6 @@ def init_super_admin():
     - Usuario: admin
     - Contraseña: admin123
     """
-    # Crear todas las tablas si no existen
-    Base.metadata.create_all(bind=engine)
-    
     db = SessionLocal()
     
     try:
