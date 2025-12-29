@@ -73,10 +73,9 @@ def init_super_admin():
         print("✅ SUPER ADMINISTRADOR CREADO EXITOSAMENTE")
         print("=" * 60)
         print(f"   Usuario: {admin_username}")
-        print(f"   Contraseña: {admin_password}")
         print(f"   ID: {admin.id}")
         print("=" * 60)
-        print("⚠️  IMPORTANTE: Cambia la contraseña en producción")
+        print("⚠️  IMPORTANTE: Cambia la contraseña en producción (usa ADMIN_PASSWORD / RESET_ADMIN_PASSWORD)")
         print("=" * 60)
         
     except Exception as e:

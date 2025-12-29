@@ -41,7 +41,10 @@ from backend.db.init_admin import init_super_admin
 # -----------------------------
 import resend
 
-resend.api_key = "re_361pUwcN_LsC1uhDKeUm9QiJqd4HnmENE"
+# Configurar Resend via variable de entorno para no exponer secretos en el repo.
+resend.api_key = os.getenv("RESEND_API_KEY", "").strip()
+if not resend.api_key:
+    print("⚠️  RESEND_API_KEY no configurada; envío de emails deshabilitado.")
 
 # -----------------------------
 # RATE LIMITING DIFERENCIADO
