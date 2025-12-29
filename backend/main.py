@@ -102,8 +102,14 @@ app = FastAPI(title="CalmaSense Backend")
 def _startup_db_init():
     # Initialize schema + super admin at startup (not at import time).
     # If DATABASE_URL isn't configured in Railway, this will fail fast with a clear error.
-    Base.metadata.create_all(bind=engine)
-    init_super_admin()
+    try:
+        Base.metadata.create_all(bind=engine)
+        init_super_admin()
+    except Exception as e:
+        # Don't crash the whole app if the DB isn't reachable (common in misconfigured deployments).
+        # Railway: ensure the Postgres plugin is attached and DATABASE_URL/PG* vars exist.
+        print("❌ DB startup init failed. The API will start, but DB-backed endpoints may not work.")
+        print(f"❌ DB error: {e}")
 
 # 🔥 SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND
 #app.mount("/static", StaticFiles(directory="frontend"), name="static")
