@@ -35,6 +35,7 @@ from backend.assessments.phq_gad_service import (
 from backend.recognition.face_service import FaceRecognitionService
 from backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from backend.db.init_admin import init_super_admin
+from backend.db.seed_exercises import seed_exercises_if_empty
 
 # -----------------------------
 # SERVICIO EMAIL
@@ -122,6 +123,7 @@ def _startup_db_init():
 
     try:
         Base.metadata.create_all(bind=engine)
+        seed_exercises_if_empty()
         init_super_admin()
     except Exception as e:
         # Don't crash the whole app if the DB isn't reachable (common in misconfigured deployments).
@@ -1787,6 +1789,18 @@ async def create_voice_session(
         # Leer y analizar audio
         audio_bytes = await audio_file.read()
         analisis = procesar_audio_archivo(audio_bytes, gender)
+
+        # Normalizar risk_level para que coincida con el Enum de BD
+        risk_raw = (analisis.get("risk_level") or "").strip()
+        risk_map = {
+            "LOW": models.VoiceRiskLevel.LOW,
+            "MODERATE": models.VoiceRiskLevel.MODERATE,
+            "HIGH": models.VoiceRiskLevel.HIGH,
+            "bajo": models.VoiceRiskLevel.LOW,
+            "moderado": models.VoiceRiskLevel.MODERATE,
+            "alto": models.VoiceRiskLevel.HIGH,
+        }
+        risk_level = risk_map.get(risk_raw)
         
         # Crear sesión en BD
         session = models.VoiceExerciseSession(
@@ -1801,7 +1815,7 @@ async def create_voice_session(
             shimmer=analisis["shimmer"],
             hnr=analisis["hnr"],
             score=analisis["score"],
-            risk_level=analisis["risk_level"],
+            risk_level=risk_level,
             duration_seconds=duration_seconds,
             completed=completed,
             notes=notes
