@@ -7,6 +7,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../services/api';
+import { API_BASE_URL } from '../services/api';
 
 /**
  * Componente que maneja el ciclo de vida de las sesiones
@@ -41,7 +42,7 @@ export default function SessionManager({ children }) {
         const data = JSON.stringify({ user_id: parseInt(userId) });
         const blob = new Blob([data], { type: 'text/plain;charset=UTF-8' });
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+        const apiUrl = API_BASE_URL;
 
         if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
           navigator.sendBeacon(`${apiUrl}/session/end`, blob);

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { API_BASE_URL } from '../services/api';
 import Camera from './Camera';
 
 function FaceMonitor({ isActive = true }) {
@@ -62,7 +63,7 @@ function FaceMonitor({ isActive = true }) {
 
     const payload = JSON.stringify({ user_id: parseInt(userId) });
     const blob = new Blob([payload], { type: 'text/plain;charset=UTF-8' });
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    const apiUrl = API_BASE_URL;
 
     try {
       if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
