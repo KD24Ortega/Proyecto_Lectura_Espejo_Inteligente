@@ -144,8 +144,12 @@ async def root():
 # -----------------------------
 # CORS - CONFIGURACIÓN SEGURA
 # -----------------------------
-# Lista de orígenes permitidos
-ALLOWED_ORIGINS = [
+# Lista de orígenes permitidos.
+# Puedes sobreescribir en Railway con:
+# - CORS_ORIGINS="https://calmasense.vercel.app,https://tu-preview.vercel.app"
+# - CORS_ALLOW_ORIGIN_REGEX="https://.*\\.vercel\\.app"
+_default_allowed_origins = [
+    # Local
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:5500",
@@ -154,14 +158,31 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",      # ← React (Vite)
     "http://localhost:5174",      # ← React (Vite) puerto alterno
     "http://127.0.0.1:5174",      # ← React (Vite) puerto alterno
+
+    # Producción (Vercel)
+    "https://calmasense.vercel.app",
 ]
+
+
+def _parse_cors_origins_env(var_name: str) -> list[str]:
+    raw = (os.getenv(var_name) or "").strip()
+    if not raw:
+        return []
+    parts = [p.strip() for p in raw.split(",")]
+    # Normaliza (sin slash final)
+    return [p.rstrip("/") for p in parts if p]
+
+
+ALLOWED_ORIGINS = sorted(set([o.rstrip("/") for o in _default_allowed_origins] + _parse_cors_origins_env("CORS_ORIGINS")))
+ALLOWED_ORIGIN_REGEX = (os.getenv("CORS_ALLOW_ORIGIN_REGEX") or "").strip() or None
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,  # ✅ Solo orígenes específicos
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],  # ✅ Incluye preflight
-    allow_headers=["Content-Type", "Authorization"],  # ✅ Solo headers necesarios
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # ✅ Incluye preflight
+    allow_headers=["*"],
     max_age=600,  # Cache de preflight requests por 10 minutos
 )
 
