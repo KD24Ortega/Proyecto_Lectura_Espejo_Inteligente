@@ -6,7 +6,7 @@ ENV PORT=8000
 WORKDIR /app
 
 # ============================================
-# INSTALAR TODAS LAS DEPENDENCIAS DEL SISTEMA
+# INSTALAR DEPENDENCIAS DEL SISTEMA
 # ============================================
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     pkg-config \
     libpq-dev \
-    # FFmpeg y sus librerías de desarrollo (CRÍTICO para av)
+    # FFmpeg y librerías
     ffmpeg \
     libavformat-dev \
     libavcodec-dev \
@@ -24,48 +24,52 @@ RUN apt-get update && apt-get install -y \
     libavfilter-dev \
     libswscale-dev \
     libswresample-dev \
-    # OpenCV dependencies
+    # OpenCV
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
     libglib2.0-0 \
-    # BLAS/LAPACK para numpy/scipy
+    # BLAS/LAPACK
     libopenblas-dev \
     liblapack-dev \
-    # X11 y GTK para mediapipe
+    # X11 y GTK
     libx11-dev \
     libgtk-3-dev \
-    # Boost para dlib
+    # Boost
     libboost-python-dev \
     libboost-thread-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Verificar instalaciones del sistema
+# Verificar instalaciones
 RUN cmake --version && \
-    ffmpeg -version && \
-    pkg-config --modversion libavformat
+    ffmpeg -version
 
 # ============================================
 # COPIAR REQUIREMENTS
 # ============================================
-COPY utils/requirements.txt .
+COPY utils/requirements.txt requirements-original.txt
+
+# Crear requirements modificado (sin av problemático)
+RUN cat requirements-original.txt | grep -v "^av==" > requirements.txt
 
 # ============================================
 # INSTALAR DEPENDENCIAS DE PYTHON
 # ============================================
 
-# 1. Actualizar pip
+# Actualizar pip
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
-# 2. Instalar dlib (tarda 10-15 minutos)
+# Instalar dlib
 RUN pip install --no-cache-dir dlib==19.24.6 --verbose
 
-# 3. Verificar dlib
-RUN python -c "import dlib; print('✓ dlib version:', dlib.__version__)"
+# Verificar dlib
+RUN python -c "import dlib; print('✓ dlib OK')"
 
-# 4. Instalar el resto de dependencias
-# av ahora debería compilar correctamente con las librerías de ffmpeg
+# IMPORTANTE: Instalar versión compatible de av
+RUN pip install --no-cache-dir av==10.0.0
+
+# Instalar resto de dependencias (ahora sin av)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================
@@ -75,22 +79,16 @@ COPY backend ./backend
 COPY utils ./utils
 
 # ============================================
-# VERIFICAR INSTALACIONES CRÍTICAS
+# VERIFICACIONES
 # ============================================
 RUN python -c "import dlib; print('✓ dlib')" && \
     python -c "import face_recognition; print('✓ face_recognition')" && \
     python -c "import cv2; print('✓ opencv')" && \
     python -c "import mediapipe; print('✓ mediapipe')" && \
-    python -c "import av; print('✓ av')" && \
+    python -c "import av; print('✓ av version:', av.__version__)" && \
     python -c "import vosk; print('✓ vosk')" && \
     python -c "import librosa; print('✓ librosa')"
 
-# ============================================
-# EXPONER PUERTO
-# ============================================
 EXPOSE $PORT
 
-# ============================================
-# COMANDO DE INICIO
-# ============================================
 CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
