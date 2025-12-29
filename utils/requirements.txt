@@ -1,27 +1,49 @@
-numpy
-opencv-python
-Pillow
-fastapi
-uvicorn
-sqlalchemy
-pydantic
-cmake
-face-recognition
+# ============================================
+# REQUIREMENTS.TXT OPTIMIZADO PARA RAILWAY
+# ============================================
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.12.1
+
+# Data Validation
+pydantic==2.5.0
+pydantic[email]==2.5.0
+
+# Authentication
+bcrypt==4.1.1
+pyjwt==2.8.0
+
+# Computer Vision (dlib se instala separado en Dockerfile)
+# NO incluir cmake aquí - se instala desde sistema
+face-recognition==1.3.0
+opencv-python-headless==4.8.1.78
 mediapipe==0.10.14
-python-multipart
-pydantic[email]
-psycopg2-binary
-alembic
-bcrypt
-pyjwt
-vosk 
-librosa 
-soundfile 
-pyttsx3 
-SpeechRecognition
-gtts
-aiortc
-av
-resend
-pydub
-ffmpeg-python
+
+# Audio Processing
+vosk==0.3.45
+librosa==0.10.1
+soundfile==0.12.1
+pyttsx3==2.90
+SpeechRecognition==3.10.0
+gtts==2.4.0
+pydub==0.25.1
+ffmpeg-python==0.2.0
+
+# WebRTC
+aiortc==1.6.0
+av==11.0.0
+
+# Email
+resend==0.7.0
+
+# Utils
+numpy==1.24.3
+Pillow==10.1.0
+python-dotenv==1.0.0
