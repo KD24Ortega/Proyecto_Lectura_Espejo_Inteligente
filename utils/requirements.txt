@@ -30,6 +30,9 @@ mediapipe==0.10.14
 vosk==0.3.45
 librosa==0.10.1
 soundfile==0.12.1
+scipy==1.10.1
+praat-parselmouth==0.4.5
+webrtcvad==2.0.10
 pyttsx3==2.90
 SpeechRecognition==3.10.0
 gtts==2.4.0

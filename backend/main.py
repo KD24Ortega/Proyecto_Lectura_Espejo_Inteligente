@@ -13,10 +13,7 @@ import json
 
 
 # Importar el servicio de análisis de voz
-try:
-    from backend.services.voice_analysis_service import procesar_audio_archivo
-except ImportError:
-    from services.voice_analysis_service import procesar_audio_archivo
+from backend.services.voice_analysis_service import procesar_audio_archivo
 
 from backend.voice.transcription_service import TranscriptionService
 from backend.voice.tts_service import TTSService
