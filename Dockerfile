@@ -15,15 +15,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     pkg-config \
     libpq-dev \
-    # FFmpeg y librerías
+    # FFmpeg (básico, sin dev)
     ffmpeg \
-    libavformat-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libavfilter-dev \
-    libswscale-dev \
-    libswresample-dev \
     # OpenCV
     libsm6 \
     libxext6 \
@@ -41,17 +34,15 @@ RUN apt-get update && apt-get install -y \
     libboost-thread-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Verificar instalaciones
-RUN cmake --version && \
-    ffmpeg -version
-
 # ============================================
-# COPIAR REQUIREMENTS
+# COPIAR Y MODIFICAR REQUIREMENTS
 # ============================================
 COPY utils/requirements.txt requirements-original.txt
 
-# Crear requirements modificado (sin av problemático)
-RUN cat requirements-original.txt | grep -v "^av==" > requirements.txt
+# Remover av y aiortc que causan problemas de compilación
+RUN cat requirements-original.txt | \
+    grep -v "^av==" | \
+    grep -v "^aiortc==" > requirements.txt
 
 # ============================================
 # INSTALAR DEPENDENCIAS DE PYTHON
@@ -60,16 +51,13 @@ RUN cat requirements-original.txt | grep -v "^av==" > requirements.txt
 # Actualizar pip
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
-# Instalar dlib
+# Instalar dlib (10-15 min)
 RUN pip install --no-cache-dir dlib==19.24.6 --verbose
 
 # Verificar dlib
-RUN python -c "import dlib; print('✓ dlib OK')"
+RUN python -c "import dlib; print('✓ dlib version:', dlib.__version__)"
 
-# IMPORTANTE: Instalar versión compatible de av
-RUN pip install --no-cache-dir av==10.0.0
-
-# Instalar resto de dependencias (ahora sin av)
+# Instalar resto de dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================
@@ -85,9 +73,9 @@ RUN python -c "import dlib; print('✓ dlib')" && \
     python -c "import face_recognition; print('✓ face_recognition')" && \
     python -c "import cv2; print('✓ opencv')" && \
     python -c "import mediapipe; print('✓ mediapipe')" && \
-    python -c "import av; print('✓ av version:', av.__version__)" && \
     python -c "import vosk; print('✓ vosk')" && \
-    python -c "import librosa; print('✓ librosa')"
+    python -c "import librosa; print('✓ librosa')" && \
+    python -c "print('✓ CORE FUNCIONALIDADES OK')"
 
 EXPOSE $PORT
 
