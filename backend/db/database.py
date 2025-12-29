@@ -49,7 +49,19 @@ def get_database_url() -> str:
         )
 
     # Local/dev fallback
-    os.environ["DB_URL_SOURCE"] = "settings.DATABASE_URL"
+    if any(
+        os.getenv(k)
+        for k in (
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+        )
+    ):
+        os.environ["DB_URL_SOURCE"] = "POSTGRES_*"
+    else:
+        os.environ["DB_URL_SOURCE"] = "settings.DATABASE_URL"
     return _normalize_database_url(settings.DATABASE_URL)
 
 
