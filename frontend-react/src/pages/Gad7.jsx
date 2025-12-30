@@ -27,6 +27,10 @@ function GAD7() {
   // ✅ NUEVO: Verificar si es primera vez
   const [isFirstTest, setIsFirstTest] = useState(false);
   const [checkingFirstTest, setCheckingFirstTest] = useState(true);
+  const [hasBothResults, setHasBothResults] = useState(false);
+
+  // Regla de calendario: lunes (1) y viernes (5)
+  const isRequiredDay = useRef(false);
 
   // ✅ Bloqueo de envío (evita doble submit)
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -195,6 +199,27 @@ function GAD7() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Recomendación: si NO es lunes/viernes, avisar que es ideal hacerlos esos días
+  useEffect(() => {
+    if (checkingFirstTest) return;
+
+    const today = new Date();
+    const day = today.getDay();
+    const required = day === 1 || day === 5;
+    isRequiredDay.current = required;
+
+    if (!required && hasBothResults) {
+      showModalMessage({
+        type: "info",
+        title: "Recomendación de seguimiento",
+        message:
+          "Para un seguimiento más consistente, se recomienda completar PHQ-9 y GAD-7 los días Lunes y Viernes. Puedes completarlo hoy si lo necesitas, pero intenta mantener ese ritmo semanal.",
+        onConfirm: closeModal,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkingFirstTest, hasBothResults]);
+
   // ============================================
   // VERIFICAR SI ES PRIMERA VEZ
   // ============================================
@@ -204,6 +229,7 @@ function GAD7() {
       
       if (!userId) {
         setIsFirstTest(false);
+        setHasBothResults(false);
         setCheckingFirstTest(false);
         return;
       }
@@ -213,6 +239,8 @@ function GAD7() {
       
       // ✅ Solo verificar si tiene GAD-7 (no importa PHQ-9)
       const hasGad7 = response.data.gad7 && response.data.gad7.score !== null;
+      const hasPhq9 = response.data.phq9 && response.data.phq9.score !== null;
+      setHasBothResults(Boolean(hasGad7 && hasPhq9));
       
       setIsFirstTest(!hasGad7); // Es primera vez si NO tiene GAD-7
       setCheckingFirstTest(false);
@@ -221,6 +249,7 @@ function GAD7() {
       console.error("Error al verificar primer test:", error);
       // Si hay error, asumir que NO es primera vez (permitir salir)
       setIsFirstTest(false);
+      setHasBothResults(false);
       setCheckingFirstTest(false);
     }
   };
@@ -468,13 +497,15 @@ function GAD7() {
   const handleExit = () => {
     if (isSubmitting) return;
     
-    // ✅ NUEVO: Si es primera vez, mostrar mensaje especial
-    if (isFirstTest) {
+    // Si es primera vez o es día obligatorio (lunes/viernes), no permitir salir
+    if (isFirstTest || isRequiredDay.current) {
       showModalMessage({
         type: "info",
         title: "Test obligatorio",
         message:
-          "Este es tu primer test y es necesario completarlo para establecer tu línea base emocional. Por favor, continúa respondiendo las preguntas.",
+          isFirstTest
+            ? "Este es tu primer test y es necesario completarlo para establecer tu línea base emocional. Por favor, continúa respondiendo las preguntas."
+            : "Hoy es un día de seguimiento (Lunes/Viernes). Para mantener tu progreso, es importante completar PHQ-9 y GAD-7 hoy.",
         onConfirm: closeModal,
       });
       return;

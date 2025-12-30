@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { API_BASE_URL } from '../services/api';
 
@@ -16,6 +16,23 @@ import { API_BASE_URL } from '../services/api';
  */
 export default function SessionManager({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const isSameLocalDay = (isoTimestamp, referenceDate = new Date()) => {
+    if (!isoTimestamp) return false;
+    const d = new Date(isoTimestamp);
+    return (
+      d.getFullYear() === referenceDate.getFullYear() &&
+      d.getMonth() === referenceDate.getMonth() &&
+      d.getDate() === referenceDate.getDate()
+    );
+  };
+
+  const shouldEnforceToday = (date = new Date()) => {
+    const day = date.getDay();
+    // 1 = Lunes, 5 = Viernes
+    return day === 1 || day === 5;
+  };
 
   /**
    * Función auxiliar para cerrar sesión
@@ -92,6 +109,75 @@ export default function SessionManager({ children }) {
       }
     }
   }, [location.pathname]);
+
+  // ============================================================
+  // 3. Enforce PHQ-9/GAD-7 lunes y viernes
+  //    - Si nunca se han completado, también obliga (línea base)
+  // ============================================================
+  useEffect(() => {
+    const path = location.pathname;
+
+    // Rutas que NO deben ser bloqueadas por la regla
+    if (path === '/' || path === '/welcome' || path === '/register') return;
+    if (path.startsWith('/admin')) return;
+
+    // Ya estamos dentro de un test → no redirigir para evitar loops
+    if (path === '/phq9' || path === '/gad7') return;
+
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const today = new Date();
+        const enforce = shouldEnforceToday(today);
+
+        const res = await api.get(`/assessments/last/${userId}`);
+        if (cancelled) return;
+
+        const phq = res?.data?.phq9;
+        const gad = res?.data?.gad7;
+
+        const hasPhqEver = phq?.score !== null && phq?.score !== undefined;
+        const hasGadEver = gad?.score !== null && gad?.score !== undefined;
+
+        // Si no hay línea base, obligar a completarlos
+        if (!hasPhqEver) {
+          navigate('/phq9', { replace: true });
+          return;
+        }
+        if (!hasGadEver) {
+          navigate('/gad7', { replace: true });
+          return;
+        }
+
+        if (!enforce) return;
+
+        const phqDoneToday = isSameLocalDay(phq?.timestamp, today);
+        const gadDoneToday = isSameLocalDay(gad?.timestamp, today);
+
+        if (!phqDoneToday) {
+          navigate('/phq9', { replace: true });
+          return;
+        }
+        if (!gadDoneToday) {
+          navigate('/gad7', { replace: true });
+          return;
+        }
+      } catch (error) {
+        // Si falla la verificación, no bloquear navegación
+        console.warn('⚠️ No se pudo aplicar regla de tests (continuando):', error);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, navigate]);
 
   return <>{children}</>;
 }

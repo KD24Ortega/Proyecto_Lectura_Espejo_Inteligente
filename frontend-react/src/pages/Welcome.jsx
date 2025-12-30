@@ -280,11 +280,37 @@ export default function Welcome() {
               signal: abortControllerRef.current.signal,
             });
 
-            const hasPhq9 = lastAssessments?.data?.phq9?.score !== null && lastAssessments?.data?.phq9?.score !== undefined;
-            const hasGad7 = lastAssessments?.data?.gad7?.score !== null && lastAssessments?.data?.gad7?.score !== undefined;
+            const today = new Date();
+            const day = today.getDay();
+            const isRequiredDay = day === 1 || day === 5; // Lunes o Viernes
 
+            const phq = lastAssessments?.data?.phq9;
+            const gad = lastAssessments?.data?.gad7;
+
+            const hasPhq9 = phq?.score !== null && phq?.score !== undefined;
+            const hasGad7 = gad?.score !== null && gad?.score !== undefined;
+
+            const isSameLocalDay = (isoTimestamp) => {
+              if (!isoTimestamp) return false;
+              const d = new Date(isoTimestamp);
+              return (
+                d.getFullYear() === today.getFullYear() &&
+                d.getMonth() === today.getMonth() &&
+                d.getDate() === today.getDate()
+              );
+            };
+
+            // Si no tiene línea base, obligar siempre
             if (!hasPhq9) nextRoute = '/phq9';
             else if (!hasGad7) nextRoute = '/gad7';
+            else if (isRequiredDay) {
+              // Lunes/Viernes: obligar a completar hoy
+              const phqDoneToday = isSameLocalDay(phq?.timestamp);
+              const gadDoneToday = isSameLocalDay(gad?.timestamp);
+
+              if (!phqDoneToday) nextRoute = '/phq9';
+              else if (!gadDoneToday) nextRoute = '/gad7';
+            }
           } catch (assessmentsError) {
             if (assessmentsError.name === 'AbortError' || assessmentsError.name === 'CanceledError') {
               console.log('🛑 Verificación de assessments cancelada');
