@@ -753,6 +753,7 @@ from fastapi.concurrency import run_in_threadpool
 async def recognize_face_check(
     request: Request,
     file: UploadFile = File(...),
+    expected_user_id: Optional[int] = Form(None),
     face_service: FaceRecognitionService = Depends(get_face_service),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -766,7 +767,12 @@ async def recognize_face_check(
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    return await run_in_threadpool(face_service.recognize, np_img)
+    return await run_in_threadpool(
+        face_service.recognize,
+        np_img,
+        True,
+        expected_user_id,
+    )
 
 # ============================================================
 # ENDPOINTS DE SESIONES (CORREGIDOS SIN ROUTER)

@@ -21,6 +21,7 @@ function FaceMonitor({ isActive = true }) {
 
   const initializedRef = useRef(false);
   const currentUserRef = useRef(localStorage.getItem('user_name'));
+  const currentUserIdRef = useRef(localStorage.getItem('user_id'));
 
   const showModalRef = useRef(false);
   const isActiveRef = useRef(isActive);
@@ -190,8 +191,15 @@ function FaceMonitor({ isActive = true }) {
     }
 
     const userNow = localStorage.getItem('user_name');
+    const userIdNow = localStorage.getItem('user_id');
     if (!userNow) {
       console.log('⚠️ FaceMonitor: no hay user_name -> /');
+      navigate('/');
+      return;
+    }
+
+    if (!userIdNow) {
+      console.log('⚠️ FaceMonitor: no hay user_id -> /');
       navigate('/');
       return;
     }
@@ -199,8 +207,15 @@ function FaceMonitor({ isActive = true }) {
     if (currentUserRef.current !== userNow) {
       console.log(`🔄 FaceMonitor: user cambió ${currentUserRef.current} -> ${userNow}`);
       currentUserRef.current = userNow;
+      currentUserIdRef.current = userIdNow;
       clearCountdown();
       requestIdRef.current++; // invalida respuestas viejas
+    }
+
+    if (currentUserIdRef.current !== userIdNow) {
+      currentUserIdRef.current = userIdNow;
+      clearCountdown();
+      requestIdRef.current++;
     }
 
     // Preparar request
@@ -221,6 +236,7 @@ function FaceMonitor({ isActive = true }) {
       }
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
+      formData.append('expected_user_id', String(userIdNow));
 
       console.log(`📸 FaceMonitor: enviando checkPresence (req=${myRequestId})`);
 
@@ -239,17 +255,11 @@ function FaceMonitor({ isActive = true }) {
       }
 
       const result = res.data;
-      const expected = currentUserRef.current;
+      const expectedUserId = Number(userIdNow);
 
-      if (result?.found && result?.user === expected) {
-        console.log(`✅ FaceMonitor: presente -> ${result.user} (${dt}ms)`);
+      if (result?.found && Number(result?.user_id) === expectedUserId) {
+        console.log(`✅ FaceMonitor: presente -> user_id=${result.user_id} (${dt}ms)`);
         clearCountdown();
-        return;
-      }
-
-      if (result?.found && result?.user && result.user !== expected) {
-        console.log(`🚫 FaceMonitor: detectado otro usuario (${result.user}) != (${expected}) (${dt}ms)`);
-        startCountdownIfNeeded(`Motivo: detectado ${result.user}`);
         return;
       }
 
@@ -264,7 +274,8 @@ function FaceMonitor({ isActive = true }) {
       }
 
       console.log('❌ FaceMonitor: error/timeout en checkPresence');
-      startCountdownIfNeeded('Motivo: error/timeout');
+      // Importante: bajo carga (varios usuarios) el backend puede tardar y provocar timeouts.
+      // No tratamos estos errores transitorios como ausencia para evitar cierres de sesión falsos.
       console.error('Error en checkPresence:', err);
 
     } finally {
@@ -285,13 +296,21 @@ function FaceMonitor({ isActive = true }) {
     if (!isActive || initializedRef.current) return;
 
     const user = localStorage.getItem('user_name');
+    const userId = localStorage.getItem('user_id');
     if (!user) {
       console.log('⚠️ FaceMonitor: no hay sesión -> /');
       navigate('/');
       return;
     }
 
+    if (!userId) {
+      console.log('⚠️ FaceMonitor: no hay sesión (user_id) -> /');
+      navigate('/');
+      return;
+    }
+
     currentUserRef.current = user;
+    currentUserIdRef.current = userId;
     initializedRef.current = true;
     clearCountdown();
     endSessionSentRef.current = false;

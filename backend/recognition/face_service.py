@@ -319,7 +319,12 @@ class FaceRecognitionService:
     # ============================================================
     # Reconocer usuario
     # ============================================================
-    def recognize(self, frame: np.ndarray, require_quality_check: bool = True) -> Dict:
+    def recognize(
+        self,
+        frame: np.ndarray,
+        require_quality_check: bool = True,
+        expected_user_id: Optional[int] = None,
+    ) -> Dict:
         if require_quality_check:
             quality = assess_image_quality(frame)
             if not quality["is_acceptable"]:
@@ -347,7 +352,8 @@ class FaceRecognitionService:
         encoding = encodings[0]
 
         # Cargar encodings de la base de datos
-        all_encodings, all_user_ids = self._load_user_encodings()
+        # Si se especifica expected_user_id, solo comparamos contra ese usuario (más rápido y escalable).
+        all_encodings, all_user_ids = self._load_user_encodings(expected_user_id)
 
         if not all_encodings:
             return {
@@ -355,7 +361,7 @@ class FaceRecognitionService:
                 "user": None,
                 "user_id": None,
                 "confidence": 0,
-                "message": "No hay usuarios registrados"
+                "message": "No hay usuarios registrados" if expected_user_id is None else "Usuario sin encodings registrados"
             }
 
         # Calcular distancias
