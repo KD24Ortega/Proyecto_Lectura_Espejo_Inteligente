@@ -255,7 +255,7 @@ function AdminLogin() {
             </button>
 
             {/* Credenciales de prueba */}
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+            {/* <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-2">💡 Credenciales de desarrollo:</p>
                 <p className="text-sm font-mono text-blue-700">
@@ -265,7 +265,7 @@ function AdminLogin() {
                   <span className="font-semibold">Contraseña:</span> admin123
                 </p>
               </div>
-            </div>
+            </div> */}
 
           </form>
 
@@ -289,7 +289,7 @@ function AdminLogin() {
           transition={{ delay: 0.5 }}
           className="mt-6 text-center"
         >
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-black">
             🔒 Acceso seguro y encriptado
           </p>
         </motion.div>

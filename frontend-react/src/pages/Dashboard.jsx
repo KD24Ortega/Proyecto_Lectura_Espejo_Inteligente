@@ -1740,7 +1740,7 @@ function Dashboard() {
                           href="tel:952"
                           className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition shadow-lg"
                         >
-                          📞 Llamar Línea 952
+                          📞 Llamar Línea 171
                         </a>
                         <button
                           onClick={() => navigate("/home")}

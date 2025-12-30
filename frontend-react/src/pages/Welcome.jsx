@@ -379,6 +379,7 @@ export default function Welcome() {
         onClick={() => navigate('/admin/login')}
         className="fixed top-6 right-6 z-50 group"
         title="Panel Administrativo"
+        aria-label="Abrir panel administrativo"
       >
         <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-full shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center">
           <span className="text-2xl group-hover:rotate-12 transition-transform duration-300">🛡️</span>
@@ -413,7 +414,7 @@ export default function Welcome() {
           </span>
           <span className="text-gray-900">!</span>
         </h1>
-        <p className="text-[28px] text-gray-600">
+        <p className="text-[28px] text-gray-700">
           Tu asistente de bienestar
         </p>
       </motion.div>

@@ -100,8 +100,9 @@ function DepressionExercises() {
         {/* Header */}
         <div className="mb-8">
           <button
+            type="button"
             onClick={() => navigate("/home")}
-            className="mb-4 flex items-center gap-2 text-amber-600 hover:text-amber-800 font-medium transition"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver al inicio</span>

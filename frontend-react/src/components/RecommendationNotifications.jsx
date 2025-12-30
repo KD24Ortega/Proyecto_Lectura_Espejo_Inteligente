@@ -51,6 +51,7 @@ export const ToastNotification = ({
               <button
                 onClick={onClose}
                 className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition"
+                aria-label="Cerrar notificación"
               >
                 ✕
               </button>
@@ -61,7 +62,7 @@ export const ToastNotification = ({
               <h4 className="font-bold text-gray-800 text-lg mb-2">
                 {exercise.title}
               </h4>
-              <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+              <p className="text-gray-700 text-sm mb-4 leading-relaxed">
                 {exercise.description}
               </p>
 
@@ -281,11 +282,13 @@ export const MiniToast = ({
             <span className="text-2xl">💡</span>
             <p className="font-semibold">{message}</p>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
               className="ml-2 w-6 h-6 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition"
+              aria-label="Cerrar notificación"
             >
               ✕
             </button>

@@ -221,8 +221,9 @@ function GuidedDialogue() {
         <div className="max-w-3xl mx-auto">
           <div className="mb-6">
             <button
+              type="button"
               onClick={() => navigate("/exercises/depression")}
-              className="flex items-center gap-2 text-emerald-600 hover:text-emerald-800 font-medium transition mb-4"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
@@ -337,8 +338,9 @@ function GuidedDialogue() {
         {/* HEADER */}
         <div className="mb-8">
           <button
+            type="button"
             onClick={() => navigate("/exercises/depression")}
-            className="flex items-center gap-2 text-emerald-600 hover:text-emerald-800 font-medium transition mb-4"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>

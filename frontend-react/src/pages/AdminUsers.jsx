@@ -520,8 +520,10 @@ Equipo de CalmaSense.
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 {searchTerm && (
                   <button
+                    type="button"
                     onClick={() => setSearchTerm('')}
                     className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    aria-label="Limpiar búsqueda"
                   >
                     ✕
                   </button>
@@ -576,19 +578,19 @@ Equipo de CalmaSense.
               {searchTerm && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm flex items-center gap-2">
                   Búsqueda: "{searchTerm}"
-                  <button onClick={() => setSearchTerm('')} className="hover:text-blue-900">✕</button>
+                  <button type="button" onClick={() => setSearchTerm('')} className="hover:text-blue-900" aria-label="Quitar filtro de búsqueda">✕</button>
                 </span>
               )}
               {statusFilter !== 'Todos' && (
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm flex items-center gap-2">
                   Estado: {statusFilter}
-                  <button onClick={() => setStatusFilter('Todos')} className="hover:text-green-900">✕</button>
+                  <button type="button" onClick={() => setStatusFilter('Todos')} className="hover:text-green-900" aria-label="Quitar filtro de estado">✕</button>
                 </span>
               )}
               {severityFilter !== 'Todos los niveles' && (
                 <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm flex items-center gap-2">
                   Nivel: {severityFilter}
-                  <button onClick={() => setSeverityFilter('Todos los niveles')} className="hover:text-orange-900">✕</button>
+                  <button type="button" onClick={() => setSeverityFilter('Todos los niveles')} className="hover:text-orange-900" aria-label="Quitar filtro de nivel">✕</button>
                 </span>
               )}
             </div>
@@ -678,7 +680,7 @@ Equipo de CalmaSense.
                     </td>
 
                     {/* Última Evaluación */}
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">
+                    <td className="px-6 py-4 text-center text-sm text-gray-700">
                       {getTimeSince(user.created_at)}
                     </td>
 
@@ -704,6 +706,7 @@ Equipo de CalmaSense.
                           onClick={() => handleDownloadReport(user)}
                           className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
                           title="Descargar"
+                          aria-label="Descargar reporte"
                         >
                           ⬇️
                         </button>
@@ -711,6 +714,7 @@ Equipo de CalmaSense.
                           onClick={() => handleSendEmail(user)}
                           className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition"
                           title="Enviar Email"
+                          aria-label="Enviar correo"
                         >
                           ✉️
                         </button>

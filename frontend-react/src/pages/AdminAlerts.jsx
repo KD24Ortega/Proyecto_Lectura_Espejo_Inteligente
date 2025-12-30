@@ -506,8 +506,10 @@ function AdminAlerts() {
               <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
               {searchTerm && (
                 <button
+                  type="button"
                   onClick={() => setSearchTerm('')}
                   className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  aria-label="Limpiar búsqueda"
                 >
                   ✕
                 </button>
@@ -547,13 +549,13 @@ function AdminAlerts() {
               {searchTerm && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm flex items-center gap-2">
                   Búsqueda: "{searchTerm}"
-                  <button onClick={() => setSearchTerm('')} className="hover:text-blue-900">✕</button>
+                  <button type="button" onClick={() => setSearchTerm('')} className="hover:text-blue-900" aria-label="Quitar filtro de búsqueda">✕</button>
                 </span>
               )}
               {severityFilter !== 'all' && (
                 <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm flex items-center gap-2">
                   Prioridad: {severityFilter === 'critical' ? 'Crítica' : severityFilter === 'high' ? 'Alta' : 'Media'}
-                  <button onClick={() => setSeverityFilter('all')} className="hover:text-orange-900">✕</button>
+                  <button type="button" onClick={() => setSeverityFilter('all')} className="hover:text-orange-900" aria-label="Quitar filtro de prioridad">✕</button>
                 </span>
               )}
             </div>

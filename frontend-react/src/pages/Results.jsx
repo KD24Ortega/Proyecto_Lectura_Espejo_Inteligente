@@ -276,9 +276,9 @@ function Results() {
   if (checkingTests) {
     return (
       <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando progreso...</p>
+        <div className="bg-white/85 backdrop-blur-md rounded-3xl shadow-xl p-8 border border-white/60 text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-800 font-medium">Verificando progreso...</p>
         </div>
       </div>
     );
@@ -291,12 +291,12 @@ function Results() {
 
       <div className="max-w-md w-full">
         {/* Numero 1: Titulo de completado */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">¡BIEN!</h1>
-          <p className="text-gray-600 text-lg">Has completado la evaluacion</p>
-          <p className="text-gray-700 font-semibold text-xl mt-1">
-            {getTestName()}
-          </p>
+        <div className="bg-white/85 backdrop-blur-md rounded-3xl shadow-xl p-6 mb-6 border border-white/60">
+          <div className="text-center">
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">¡BIEN!</h1>
+            <p className="text-gray-800 text-lg">Has completado la evaluación</p>
+            <p className="text-gray-900 font-semibold text-xl mt-1">{getTestName()}</p>
+          </div>
         </div>
 
         {/* Numero 2: Card de Resultados */}
@@ -364,13 +364,15 @@ function Results() {
             ============================================ */}
         {!isFirstEver && needsOtherTest && (
           <>
-            <div className="text-center mb-6">
-              <p className="text-gray-700 text-base mb-1">
-                ¿Quieres completar tu evaluacion de hoy?
-              </p>
-              <p className="text-gray-500 text-sm">
-                ({nextTest} - {testType === "phq9" ? "7" : "9"} preguntas)
-              </p>
+            <div className="bg-white/85 backdrop-blur-md rounded-2xl shadow-lg p-5 mb-6 border border-white/60">
+              <div className="text-center">
+                <p className="text-gray-900 text-base mb-1 font-medium">
+                  ¿Quieres completar tu evaluación de hoy?
+                </p>
+                <p className="text-gray-700 text-sm">
+                  ({nextTest} - {testType === "phq9" ? "7" : "9"} preguntas)
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-4 mb-4">
@@ -394,7 +396,7 @@ function Results() {
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
+              <div className="inline-flex items-center gap-2 text-gray-700 text-sm bg-white/70 backdrop-blur rounded-full px-4 py-2 shadow border border-white/60">
                 <span>⏱️</span>
                 <span>Tiempo estimado: {estimatedTime}</span>
               </div>

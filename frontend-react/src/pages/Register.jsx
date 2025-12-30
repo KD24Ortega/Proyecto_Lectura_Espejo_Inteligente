@@ -15,6 +15,7 @@ const getAlertTitle = (type) => {
 function Register() {
   const navigate = useNavigate();
   const capturedFrameRef = useRef(null);
+  const registerInFlightRef = useRef(false);
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -211,11 +212,14 @@ function Register() {
   // REGISTRO FINAL
   // -------------------------
   const handleRegister = async () => {
+    if (registerInFlightRef.current) return;
+
     if (!capturedFrameRef.current) {
       setAlert({ message: 'Primero debes capturar tu rostro', type: 'warning' });
       return;
     }
 
+    registerInFlightRef.current = true;
     setIsCapturing(true);
     setStatus("📤 Enviando datos...");
 
@@ -294,6 +298,7 @@ function Register() {
 
     } finally {
       setIsCapturing(false);
+      registerInFlightRef.current = false;
     }
   };
 
@@ -558,6 +563,7 @@ function Register() {
             )}
 
             <button
+              type="button"
               onClick={handleRegister}
               disabled={isCapturing}
               className={`w-full py-4 rounded-full font-semibold transition shadow-lg ${
