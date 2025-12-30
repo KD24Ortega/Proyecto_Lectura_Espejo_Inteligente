@@ -250,7 +250,7 @@ function VocalPractice() {
       <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6 transition-all duration-1000`}>
         <FaceMonitor isActive={!isAnalyzing} />
 
-        <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
+        <div className="bg-white p-12 rounded-ui-xl shadow-elevated text-center max-w-md">
           <div className="w-20 h-20 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu voz…</h2>
           <p className="text-gray-600">Procesando tu práctica vocal</p>
@@ -275,7 +275,7 @@ function VocalPractice() {
             <button
               type="button"
               onClick={() => navigate("/exercises/anxiety")}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
@@ -290,37 +290,37 @@ function VocalPractice() {
           </div>
 
           {/* Resultados del análisis */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span>📊</span>
               <span>Análisis de tu Voz</span>
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
+              <div className="bg-orange-50 rounded-ui-md p-4 border-2 border-orange-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
                 <p className="text-2xl font-bold text-orange-600">{analysisResults.pitch_mean} Hz</p>
                 <p className="text-xs text-gray-500 mt-1">Variabilidad: {analysisResults.pitch_std}</p>
               </div>
 
-              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <div className="bg-green-50 rounded-ui-md p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
                 <p className="text-2xl font-bold text-green-600">{(analysisResults.energy * 100).toFixed(1)}%</p>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+              <div className="bg-blue-50 rounded-ui-md p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
                 <p className="text-2xl font-bold text-blue-600">{(analysisResults.voice_ratio * 100).toFixed(0)}%</p>
               </div>
 
-              <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+              <div className="bg-purple-50 rounded-ui-md p-4 border-2 border-purple-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
                 <p className="text-2xl font-bold text-purple-600">{analysisResults.hnr.toFixed(1)} dB</p>
               </div>
             </div>
 
             <div
-              className={`rounded-xl p-6 border-3 ${
+              className={`rounded-ui-md p-6 border-3 ${
                 analysisResults.risk_level === "LOW"
                   ? "bg-green-50 border-green-300"
                   : analysisResults.risk_level === "MODERATE"
@@ -347,13 +347,13 @@ function VocalPractice() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               🔄 Repetir ejercicio
             </button>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               📊 Ver mi progreso
             </button>
@@ -378,15 +378,15 @@ function VocalPractice() {
           <button
             type="button"
             onClick={() => navigate("/exercises/anxiety")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-orange-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card border-2 border-orange-100">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-ui-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-3xl">🎵</span>
               </div>
               <div>
@@ -398,14 +398,14 @@ function VocalPractice() {
         </div>
 
         {/* SELECTOR DE MODO */}
-        <div className="bg-white rounded-2xl p-4 shadow-lg mb-8 border-2 border-orange-100">
+        <div className="bg-white rounded-ui-lg p-4 shadow-card mb-8 border-2 border-orange-100">
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => setCurrentMode("notes")}
               disabled={isRecording}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-ui-sm font-semibold transition ${
                 currentMode === "notes"
-                  ? "bg-gray-800 text-white shadow-md"
+                  ? "bg-gray-800 text-white shadow-card"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               } ${isRecording ? "opacity-50 cursor-not-allowed" : ""}`}
             >
@@ -415,9 +415,9 @@ function VocalPractice() {
             <button
               onClick={() => setCurrentMode("eve")}
               disabled={isRecording}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-ui-sm font-semibold transition ${
                 currentMode === "eve"
-                  ? "bg-gray-800 text-white shadow-md"
+                  ? "bg-gray-800 text-white shadow-card"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               } ${isRecording ? "opacity-50 cursor-not-allowed" : ""}`}
             >
@@ -429,7 +429,7 @@ function VocalPractice() {
 
         {/* SECUENCIA MUSICAL */}
         {currentMode === "notes" && (
-          <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8 border-2 border-orange-50">
+          <div className="bg-white rounded-ui-xl shadow-elevated p-12 mb-8 border-2 border-orange-50">
             <h3 className="text-center text-xl font-bold text-gray-800 mb-8">Secuencia Musical</h3>
 
             <div className="flex justify-center items-center gap-4 mb-10">
@@ -441,7 +441,7 @@ function VocalPractice() {
                       y: currentNoteIndex === index ? -10 : 0
                     }}
                     transition={{ duration: 0.3 }}
-                    className={`w-16 h-16 rounded-full ${item.color} flex items-center justify-center text-white font-bold text-xl shadow-lg ${
+                    className={`w-16 h-16 rounded-full ${item.color} flex items-center justify-center text-white font-bold text-xl shadow-card ${
                       currentNoteIndex === index ? "ring-4 ring-yellow-400" : ""
                     }`}
                   >
@@ -475,7 +475,7 @@ function VocalPractice() {
               </motion.div>
             )}
 
-            <div className="bg-orange-50 rounded-xl p-6 mb-8 border-2 border-orange-200">
+            <div className="bg-orange-50 rounded-ui-md p-6 mb-8 border-2 border-orange-200">
               <h4 className="font-bold text-gray-800 mb-3">Instrucciones:</h4>
               <ul className="space-y-2 text-gray-700 text-sm">
                 <li className="flex items-start gap-2"><span className="text-orange-500">•</span> Canta cada nota con claridad y sostén brevemente</li>
@@ -490,7 +490,7 @@ function VocalPractice() {
                   <button
                     onClick={playSequence}
                     disabled={isPlaying}
-                    className={`px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center gap-2 ${
+                    className={`px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition flex items-center justify-center gap-2 ${
                       isPlaying ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
@@ -500,7 +500,7 @@ function VocalPractice() {
 
                   <button
                     onClick={startRecording}
-                    className="px-10 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
+                    className="px-10 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
                   >
                     <span className="text-2xl">▶</span>
                     <span>Iniciar</span>
@@ -509,7 +509,7 @@ function VocalPractice() {
               ) : (
                 <button
                   onClick={finishPractice}
-                  className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all"
+                  className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all"
                 >
                   <span className="text-2xl">✓</span>
                   <span>Finalizar</span>
@@ -521,12 +521,12 @@ function VocalPractice() {
 
         {/* MODO EVE */}
         {currentMode === "eve" && (
-          <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8 border-2 border-orange-50">
+          <div className="bg-white rounded-ui-xl shadow-elevated p-12 mb-8 border-2 border-orange-50">
             <h3 className="text-center text-xl font-bold text-gray-800 mb-8">
               Ejercicio EVE (Emisión Vocal Extendida)
             </h3>
 
-            <div className="bg-blue-50 rounded-xl p-8 mb-8 border-2 border-blue-200 text-center">
+            <div className="bg-blue-50 rounded-ui-md p-8 mb-8 border-2 border-blue-200 text-center">
               <p className="text-6xl mb-4">🗣️</p>
               <p className="text-4xl font-bold text-gray-800 mb-4">"EEEEE"</p>
               <p className="text-gray-600">Mantén este sonido de forma continua y sostenida</p>
@@ -550,7 +550,7 @@ function VocalPractice() {
               </motion.div>
             )}
 
-            <div className="bg-blue-50 rounded-xl p-6 mb-8 border-2 border-blue-200">
+            <div className="bg-blue-50 rounded-ui-md p-6 mb-8 border-2 border-blue-200">
               <h4 className="font-bold text-gray-800 mb-3">Instrucciones:</h4>
               <ul className="space-y-2 text-gray-700 text-sm">
                 <li className="flex items-start gap-2"><span className="text-blue-500">•</span> Inhala profundamente por la nariz</li>
@@ -564,7 +564,7 @@ function VocalPractice() {
               {!isRecording ? (
                 <button
                   onClick={startRecording}
-                  className="px-10 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
+                  className="px-10 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
                 >
                   <span className="text-2xl">▶</span>
                   <span>Iniciar</span>
@@ -572,7 +572,7 @@ function VocalPractice() {
               ) : (
                 <button
                   onClick={finishPractice}
-                  className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all"
+                  className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all"
                 >
                   <span className="text-2xl">✓</span>
                   <span>Finalizar</span>
@@ -583,7 +583,7 @@ function VocalPractice() {
         )}
 
         {/* CONTADOR DE SECUENCIAS COMPLETADAS */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-orange-100 text-center">
+        <div className="bg-white rounded-ui-lg p-6 shadow-card border-2 border-orange-100 text-center">
           <p className="text-gray-600 text-sm mb-2">Secuencias Completadas</p>
           <p className="text-5xl font-bold text-orange-600">{completedSequences}</p>
         </div>

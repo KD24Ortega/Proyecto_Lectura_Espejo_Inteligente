@@ -108,7 +108,7 @@ function BackgroundMusic({ musicFile, volume = 0.3 }) {
     <div className="fixed bottom-6 right-6 z-50 flex space-x-2">
       <button
         onClick={togglePlay}
-        className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
+        className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-elevated hover:scale-110 transition-transform"
         title={isPlaying ? 'Pausar música' : 'Reproducir música'}
       >
         {isPlaying ? '⏸️' : '▶️'}
@@ -116,7 +116,7 @@ function BackgroundMusic({ musicFile, volume = 0.3 }) {
 
       <button
         onClick={toggleMute}
-        className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
+        className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-elevated hover:scale-110 transition-transform"
         title={isMuted ? 'Activar sonido' : 'Silenciar'}
       >
         {isMuted ? '🔇' : '🔊'}

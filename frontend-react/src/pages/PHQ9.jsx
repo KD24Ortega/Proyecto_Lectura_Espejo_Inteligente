@@ -660,7 +660,7 @@ function PHQ9() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-lg"
+            className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-card"
           >
             PHQ-9
           </motion.div>
@@ -669,7 +669,7 @@ function PHQ9() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-2xl p-6 md:p-8"
+          className="bg-white rounded-ui-xl shadow-elevated p-6 md:p-8"
         >
           {/* Progreso */}
           <div className="mb-8">
@@ -699,7 +699,7 @@ function PHQ9() {
                     index < currentQuestion
                       ? "bg-green-500"
                       : index === currentQuestion
-                      ? "bg-blue-500 shadow-lg"
+                      ? "bg-blue-500 shadow-card"
                       : "bg-gray-300"
                   }`}
                   initial={{ scaleX: 0 }}
@@ -718,7 +718,7 @@ function PHQ9() {
             exit={{ opacity: 0, x: -20 }}
             className="mb-8"
           >
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-5 border-2 border-blue-100">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-ui-lg p-5 border-2 border-blue-100">
               <p className="text-sm text-gray-600 mb-3 font-medium">
                 Durante los últimos días, ¿con qué frecuencia has sentido...?
               </p>
@@ -736,7 +736,7 @@ function PHQ9() {
                   className={`flex-shrink-0 p-3 rounded-full transition-all ${
                     isSpeaking || isSubmitting
                       ? "bg-blue-400 scale-110 animate-pulse"
-                      : "bg-blue-500 hover:bg-blue-600 hover:scale-110 shadow-md"
+                      : "bg-blue-500 hover:bg-blue-600 hover:scale-110 shadow-card"
                   }`}
                   title="Escuchar pregunta"
                 >
@@ -756,11 +756,11 @@ function PHQ9() {
                 transition={{ delay: index * 0.1 }}
                 onClick={() => !isSubmitting && handleClickAnswer(option.value)}
                 disabled={isSubmitting}
-                className={`w-full p-4 rounded-xl border-2 transition-all duration-300 flex items-center justify-between group ${
+                className={`w-full p-4 rounded-ui-md border-2 transition-all duration-300 flex items-center justify-between group ${
                   answers[currentQuestion] === option.value
                     ? "border-blue-500 bg-gradient-to-r " +
                       option.color +
-                      " text-white shadow-lg scale-[1.02]"
+                      " text-white shadow-elevated scale-[1.02]"
                     : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 hover:scale-[1.01]"
                 } ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
               >
@@ -791,7 +791,7 @@ function PHQ9() {
 
           {/* Voz */}
           <div className="mb-8">
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border-2 border-purple-200">
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-ui-lg p-5 border-2 border-purple-200">
               <AnimatePresence mode="wait">
                 {!showVoiceConfirm ? (
                   <motion.div
@@ -819,7 +819,7 @@ function PHQ9() {
                           type="button"
                           onClick={() => (voiceAutoMode ? stopVoiceAutoMode() : setVoiceAutoMode(true))}
                           disabled={isSubmitting}
-                          className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border-2 shadow-sm ${
+                          className={`px-3 py-2 rounded-ui-sm text-xs font-bold transition-all border-2 shadow-card ${
                             voiceAutoMode
                               ? "bg-red-500 hover:bg-red-600 text-white border-red-300"
                               : "bg-white/80 hover:bg-white text-purple-900 border-purple-200"
@@ -833,7 +833,7 @@ function PHQ9() {
                         <motion.p
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="text-sm text-purple-800 italic bg-white/60 px-3 py-2 rounded-lg"
+                          className="text-sm text-purple-800 italic bg-white/60 px-3 py-2 rounded-ui-sm"
                         >
                           {voiceTranscript}
                         </motion.p>
@@ -843,7 +843,7 @@ function PHQ9() {
                     <button
                       onClick={startVoiceRecognition}
                       disabled={isListening || isSubmitting}
-                      className={`flex-shrink-0 p-4 rounded-full transition-all shadow-lg ${
+                      className={`flex-shrink-0 p-4 rounded-full transition-all shadow-card ${
                         isListening && !isSubmitting
                           ? "bg-red-500 animate-pulse scale-110"
                           : "bg-purple-500 hover:bg-purple-600 hover:scale-110"
@@ -862,7 +862,7 @@ function PHQ9() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     className="space-y-4"
                   >
-                    <div className="bg-white/80 rounded-xl p-4 border-2 border-purple-300">
+                    <div className="bg-white/80 rounded-ui-md p-4 border-2 border-purple-300">
                       <p className="text-sm text-gray-600 mb-2">
                         Tu respuesta detectada:
                       </p>
@@ -875,7 +875,7 @@ function PHQ9() {
                       <button
                         onClick={confirmVoiceAnswer}
                         disabled={isSubmitting}
-                        className={`flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${
+                        className={`flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-ui-sm font-semibold transition-all shadow-card hover:shadow-elevated hover:scale-105 flex items-center justify-center gap-2 ${
                           isSubmitting ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                       >
@@ -885,7 +885,7 @@ function PHQ9() {
                       <button
                         onClick={retryVoice}
                         disabled={isSubmitting}
-                        className={`flex-1 px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2 ${
+                        className={`flex-1 px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-ui-sm font-semibold transition-all shadow-card hover:shadow-elevated hover:scale-105 flex items-center justify-center gap-2 ${
                           isSubmitting ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                       >
@@ -903,10 +903,10 @@ function PHQ9() {
             <button
               onClick={handlePrevious}
               disabled={currentQuestion === 0 || isSubmitting || isAdvancing}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+              className={`px-6 py-3 rounded-ui-sm font-semibold transition-all flex items-center gap-2 ${
                 currentQuestion === 0 || isSubmitting || isAdvancing
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-700 hover:shadow-md hover:scale-105"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-700 hover:shadow-card hover:scale-105"
               }`}
             >
               <span>←</span> Anterior
@@ -915,10 +915,10 @@ function PHQ9() {
             <button
               onClick={handleNext}
               disabled={isNextDisabled}
-              className={`px-8 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${
+              className={`px-8 py-3 rounded-ui-sm font-bold transition-all flex items-center gap-2 ${
                 isNextDisabled
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
+                  : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-card hover:shadow-elevated hover:scale-105"
               }`}
             >
               {isSubmitting ? (

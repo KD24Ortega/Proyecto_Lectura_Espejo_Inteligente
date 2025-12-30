@@ -226,7 +226,7 @@ function BreathingVocalization() {
             <button
               type="button"
               onClick={() => navigate('/exercises/anxiety')}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
@@ -241,7 +241,7 @@ function BreathingVocalization() {
           </div>
 
           {/* Resultados del análisis */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span>📊</span>
               <span>Análisis de tu Voz</span>
@@ -250,7 +250,7 @@ function BreathingVocalization() {
             <div className="grid md:grid-cols-2 gap-4 mb-6">
 
               {/* Pitch medio */}
-              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+              <div className="bg-blue-50 rounded-ui-md p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {analysisResults.pitch_mean} Hz
@@ -259,7 +259,7 @@ function BreathingVocalization() {
               </div>
 
               {/* Energía */}
-              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <div className="bg-green-50 rounded-ui-md p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
                 <p className="text-2xl font-bold text-green-600">
                   {(analysisResults.energy * 100).toFixed(1)}%
@@ -267,7 +267,7 @@ function BreathingVocalization() {
               </div>
 
               {/* Voice ratio */}
-              <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+              <div className="bg-purple-50 rounded-ui-md p-4 border-2 border-purple-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {(analysisResults.voice_ratio * 100).toFixed(0)}%
@@ -275,7 +275,7 @@ function BreathingVocalization() {
               </div>
 
               {/* HNR */}
-              <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
+              <div className="bg-orange-50 rounded-ui-md p-4 border-2 border-orange-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {analysisResults.hnr.toFixed(1)} dB
@@ -285,7 +285,7 @@ function BreathingVocalization() {
             </div>
 
             {/* Nivel de riesgo */}
-            <div className={`rounded-xl p-6 border-3 ${
+            <div className={`rounded-ui-md p-6 border-3 ${
               analysisResults.risk_level === 'LOW' ? 'bg-green-50 border-green-300' :
               analysisResults.risk_level === 'MODERATE' ? 'bg-yellow-50 border-yellow-300' :
               'bg-red-50 border-red-300'
@@ -312,13 +312,13 @@ function BreathingVocalization() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               🔄 Repetir ejercicio
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               📊 Ver mi progreso
             </button>
@@ -340,7 +340,7 @@ function BreathingVocalization() {
         {/* ✅ Reconocimiento */}
         <FaceMonitor isActive={!isAnalyzing} />
 
-        <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-md">
+        <div className="bg-white rounded-ui-xl shadow-elevated p-12 text-center max-w-md">
           <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             Analizando tu voz...
@@ -370,7 +370,7 @@ function BreathingVocalization() {
           <button
             type="button"
             onClick={() => navigate('/exercises/anxiety')}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
@@ -382,7 +382,7 @@ function BreathingVocalization() {
         </div>
 
         {/* Temporizador circular */}
-        <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8">
+        <div className="bg-white rounded-ui-xl shadow-elevated p-12 mb-8">
           <div className="flex flex-col items-center">
 
             {/* Círculo de progreso con animación de respiración */}
@@ -473,7 +473,7 @@ function BreathingVocalization() {
                 key={currentPhase.name}
                 initial={{ scale: 0.8, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                className={`relative px-10 py-6 bg-gradient-to-r ${getPhaseColor()} text-white rounded-3xl font-bold text-2xl mb-6 shadow-2xl overflow-hidden`}
+                className={`relative px-10 py-6 bg-gradient-to-r ${getPhaseColor()} text-white rounded-ui-xl font-bold text-2xl mb-6 shadow-elevated overflow-hidden`}
               >
                 {/* Efecto de brillo */}
                 <div className="absolute inset-0 bg-white opacity-10 blur-2xl"></div>
@@ -518,7 +518,7 @@ function BreathingVocalization() {
                 </p>
                 <button
                   onClick={startRecording}
-                  className="px-12 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3 mx-auto"
+                  className="px-12 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3 mx-auto"
                 >
                   <span className="text-2xl">▶</span>
                   <span>Iniciar</span>
@@ -530,7 +530,7 @@ function BreathingVocalization() {
             {isRecording && (
               <button
                 onClick={finishExercise}
-                className="mt-6 px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition"
+                className="mt-6 px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-ui-sm font-semibold transition"
               >
                 ⏹ Detener ejercicio
               </button>
@@ -540,9 +540,9 @@ function BreathingVocalization() {
         </div>
 
         {/* Guía de respiración mejorada */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
+        <div className="bg-white rounded-ui-lg shadow-card p-6 border-2 border-blue-100">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-ui-md flex items-center justify-center">
               <span className="text-2xl">🧘</span>
             </div>
             <div>
@@ -554,7 +554,7 @@ function BreathingVocalization() {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-ui-md border-2 border-blue-200">
               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-lg">4</span>
               </div>
@@ -566,7 +566,7 @@ function BreathingVocalization() {
               </div>
             </div>
 
-            <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+            <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-ui-md border-2 border-purple-200">
               <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-lg">7</span>
               </div>
@@ -578,7 +578,7 @@ function BreathingVocalization() {
               </div>
             </div>
 
-            <div className="flex items-start gap-4 p-4 bg-pink-50 rounded-xl border-2 border-pink-200">
+            <div className="flex items-start gap-4 p-4 bg-pink-50 rounded-ui-md border-2 border-pink-200">
               <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-lg">8</span>
               </div>
@@ -591,7 +591,7 @@ function BreathingVocalization() {
             </div>
           </div>
 
-          <div className="mt-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+          <div className="mt-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-ui-md border-2 border-blue-200">
             <div className="flex items-start gap-3">
               <span className="text-2xl">💡</span>
               <div>

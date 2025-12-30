@@ -276,7 +276,7 @@ function Results() {
   if (checkingTests) {
     return (
       <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>
-        <div className="bg-white/85 backdrop-blur-md rounded-3xl shadow-xl p-8 border border-white/60 text-center">
+        <div className="bg-white/85 backdrop-blur-md rounded-ui-lg shadow-card p-8 border border-white/60 text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-800 font-medium">Verificando progreso...</p>
         </div>
@@ -291,7 +291,7 @@ function Results() {
 
       <div className="max-w-md w-full">
         {/* Numero 1: Titulo de completado */}
-        <div className="bg-white/85 backdrop-blur-md rounded-3xl shadow-xl p-6 mb-6 border border-white/60">
+        <div className="bg-white/85 backdrop-blur-md rounded-ui-lg shadow-card p-6 mb-6 border border-white/60">
           <div className="text-center">
             <h1 className="text-4xl font-extrabold text-gray-900 mb-2">¡BIEN!</h1>
             <p className="text-gray-800 text-lg">Has completado la evaluación</p>
@@ -300,7 +300,7 @@ function Results() {
         </div>
 
         {/* Numero 2: Card de Resultados */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 border-4 border-blue-400">
+        <div className="bg-white rounded-ui-lg shadow-elevated p-8 mb-6 border-4 border-blue-400">
           <div className="text-center">
             <p className="text-gray-500 text-sm mb-3">Tu puntuacion:</p>
 
@@ -329,7 +329,7 @@ function Results() {
             ============================================ */}
         {isFirstEver && (
           <>
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6">
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-lg p-5 mb-6">
               <div className="flex items-start gap-3">
                 <span className="text-2xl">📋</span>
                 <div>
@@ -345,7 +345,7 @@ function Results() {
 
             <button
               onClick={handleContinue}
-              className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold text-lg transition-all hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-ui-sm font-bold text-lg transition-all hover:shadow-elevated flex items-center justify-center gap-2"
             >
               Continuar con {nextTest} <span>→</span>
             </button>
@@ -364,7 +364,7 @@ function Results() {
             ============================================ */}
         {!isFirstEver && needsOtherTest && (
           <>
-            <div className="bg-white/85 backdrop-blur-md rounded-2xl shadow-lg p-5 mb-6 border border-white/60">
+            <div className="bg-white/85 backdrop-blur-md rounded-ui-md shadow-card p-6 mb-6 border border-white/60">
               <div className="text-center">
                 <p className="text-gray-900 text-base mb-1 font-medium">
                   ¿Quieres completar tu evaluación de hoy?
@@ -378,7 +378,7 @@ function Results() {
             <div className="flex gap-4 mb-4">
               <button
                 onClick={handleTakeBreak}
-                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:shadow-lg"
+                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-ui-sm font-semibold transition-all hover:shadow-elevated"
               >
                 Tomar un descanso
               </button>
@@ -389,14 +389,14 @@ function Results() {
                   testType === "phq9"
                     ? "bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
                     : "bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
-                } text-white rounded-xl font-semibold transition-all hover:shadow-lg flex items-center justify-center gap-2`}
+                } text-white rounded-ui-sm font-semibold transition-all hover:shadow-elevated flex items-center justify-center gap-2`}
               >
                 Continuar <span>→</span>
               </button>
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 text-gray-700 text-sm bg-white/70 backdrop-blur rounded-full px-4 py-2 shadow border border-white/60">
+              <div className="inline-flex items-center gap-2 text-gray-700 text-sm bg-white/70 backdrop-blur rounded-full px-4 py-2 shadow-card border border-white/60">
                 <span>⏱️</span>
                 <span>Tiempo estimado: {estimatedTime}</span>
               </div>
@@ -409,7 +409,7 @@ function Results() {
             ============================================ */}
         {!isFirstEver && !needsOtherTest && (
           <>
-            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5 mb-6">
+            <div className="bg-green-50 border-2 border-green-200 rounded-ui-lg p-5 mb-6">
               <div className="flex items-start gap-3">
                 <span className="text-2xl">✨</span>
                 <div>
@@ -429,14 +429,14 @@ function Results() {
             <div className="flex gap-4">
               <button
                 onClick={() => navigate("/home")}
-                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:shadow-lg"
+                className="flex-1 px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-ui-sm font-semibold transition-all hover:shadow-elevated"
               >
                 Ir al inicio
               </button>
 
               <button
                 onClick={() => navigate("/dashboard")}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all hover:shadow-lg"
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-ui-sm font-semibold transition-all hover:shadow-elevated"
               >
                 Ver Dashboard
               </button>

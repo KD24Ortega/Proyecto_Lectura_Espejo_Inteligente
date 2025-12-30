@@ -90,14 +90,14 @@ export default function ProfileSuccess() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8 text-center"
+        className="w-full max-w-lg bg-white rounded-ui-xl shadow-elevated p-8 text-center"
       >
         {/* Icono de éxito animado */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg"
+          className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-card"
         >
           <span className="text-5xl text-white">✓</span>
         </motion.div>
@@ -126,11 +126,11 @@ export default function ProfileSuccess() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border-2 border-blue-200"
+          className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-ui-lg p-6 mb-8 border-2 border-blue-200"
         >
           {/* Foto de perfil */}
           <div className="relative w-32 h-32 mx-auto mb-4">
-            <div className="w-full h-full rounded-full border-4 border-blue-500 overflow-hidden bg-gradient-to-br from-blue-200 to-purple-200 shadow-xl">
+            <div className="w-full h-full rounded-full border-4 border-blue-500 overflow-hidden bg-gradient-to-br from-blue-200 to-purple-200 shadow-elevated">
               {photo ? (
                 <img src={photo} alt="Perfil" className="w-full h-full object-cover" />
               ) : (
@@ -141,7 +141,7 @@ export default function ProfileSuccess() {
             </div>
 
             {/* Badge verificado */}
-            <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+            <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-card border-4 border-white">
               <span className="text-2xl">✓</span>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function ProfileSuccess() {
           </div>
 
           {/* Badge de estado */}
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-md">
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-card">
             <span>✨</span>
             <span>Perfil verificado</span>
           </div>
@@ -195,7 +195,7 @@ export default function ProfileSuccess() {
         >
           <button
             onClick={handleStartNow}
-            className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-card hover:shadow-elevated transform hover:scale-105"
           >
             <span className="flex items-center justify-center gap-2">
               <span>🚀</span>
@@ -209,7 +209,7 @@ export default function ProfileSuccess() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+          className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-ui-sm"
         >
           <p className="text-sm text-gray-700">
             💡 <strong>¿Por qué es importante?</strong>

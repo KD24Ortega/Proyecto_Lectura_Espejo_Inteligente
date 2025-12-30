@@ -219,12 +219,12 @@ function AdminDashboard() {
     <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
-      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
+      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-elevated">
         
         {/* Logo */}
         <div className="p-6 border-b border-blue-700">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white rounded-ui-sm flex items-center justify-center">
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
@@ -236,14 +236,14 @@ function AdminDashboard() {
 
         {/* Menú */}
         <nav className="flex-1 p-4">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 bg-blue-700 shadow-lg">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 bg-blue-700 shadow-card">
             <span>🏠</span>
             <span className="font-medium">Inicio</span>
           </button>
 
           <button
             onClick={() => navigate('/admin/users')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition relative"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition relative"
           >
             <span>👥</span>
             <span className="font-medium">Usuarios</span>
@@ -254,7 +254,7 @@ function AdminDashboard() {
 
           <button
             onClick={() => navigate('/admin/alerts')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition relative"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition relative"
           >
             <span>⚠️</span>
             <span className="font-medium">Alertas</span>
@@ -299,7 +299,7 @@ function AdminDashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
+            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-ui-sm text-sm font-medium transition"
           >
             Cerrar Sesión
           </button>
@@ -326,7 +326,7 @@ function AdminDashboard() {
                 placeholder="Buscar usuario..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
               />
               <button type="submit" className="absolute left-3 top-2.5 text-gray-400 hover:text-blue-600">
                 🔍
@@ -336,7 +336,7 @@ function AdminDashboard() {
             {/* Botón refresh manual */}
             <button
               onClick={() => loadDashboardData()}
-              className="p-2 bg-white rounded-lg shadow hover:shadow-lg transition"
+              className="p-2 bg-white rounded-ui-sm shadow-card hover:shadow-elevated transition"
               title="Actualizar ahora"
             >
               <span className="text-2xl">🔄</span>
@@ -345,7 +345,7 @@ function AdminDashboard() {
             {/* Notificaciones */}
             <button 
               onClick={() => navigate('/admin/alerts')}
-              className="relative p-2 bg-white rounded-lg shadow hover:shadow-lg transition"
+              className="relative p-2 bg-white rounded-ui-sm shadow-card hover:shadow-elevated transition"
             >
               <span className="text-2xl">🔔</span>
               {criticalAlerts.length > 0 && (
@@ -356,7 +356,7 @@ function AdminDashboard() {
             </button>
 
             {/* Perfil admin */}
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-ui-sm shadow-card">
               <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 {adminName.charAt(0).toUpperCase()}
               </div>
@@ -371,14 +371,14 @@ function AdminDashboard() {
           {/* Total Usuarios - CLICKEABLE */}
           <div 
             onClick={() => navigate('/admin/users')}
-            className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition cursor-pointer group transform hover:-translate-y-1"
+            className="bg-white rounded-ui-lg shadow-card p-6 hover:shadow-elevated transition cursor-pointer group transform hover:-translate-y-1"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Total Usuarios</p>
                 <p className="text-4xl font-bold text-gray-800">{stats.total_users}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-200 transition">
+              <div className="w-12 h-12 bg-blue-100 rounded-ui-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-200 transition">
                 <span className="text-2xl">👥</span>
               </div>
             </div>
@@ -391,13 +391,13 @@ function AdminDashboard() {
           </div>
 
           {/* Evaluaciones */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
+          <div className="bg-white rounded-ui-lg shadow-card p-6 hover:shadow-elevated transition">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Evaluaciones Totales</p>
                 <p className="text-4xl font-bold text-gray-800">{stats.total_assessments}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-green-100 rounded-ui-sm flex items-center justify-center">
                 <span className="text-2xl">📋</span>
               </div>
             </div>
@@ -409,14 +409,14 @@ function AdminDashboard() {
           {/* Alertas Críticas - CLICKEABLE */}
           <div 
             onClick={() => navigate('/admin/alerts')}
-            className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition cursor-pointer group transform hover:-translate-y-1"
+            className="bg-white rounded-ui-lg shadow-card p-6 hover:shadow-elevated transition cursor-pointer group transform hover:-translate-y-1"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Alertas Críticas</p>
                 <p className="text-4xl font-bold text-red-600">{criticalAlerts.length}</p>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center group-hover:scale-110 group-hover:bg-red-200 transition">
+              <div className="w-12 h-12 bg-red-100 rounded-ui-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-red-200 transition">
                 <span className="text-2xl">⚠️</span>
               </div>
             </div>
@@ -429,13 +429,13 @@ function AdminDashboard() {
           </div>
 
           {/* Sesiones Activas */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
+          <div className="bg-white rounded-ui-lg shadow-card p-6 hover:shadow-elevated transition">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Sesiones Activas</p>
                 <p className="text-4xl font-bold text-gray-800">{stats.active_sessions}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-ui-sm flex items-center justify-center">
                 <span className="text-2xl">🟢</span>
               </div>
             </div>
@@ -451,7 +451,7 @@ function AdminDashboard() {
         <div className="grid grid-cols-3 gap-6 mb-8">
           
           {/* Gráfica INTERACTIVA - 2 columnas */}
-          <div className="col-span-2 bg-white rounded-2xl shadow-lg p-6">
+          <div className="col-span-2 bg-white rounded-ui-lg shadow-card p-6">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">
@@ -469,7 +469,7 @@ function AdminDashboard() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedMetric('evaluations')}
-                    className={`px-3 py-1 rounded-lg text-sm transition ${
+                    className={`px-3 py-1 rounded-ui-sm text-sm transition ${
                       selectedMetric === 'evaluations'
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -479,7 +479,7 @@ function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setSelectedMetric('users')}
-                    className={`px-3 py-1 rounded-lg text-sm transition ${
+                    className={`px-3 py-1 rounded-ui-sm text-sm transition ${
                       selectedMetric === 'users'
                         ? 'bg-green-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -489,7 +489,7 @@ function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setSelectedMetric('alerts')}
-                    className={`px-3 py-1 rounded-lg text-sm transition ${
+                    className={`px-3 py-1 rounded-ui-sm text-sm transition ${
                       selectedMetric === 'alerts'
                         ? 'bg-red-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -503,7 +503,7 @@ function AdminDashboard() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setTimeRange(7)}
-                    className={`px-3 py-1 rounded-lg text-sm transition ${
+                    className={`px-3 py-1 rounded-ui-sm text-sm transition ${
                       timeRange === 7
                         ? 'bg-indigo-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -513,7 +513,7 @@ function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setTimeRange(30)}
-                    className={`px-3 py-1 rounded-lg text-sm transition ${
+                    className={`px-3 py-1 rounded-ui-sm text-sm transition ${
                       timeRange === 30
                         ? 'bg-indigo-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -526,7 +526,7 @@ function AdminDashboard() {
             </div>
 
             {/* SVG Chart CON HOVER */}
-            <div className="relative h-64 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6">
+            <div className="relative h-64 bg-gradient-to-br from-blue-50 to-purple-50 rounded-ui-md p-6">
               
               {/* Eje Y */}
               <div className="absolute left-2 top-6 bottom-8 flex flex-col justify-between text-xs text-gray-600">
@@ -611,7 +611,7 @@ function AdminDashboard() {
                 {/* Tooltip on hover */}
                 {hoveredPoint !== null && (
                   <div 
-                    className="absolute bg-white px-3 py-2 rounded-lg shadow-lg border-2 border-blue-500 pointer-events-none"
+                    className="absolute bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 pointer-events-none"
                     style={{
                       left: `${(hoveredPoint / Math.max(metricData.length - 1, 1)) * 100}%`,
                       top: `${100 - (metricData[hoveredPoint] / metricMax) * 100}%`,
@@ -644,7 +644,7 @@ function AdminDashboard() {
           </div>
 
           {/* Alertas Críticas CLICKEABLES - 1 columna */}
-          <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800">Alertas Críticas</h3>
               {criticalAlerts.length > 0 && (
@@ -658,7 +658,7 @@ function AdminDashboard() {
                   <div 
                     key={user.id}
                     onClick={() => navigate(`/admin/user/${user.id}`)}
-                    className="p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 cursor-pointer transition transform hover:scale-105"
+                    className="p-3 bg-red-50 border border-red-200 rounded-ui-sm hover:bg-red-100 hover:border-red-300 cursor-pointer transition transform hover:scale-105"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
@@ -677,7 +677,7 @@ function AdminDashboard() {
                 
                 <button
                   onClick={() => navigate('/admin/alerts')}
-                  className="w-full py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition font-medium"
+                  className="w-full py-2 bg-red-600 text-white rounded-ui-sm text-sm hover:bg-red-700 transition font-medium"
                 >
                   Ver todas las alertas ({criticalAlerts.length})
                 </button>
@@ -694,7 +694,7 @@ function AdminDashboard() {
         </div>
 
         {/* Usuarios Recientes CLICKEABLES */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-ui-lg shadow-card p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-800">Usuarios Recientes</h3>
             <button
@@ -711,7 +711,7 @@ function AdminDashboard() {
               <div
                 key={user.id}
                 onClick={() => navigate(`/admin/user/${user.id}`)}
-                className="p-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:shadow-lg cursor-pointer transition group transform hover:-translate-y-1"
+                className="p-4 border-2 border-gray-200 rounded-ui-md hover:border-blue-500 hover:shadow-elevated cursor-pointer transition group transform hover:-translate-y-1"
               >
                 <div className="flex flex-col items-center text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 group-hover:scale-110 transition">
@@ -730,7 +730,7 @@ function AdminDashboard() {
         </div>
 
         {/* Cambiar contraseña admin */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+        <div className="bg-white rounded-ui-lg shadow-card p-6 mt-8">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-800">Seguridad</h3>
             <span className="text-sm text-gray-500">Cambiar contraseña</span>
@@ -738,7 +738,7 @@ function AdminDashboard() {
 
           {passwordChangeMessage && (
             <div
-              className={`mb-4 p-3 rounded-lg border text-sm font-medium ${
+              className={`mb-4 p-3 rounded-ui-sm border text-sm font-medium ${
                 passwordChangeMessage.type === 'success'
                   ? 'bg-green-50 border-green-200 text-green-700'
                   : 'bg-red-50 border-red-200 text-red-700'
@@ -755,7 +755,7 @@ function AdminDashboard() {
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-50 p-3 rounded-ui-sm border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
@@ -767,7 +767,7 @@ function AdminDashboard() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-50 p-3 rounded-ui-sm border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Mínimo 8 caracteres"
                 autoComplete="new-password"
               />
@@ -779,7 +779,7 @@ function AdminDashboard() {
                 type="password"
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
-                className="w-full bg-gray-50 p-3 rounded-lg border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-50 p-3 rounded-ui-sm border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Repite la nueva contraseña"
                 autoComplete="new-password"
               />
@@ -789,7 +789,7 @@ function AdminDashboard() {
               <button
                 type="submit"
                 disabled={isChangingPassword}
-                className={`px-6 py-3 rounded-lg font-semibold transition shadow ${
+                className={`px-6 py-3 rounded-ui-sm font-semibold transition shadow-card ${
                   isChangingPassword
                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'

@@ -128,7 +128,7 @@ function Camera({ onCapture, isActive = true, hidden = false }) {
         ref={videoRef}
         autoPlay
         playsInline
-        className="w-full rounded-lg shadow-lg transform -scale-x-100" // Espejo
+        className="w-full rounded-ui-lg shadow-card transform -scale-x-100" // Espejo
       />
       <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm">
         ● REC

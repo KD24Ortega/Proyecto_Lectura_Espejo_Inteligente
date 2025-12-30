@@ -1,1 +1,10 @@
-{}
+{
+	"name": "proyecto-lectura-espejo-inteligente",
+	"private": true,
+	"scripts": {
+		"dev": "npm --prefix frontend-react run dev",
+		"build": "npm --prefix frontend-react run build",
+		"lint": "npm --prefix frontend-react run lint",
+		"preview": "npm --prefix frontend-react run preview"
+	}
+}

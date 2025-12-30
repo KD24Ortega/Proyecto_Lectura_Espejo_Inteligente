@@ -204,7 +204,7 @@ function VocalAffirmations() {
       >
         <FaceMonitor isActive={!isAnalyzing} />
 
-        <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
+        <div className="bg-white p-12 rounded-ui-xl shadow-elevated text-center max-w-md">
           <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             Analizando tu voz…
@@ -230,28 +230,28 @@ function VocalAffirmations() {
             <button
               type="button"
               onClick={() => navigate("/exercises/depression")}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
             </button>
 
             <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
-              ✅ Ejercicio Completado
+              ✅ Afirmaciones Completadas
             </h1>
             <p className="text-white/90 drop-shadow">
               Duración: {formatTime(timeElapsed)} | Afirmaciones leídas: {phrasesRead}
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span>📊</span>
               <span>Análisis de tu Voz</span>
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
+              <div className="bg-teal-50 rounded-ui-md p-4 border-2 border-teal-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
                 <p className="text-2xl font-bold text-teal-600">
                   {analysisResults.pitch_mean} Hz
@@ -261,21 +261,21 @@ function VocalAffirmations() {
                 </p>
               </div>
 
-              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <div className="bg-green-50 rounded-ui-md p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
                 <p className="text-2xl font-bold text-green-600">
                   {(analysisResults.energy * 100).toFixed(1)}%
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+              <div className="bg-blue-50 rounded-ui-md p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {(analysisResults.voice_ratio * 100).toFixed(0)}%
                 </p>
               </div>
 
-              <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
+              <div className="bg-orange-50 rounded-ui-md p-4 border-2 border-orange-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {analysisResults.hnr.toFixed(1)} dB
@@ -284,7 +284,7 @@ function VocalAffirmations() {
             </div>
 
             <div
-              className={`rounded-xl p-6 border-3 ${
+              className={`rounded-ui-md p-6 border-3 ${
                 analysisResults.risk_level === "LOW"
                   ? "bg-green-50 border-green-300"
                   : analysisResults.risk_level === "MODERATE"
@@ -315,13 +315,13 @@ function VocalAffirmations() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               🔄 Repetir ejercicio
             </button>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               📊 Ver mi progreso
             </button>
@@ -345,15 +345,15 @@ function VocalAffirmations() {
           <button
             type="button"
             onClick={() => navigate("/exercises/depression")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+                className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-teal-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card border-2 border-teal-100">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-ui-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-3xl">💬</span>
               </div>
               <div>
@@ -368,7 +368,7 @@ function VocalAffirmations() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8 border-2 border-teal-100">
+        <div className="bg-white rounded-ui-lg p-6 shadow-card mb-8 border-2 border-teal-100">
           <div className="flex justify-between items-center mb-3">
             <p className="font-semibold text-gray-700">
               {isRecording ? "Lectura en progreso" : "Progreso de Afirmaciones"}
@@ -394,10 +394,10 @@ function VocalAffirmations() {
           )}
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8 border-2 border-teal-50">
+        <div className="bg-white rounded-ui-xl shadow-elevated p-12 mb-8 border-2 border-teal-50">
           <div className="flex justify-between items-center mb-6">
             <span className="text-sm text-gray-500">Afirmación actual</span>
-            <span className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-5 py-2 rounded-xl font-bold text-sm">
+            <span className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-5 py-2 rounded-ui-sm font-bold text-sm">
               {index + 1} / {AFFIRMATIONS.length}
             </span>
           </div>
@@ -466,10 +466,10 @@ function VocalAffirmations() {
               <button
                 onClick={() => setIndex((i) => Math.max(0, i - 1))}
                 disabled={index === 0}
-                className={`px-8 py-3 rounded-xl font-semibold transition ${
+                className={`px-8 py-3 rounded-ui-sm font-semibold transition ${
                   index === 0
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg"
+                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-card hover:shadow-elevated"
                 }`}
               >
                 ← Anterior
@@ -477,10 +477,10 @@ function VocalAffirmations() {
 
               <button
                 onClick={() => setAutoPlay(!autoPlay)}
-                className={`px-8 py-3 rounded-xl font-semibold transition ${
+                className={`px-8 py-3 rounded-ui-sm font-semibold transition ${
                   autoPlay
-                    ? "bg-amber-500 text-white hover:bg-amber-600 shadow-md"
-                    : "bg-gray-700 text-white hover:bg-gray-800 shadow-md"
+                    ? "bg-amber-500 text-white hover:bg-amber-600 shadow-card"
+                    : "bg-gray-700 text-white hover:bg-gray-800 shadow-card"
                 }`}
               >
                 {autoPlay ? "⏸ Pausar auto" : "▶ Continuar auto"}
@@ -489,14 +489,14 @@ function VocalAffirmations() {
               {index < AFFIRMATIONS.length - 1 ? (
                 <button
                   onClick={handleNext}
-                  className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                  className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
                 >
                   Siguiente →
                 </button>
               ) : (
                 <button
                   onClick={finishReading}
-                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
                 >
                   ✓ Finalizar
                 </button>
@@ -520,7 +520,7 @@ function VocalAffirmations() {
 
             <button
               onClick={startRecording}
-              className="px-12 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3 mx-auto"
+              className="px-12 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3 mx-auto"
             >
               <span className="text-2xl">▶</span>
               <span>Iniciar lectura</span>
@@ -533,7 +533,7 @@ function VocalAffirmations() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-teal-50 rounded-2xl p-6 border-2 border-teal-200"
+            className="bg-teal-50 rounded-ui-lg p-6 border-2 border-teal-200"
           >
             <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
               <span>💡</span>
@@ -559,7 +559,7 @@ function VocalAffirmations() {
               </li>
             </ul>
 
-            <div className="mt-4 p-3 bg-white rounded-lg border border-teal-200">
+            <div className="mt-4 p-3 bg-white rounded-ui-sm border border-teal-200">
               <p className="text-sm text-gray-700">
                 <strong>Beneficio:</strong> Las afirmaciones positivas ayudan a reprogramar pensamientos negativos y fortalecer la autoestima.
               </p>

@@ -34,7 +34,7 @@ export const ToastNotification = ({
           exit={{ opacity: 0, x: position.includes('right') ? 100 : -100 }}
           className={`fixed ${positionClasses[position]} z-50 w-96 max-w-[90vw]`}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border-2 border-purple-200 overflow-hidden">
+          <div className="bg-white rounded-ui-xl shadow-elevated border-2 border-purple-200 overflow-hidden">
             {/* Header con gradiente */}
             <div className={`bg-gradient-to-r ${
               exercise.type === 'anxiety' 
@@ -87,14 +87,14 @@ export const ToastNotification = ({
                     exercise.type === 'anxiety'
                       ? 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
                       : 'from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700'
-                  } text-white rounded-xl font-semibold transition flex items-center justify-center gap-2`}
+                  } text-white rounded-ui-sm font-semibold transition flex items-center justify-center gap-2`}
                 >
                   <span>Comenzar ahora</span>
                   <span>→</span>
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition"
+                  className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-ui-sm font-semibold transition"
                 >
                   Después
                 </button>
@@ -152,7 +152,7 @@ export const RecommendationModal = ({
               exercise.type === 'anxiety'
                 ? 'border-blue-200 hover:border-blue-400 bg-blue-50/50'
                 : 'border-amber-200 hover:border-amber-400 bg-amber-50/50'
-            } rounded-2xl p-5 transition-all hover:shadow-lg cursor-pointer`}
+            } rounded-ui-xl p-5 transition-all shadow-card hover:shadow-elevated cursor-pointer`}
             onClick={() => handleExerciseClick(exercise)}
           >
             <div className="flex items-start gap-4">
@@ -161,7 +161,7 @@ export const RecommendationModal = ({
                   exercise.type === 'anxiety'
                     ? 'from-blue-400 to-blue-600'
                     : 'from-amber-400 to-amber-600'
-                } rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}
+                } rounded-ui-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}
               >
                 <span className="text-3xl">{exercise.icon}</span>
               </div>
@@ -234,7 +234,7 @@ export const FloatingBadge = ({
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`fixed ${positionClasses[position]} z-40 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all`}
+      className={`fixed ${positionClasses[position]} z-40 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-full shadow-elevated hover:shadow-modal transition-all`}
     >
       <div className="relative px-5 py-3 flex items-center gap-2">
         <span className="text-2xl">💡</span>
@@ -276,7 +276,7 @@ export const MiniToast = ({
           className="fixed top-6 left-1/2 -translate-x-1/2 z-50"
         >
           <div 
-            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 cursor-pointer hover:scale-105 transition-transform"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full shadow-elevated flex items-center gap-3 cursor-pointer hover:scale-105 transition-transform"
             onClick={onClick}
           >
             <span className="text-2xl">💡</span>

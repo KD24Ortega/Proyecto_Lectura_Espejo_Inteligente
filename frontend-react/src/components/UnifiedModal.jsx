@@ -99,7 +99,7 @@ export default function UnifiedModal({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       <div
-        className={`relative w-full ${modalSize} overflow-hidden rounded-3xl bg-white/95 shadow-2xl ring-1 ${v.ring}`}
+        className={`relative w-full ${modalSize} overflow-hidden rounded-ui-lg bg-white/95 shadow-modal ring-1 ${v.ring}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className={`h-1.5 w-full bg-gradient-to-r ${v.gradient}`} />
@@ -108,7 +108,7 @@ export default function UnifiedModal({
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${v.gradient} text-2xl shadow-lg`}
+                className={`flex h-12 w-12 items-center justify-center rounded-ui-md bg-gradient-to-br ${v.gradient} text-2xl shadow-card`}
                 aria-hidden="true"
               >
                 {resolvedIcon}
@@ -134,7 +134,7 @@ export default function UnifiedModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition"
+              className="flex h-10 w-10 items-center justify-center rounded-ui-pill bg-gray-100 hover:bg-gray-200 transition"
               aria-label="Cerrar"
             >
               ✕
@@ -148,7 +148,7 @@ export default function UnifiedModal({
                   type="button"
                   onClick={secondaryAction.onClick}
                   disabled={Boolean(secondaryAction.disabled)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-6 py-3 rounded-ui-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {secondaryAction.label}
                 </button>
@@ -159,7 +159,7 @@ export default function UnifiedModal({
                   type="button"
                   onClick={primaryAction.onClick}
                   disabled={Boolean(primaryAction.disabled)}
-                  className={`w-full sm:w-auto px-6 py-3 rounded-xl text-white font-semibold shadow-lg transition bg-gradient-to-r ${v.gradient} hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed`}
+                  className={`w-full sm:w-auto px-6 py-3 rounded-ui-sm text-white font-semibold shadow-card transition bg-gradient-to-r ${v.gradient} hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   {primaryAction.loading ? (
                     <span className="inline-flex items-center justify-center gap-2">

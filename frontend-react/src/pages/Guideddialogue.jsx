@@ -60,7 +60,6 @@ function GuidedDialogue() {
   }, []);
 
   // ─────────────────────────────────────────────
-  // INICIAR SESIÓN COMPLETA
   // ─────────────────────────────────────────────
   const startSession = async () => {
     try {
@@ -197,7 +196,7 @@ function GuidedDialogue() {
       >
         <FaceMonitor isActive={!isAnalyzing} />
 
-        <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
+        <div className="bg-white p-12 rounded-ui-xl shadow-elevated text-center max-w-md">
           <div className="w-20 h-20 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             Analizando tu diálogo…
@@ -223,7 +222,7 @@ function GuidedDialogue() {
             <button
               type="button"
               onClick={() => navigate("/exercises/depression")}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
@@ -238,14 +237,14 @@ function GuidedDialogue() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span>📊</span>
               <span>Análisis de tu Voz</span>
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
+              <div className="bg-emerald-50 rounded-ui-md p-4 border-2 border-emerald-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
                 <p className="text-2xl font-bold text-emerald-600">
                   {analysisResults.pitch_mean} Hz
@@ -255,21 +254,21 @@ function GuidedDialogue() {
                 </p>
               </div>
 
-              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <div className="bg-green-50 rounded-ui-md p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
                 <p className="text-2xl font-bold text-green-600">
                   {(analysisResults.energy * 100).toFixed(1)}%
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+              <div className="bg-blue-50 rounded-ui-md p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {(analysisResults.voice_ratio * 100).toFixed(0)}%
                 </p>
               </div>
 
-              <div className="bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
+              <div className="bg-teal-50 rounded-ui-md p-4 border-2 border-teal-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
                 <p className="text-2xl font-bold text-teal-600">
                   {analysisResults.hnr.toFixed(1)} dB
@@ -278,7 +277,7 @@ function GuidedDialogue() {
             </div>
 
             <div
-              className={`rounded-xl p-6 border-3 ${
+              className={`rounded-ui-md p-6 border-3 ${
                 analysisResults.risk_level === "LOW"
                   ? "bg-green-50 border-green-300"
                   : analysisResults.risk_level === "MODERATE"
@@ -309,13 +308,13 @@ function GuidedDialogue() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               🔄 Repetir ejercicio
             </button>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               📊 Ver mi progreso
             </button>
@@ -340,15 +339,15 @@ function GuidedDialogue() {
           <button
             type="button"
             onClick={() => navigate("/exercises/depression")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-emerald-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card border-2 border-emerald-100">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-ui-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-3xl">💭</span>
               </div>
               <div>
@@ -363,7 +362,7 @@ function GuidedDialogue() {
 
         {/* BARRA DE PROGRESO */}
         {isRecording && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg mb-8 border-2 border-emerald-100">
+          <div className="bg-white rounded-ui-lg p-6 shadow-card mb-8 border-2 border-emerald-100">
             <div className="flex justify-between items-center mb-3">
               <p className="font-semibold text-gray-700">Progreso del diálogo</p>
               <p className="text-2xl font-bold text-emerald-600">
@@ -393,7 +392,7 @@ function GuidedDialogue() {
         )}
 
         {/* TARJETA DE PREGUNTA */}
-        <div className="bg-white rounded-3xl shadow-2xl p-12 mb-8 border-2 border-emerald-50">
+        <div className="bg-white rounded-ui-xl shadow-elevated p-12 mb-8 border-2 border-emerald-50">
           <div className="flex justify-between items-center mb-6">
             <span className="px-4 py-2 bg-amber-100 text-amber-700 rounded-full font-semibold text-sm">
               {currentQuestion.category}
@@ -448,10 +447,10 @@ function GuidedDialogue() {
               <button
                 onClick={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
                 disabled={currentQuestionIndex === 0 || recordingQuestion}
-                className={`px-8 py-3 rounded-xl font-semibold transition ${
+                className={`px-8 py-3 rounded-ui-sm font-semibold transition ${
                   currentQuestionIndex === 0 || recordingQuestion
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg border-2 border-gray-200"
+                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-card hover:shadow-elevated border-2 border-gray-200"
                 }`}
               >
                 ← Anterior
@@ -460,7 +459,7 @@ function GuidedDialogue() {
               {!recordingQuestion ? (
                 <button
                   onClick={startAnswering}
-                  className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
+                  className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all hover:scale-105"
                 >
                   <span className="text-2xl">🎤</span>
                   <span>Grabar Respuesta</span>
@@ -468,7 +467,7 @@ function GuidedDialogue() {
               ) : (
                 <button
                   onClick={stopAnswering}
-                  className="px-12 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 text-lg transition-all"
+                  className="px-12 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-ui-sm font-bold shadow-card hover:shadow-elevated flex items-center justify-center gap-3 text-lg transition-all"
                 >
                   <span className="text-2xl">✓</span>
                   <span>Finalizar Respuesta</span>
@@ -480,10 +479,10 @@ function GuidedDialogue() {
                   setCurrentQuestionIndex((i) => Math.min(QUESTIONS.length - 1, i + 1))
                 }
                 disabled={currentQuestionIndex === QUESTIONS.length - 1 || recordingQuestion}
-                className={`px-8 py-3 rounded-xl font-semibold transition ${
+                className={`px-8 py-3 rounded-ui-sm font-semibold transition ${
                   currentQuestionIndex === QUESTIONS.length - 1 || recordingQuestion
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg border-2 border-gray-200"
+                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-card hover:shadow-elevated border-2 border-gray-200"
                 }`}
               >
                 Siguiente →
@@ -495,7 +494,7 @@ function GuidedDialogue() {
             {!isRecording ? (
               <button
                 onClick={startSession}
-                className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3"
+                className="px-12 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3"
               >
                 <span className="text-2xl">▶</span>
                 <span>Iniciar Diálogo</span>
@@ -504,7 +503,7 @@ function GuidedDialogue() {
               <button
                 onClick={finishSession}
                 disabled={recordingQuestion}
-                className={`px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3 ${
+                className={`px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3 ${
                   recordingQuestion ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
@@ -522,7 +521,7 @@ function GuidedDialogue() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 bg-emerald-50 rounded-2xl p-6 border-2 border-emerald-200"
+            className="mt-6 bg-emerald-50 rounded-ui-lg p-6 border-2 border-emerald-200"
           >
             <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
               <span>💡</span>
@@ -551,7 +550,7 @@ function GuidedDialogue() {
               </li>
             </ul>
 
-            <div className="mt-4 p-3 bg-white rounded-lg border border-emerald-200">
+            <div className="mt-4 p-3 bg-white rounded-ui-sm border border-emerald-200">
               <p className="text-sm text-gray-700">
                 <strong>Beneficio:</strong> Expresar tus pensamientos en voz alta ayuda a procesar emociones y fortalecer el autoconocimiento.
               </p>

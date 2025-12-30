@@ -157,7 +157,7 @@ function AdminLogin() {
       >
         
         {/* Card de login */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-blue-600">
+        <div className="bg-white rounded-ui-lg shadow-elevated p-8 border-4 border-blue-600">
           
           {/* Header con icono */}
           <div className="flex justify-center mb-6">
@@ -165,7 +165,7 @@ function AdminLogin() {
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', duration: 0.8 }}
-              className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-5xl shadow-lg"
+              className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-ui-md flex items-center justify-center text-white text-5xl shadow-card"
             >
               🛡️
             </motion.div>
@@ -196,7 +196,7 @@ function AdminLogin() {
                 onChange={handleChange}
                 placeholder="Ingresa tu usuario"
                 autoComplete="username"
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -212,7 +212,7 @@ function AdminLogin() {
                 onChange={handleChange}
                 placeholder="Ingresa tu contraseña"
                 autoComplete="current-password"
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -234,10 +234,10 @@ function AdminLogin() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-xl shadow-lg transition-all ${
+              className={`w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-ui-sm shadow-card transition-all ${
                 isLoading 
                   ? 'opacity-50 cursor-not-allowed' 
-                  : 'hover:scale-[1.02] hover:shadow-xl hover:from-blue-700 hover:to-indigo-700'
+                  : 'hover:scale-[1.02] hover:shadow-elevated hover:from-blue-700 hover:to-indigo-700'
               }`}
             >
               {isLoading ? (
@@ -255,7 +255,7 @@ function AdminLogin() {
             </button>
 
             {/* Credenciales de prueba */}
-            {/* <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+            {/* <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-ui-sm border-2 border-blue-200">
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-2">💡 Credenciales de desarrollo:</p>
                 <p className="text-sm font-mono text-blue-700">

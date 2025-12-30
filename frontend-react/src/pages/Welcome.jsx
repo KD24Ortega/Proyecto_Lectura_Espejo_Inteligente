@@ -31,23 +31,23 @@ const Robot = ({ isVisible, userName, isNewUser, navigate }) => (
   >
     {/* Robot */}
     <div className="robot-icon w-32 h-32 relative scale-125">
-      <div className="w-20 h-20 bg-white rounded-lg absolute top-0 left-1/2 -translate-x-1/2 shadow-xl border-4 border-gray-100/50">
+      <div className="w-20 h-20 bg-white rounded-ui-md absolute top-0 left-1/2 -translate-x-1/2 shadow-card border-4 border-gray-100/50">
         <div className="flex space-x-2 justify-center mt-3">
-          <div className={`w-4 h-4 rounded-full animate-pulse shadow-md ${
-            userName ? 'bg-green-400 shadow-green-500/50' : 
-            isNewUser ? 'bg-yellow-400 shadow-yellow-500/50' :
-            'bg-cyan-400 shadow-cyan-500/50'
+          <div className={`w-4 h-4 rounded-full animate-pulse shadow-card ${
+            userName ? 'bg-green-400' : 
+            isNewUser ? 'bg-yellow-400' :
+            'bg-cyan-400'
           }`}></div>
-          <div className={`w-4 h-4 rounded-full animate-pulse shadow-md ${
-            userName ? 'bg-green-400 shadow-green-500/50' : 
-            isNewUser ? 'bg-yellow-400 shadow-yellow-500/50' :
-            'bg-cyan-400 shadow-cyan-500/50'
+          <div className={`w-4 h-4 rounded-full animate-pulse shadow-card ${
+            userName ? 'bg-green-400' : 
+            isNewUser ? 'bg-yellow-400' :
+            'bg-cyan-400'
           }`}></div>
         </div>
         <div className="w-8 h-2 bg-gray-700 rounded-b-full absolute bottom-2 left-1/2 -translate-x-1/2"></div>
       </div>
 
-      <div className="w-16 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-t-full absolute bottom-0 left-1/2 -translate-x-1/2 shadow-lg">
+      <div className="w-16 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-t-full absolute bottom-0 left-1/2 -translate-x-1/2 shadow-card">
         <div className="w-full h-5 bg-white rounded-t-full absolute bottom-0 opacity-70"></div>
       </div>
 
@@ -99,7 +99,7 @@ const Robot = ({ isVisible, userName, isNewUser, navigate }) => (
 
           <button
             onClick={() => navigate('/register')}
-            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-semibold shadow-lg hover:scale-105 transition-all duration-300"
+            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-semibold shadow-card hover:scale-105 transition-all duration-300"
           >
             ✨ ¿Primera vez? Regístrate manualmente
           </button>
@@ -381,12 +381,12 @@ export default function Welcome() {
         title="Panel Administrativo"
         aria-label="Abrir panel administrativo"
       >
-        <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-full shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center">
+        <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-full shadow-card transition-all duration-300 hover:scale-110 flex items-center justify-center">
           <span className="text-2xl group-hover:rotate-12 transition-transform duration-300">🛡️</span>
         </div>
         
         {/* Tooltip mejorado */}
-        <div className="absolute top-full right-0 mt-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+        <div className="absolute top-full right-0 mt-2 px-3 py-1 bg-gray-900 text-white text-xs rounded-ui-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
           Panel Administrativo
         </div>
       </button>
@@ -483,12 +483,12 @@ export default function Welcome() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-50 border-2 border-red-300 rounded-lg p-4 shadow-lg max-w-md"
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-50 border-2 border-red-300 rounded-ui-md p-4 shadow-card max-w-md"
         >
           <p className="text-red-700 text-center font-medium">{error}</p>
           <button
             onClick={() => navigate('/register')}
-            className="mt-3 w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+            className="mt-3 w-full py-2 bg-red-600 text-white rounded-ui-sm hover:bg-red-700 transition font-medium"
           >
             Ir a registro manual
           </button>
@@ -497,7 +497,7 @@ export default function Welcome() {
 
       {/* Indicador de intentos (solo en desarrollo) */}
       {process.env.NODE_ENV === 'development' && step >= 4 && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded-lg text-xs">
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded-ui-sm text-xs">
           Intentos: {recognitionAttempts.current}/{maxAttempts}
         </div>
       )}

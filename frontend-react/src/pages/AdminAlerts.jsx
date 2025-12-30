@@ -274,12 +274,12 @@ function AdminAlerts() {
     <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
-      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
+      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-elevated">
         
         {/* Logo */}
         <div className="p-6 border-b border-blue-700">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white rounded-ui-sm flex items-center justify-center">
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
@@ -293,7 +293,7 @@ function AdminAlerts() {
         <nav className="flex-1 p-4">
           <button
             onClick={() => navigate('/admin/dashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
           >
             <span>🏠</span>
             <span className="font-medium">Inicio</span>
@@ -301,13 +301,13 @@ function AdminAlerts() {
 
           <button
             onClick={() => navigate('/admin/users')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
           >
             <span>👥</span>
             <span className="font-medium">Usuarios</span>
           </button>
 
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 bg-blue-700 shadow-lg">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 bg-blue-700 shadow-card">
             <span>⚠️</span>
             <span className="font-medium">Alertas</span>
             <span className="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full font-bold animate-pulse">
@@ -374,7 +374,7 @@ function AdminAlerts() {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
+            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-ui-sm text-sm font-medium transition"
           >
             Cerrar Sesión
           </button>
@@ -399,7 +399,7 @@ function AdminAlerts() {
                 loadAlerts();
                 setLastUpdate(new Date());
               }}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+              className="px-4 py-2 bg-white border border-gray-300 rounded-ui-sm hover:bg-gray-50 transition flex items-center gap-2"
             >
               <span>🔄</span>
               <span>Actualizar</span>
@@ -407,7 +407,7 @@ function AdminAlerts() {
 
             {/* <button
               onClick={() => handleBulkAction('export')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+              className="px-4 py-2 bg-green-600 text-white rounded-ui-sm hover:bg-green-700 transition flex items-center gap-2"
             >
               <span>📥</span>
               <span>Exportar Todo</span>
@@ -419,9 +419,9 @@ function AdminAlerts() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           
           {/* Total */}
-          <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded-2xl p-6">
+          <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded-ui-lg p-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-white text-2xl">
+              <div className="w-12 h-12 bg-red-500 rounded-ui-md flex items-center justify-center text-white text-2xl">
                 ⚠️
               </div>
               <div>
@@ -434,7 +434,7 @@ function AdminAlerts() {
           {/* Críticos */}
           <div 
             onClick={() => setSeverityFilter('critical')}
-            className={`bg-white border-2 rounded-2xl p-6 cursor-pointer transition hover:shadow-lg ${
+            className={`bg-white border-2 rounded-ui-lg p-6 cursor-pointer transition hover:shadow-elevated ${
               severityFilter === 'critical' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200'
             }`}
           >
@@ -448,7 +448,7 @@ function AdminAlerts() {
           {/* Altos */}
           <div 
             onClick={() => setSeverityFilter('high')}
-            className={`bg-white border-2 rounded-2xl p-6 cursor-pointer transition hover:shadow-lg ${
+            className={`bg-white border-2 rounded-ui-lg p-6 cursor-pointer transition hover:shadow-elevated ${
               severityFilter === 'high' ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200'
             }`}
           >
@@ -462,7 +462,7 @@ function AdminAlerts() {
           {/* Medios */}
           <div 
             onClick={() => setSeverityFilter('medium')}
-            className={`bg-white border-2 rounded-2xl p-6 cursor-pointer transition hover:shadow-lg ${
+            className={`bg-white border-2 rounded-ui-lg p-6 cursor-pointer transition hover:shadow-elevated ${
               severityFilter === 'medium' ? 'border-yellow-500 ring-2 ring-yellow-200' : 'border-gray-200'
             }`}
           >
@@ -476,7 +476,7 @@ function AdminAlerts() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">Filtros</h3>
             {(severityFilter !== 'all' || searchTerm) && (
@@ -501,7 +501,7 @@ function AdminAlerts() {
                 placeholder="Buscar por nombre o ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
               {searchTerm && (
@@ -520,7 +520,7 @@ function AdminAlerts() {
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="px-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="all">Todas las prioridades</option>
               <option value="critical">🔴 Solo Críticos</option>
@@ -532,7 +532,7 @@ function AdminAlerts() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="px-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="severity">Ordenar por severidad</option>
               <option value="name">Ordenar A-Z</option>
@@ -564,7 +564,7 @@ function AdminAlerts() {
 
         {/* Acciones masivas */}
         {selectedAlerts.length > 0 && (
-          <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6 flex justify-between items-center">
+          <div className="bg-blue-50 border-2 border-blue-300 rounded-ui-sm p-4 mb-6 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -577,19 +577,19 @@ function AdminAlerts() {
             <div className="flex gap-2">
               <button
                 onClick={() => handleBulkAction('email')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                className="px-4 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition text-sm"
               >
                 📧 Contactar Todos
               </button>
               {/* <button
                 onClick={() => handleBulkAction('export')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+                className="px-4 py-2 bg-green-600 text-white rounded-ui-sm hover:bg-green-700 transition text-sm"
               >
                 📥 Exportar
               </button> */}
               <button
                 onClick={() => handleBulkAction('mark')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"
+                className="px-4 py-2 bg-purple-600 text-white rounded-ui-sm hover:bg-purple-700 transition text-sm"
               >
                 ✓ Marcar Atendidas
               </button>
@@ -606,7 +606,7 @@ function AdminAlerts() {
             return (
               <div 
                 key={user.id} 
-                className={`bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition ${
+                className={`bg-white rounded-ui-lg shadow-card p-6 hover:shadow-elevated transition ${
                   isSelected ? 'ring-2 ring-blue-500' : ''
                 }`}
               >
@@ -621,7 +621,7 @@ function AdminAlerts() {
                   />
 
                   {/* Avatar */}
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-card">
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
 
@@ -646,13 +646,13 @@ function AdminAlerts() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleViewProfile(user.id)}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition font-medium"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-ui-sm transition font-medium"
                         >
                           Ver Perfil
                         </button>
                         <button
                           onClick={() => handleContactUser(user)}
-                          className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded-lg transition font-medium"
+                          className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm rounded-ui-sm transition font-medium"
                         >
                           Contactar
                         </button>
@@ -696,7 +696,7 @@ function AdminAlerts() {
                     </div>
 
                     {/* Alerta */}
-                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${alert.color}`}>
+                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-ui-sm border ${alert.color}`}>
                       <span className="text-xl">{alert.icon}</span>
                       <span className="text-sm font-medium">{alert.text}</span>
                     </div>
@@ -708,7 +708,7 @@ function AdminAlerts() {
           })}
 
           {filteredAlerts.length === 0 && alerts.length > 0 && (
-            <div className="bg-gray-50 border-2 border-gray-300 rounded-2xl p-12 text-center">
+            <div className="bg-gray-50 border-2 border-gray-300 rounded-ui-lg p-12 text-center">
               <span className="text-6xl mb-4 block">🔍</span>
               <h3 className="text-2xl font-bold text-gray-800 mb-2">
                 No se encontraron alertas
@@ -721,7 +721,7 @@ function AdminAlerts() {
                   setSeverityFilter('all');
                   setSearchTerm('');
                 }}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="px-6 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition"
               >
                 Limpiar filtros
               </button>
@@ -729,7 +729,7 @@ function AdminAlerts() {
           )}
 
           {alerts.length === 0 && (
-            <div className="bg-green-50 border-2 border-green-300 rounded-2xl p-12 text-center">
+            <div className="bg-green-50 border-2 border-green-300 rounded-ui-lg p-12 text-center">
               <div className="text-6xl mb-4">✅</div>
               <h3 className="text-2xl font-bold text-green-900 mb-2">
                 ¡Todo bajo control!
@@ -742,7 +742,7 @@ function AdminAlerts() {
         </div>
 
         {/* Footer de actualización */}
-        <div className="mt-8 p-4 bg-white border border-gray-200 rounded-lg">
+        <div className="mt-8 p-4 bg-white border border-gray-200 rounded-ui-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600 flex items-center gap-2">
               <span className={autoRefresh ? 'animate-spin' : ''}>🔄</span>

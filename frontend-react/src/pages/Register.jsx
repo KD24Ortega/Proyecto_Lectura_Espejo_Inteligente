@@ -321,7 +321,7 @@ function Register() {
         />
       )}
 
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8">
+      <div className="bg-white w-full max-w-md rounded-ui-xl shadow-elevated p-8">
 
         {/* --------------------- */}
         {/* PASO 1 - INTRO */}
@@ -329,7 +329,7 @@ function Register() {
         {step === 1 && (
           <>
             <div className="text-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl shadow-lg">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl shadow-card">
                 ✨
               </div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -340,7 +340,7 @@ function Register() {
               </p>
             </div>
 
-            <div className="border-2 border-blue-500 rounded-2xl p-6 flex justify-around mb-6 bg-blue-50">
+            <div className="border-2 border-blue-500 rounded-ui-lg p-6 flex justify-around mb-6 bg-blue-50">
               <div className="text-center">
                 <div className="text-4xl mb-2">❤️</div>
                 <p className="text-xs font-medium text-gray-700">Salud</p>
@@ -361,7 +361,7 @@ function Register() {
 
             <button
               onClick={() => setStep(2)}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-card hover:shadow-elevated transform hover:scale-105"
             >
               Comenzar →
             </button>
@@ -406,7 +406,7 @@ function Register() {
                   name="full_name"
                   value={formData.full_name}
                   onChange={handleInputChange}
-                  className={`w-full bg-gray-50 p-3 rounded-lg border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full bg-gray-50 p-3 rounded-ui-sm border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.full_name ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
                   placeholder="Ej: Juan Pérez"
@@ -430,7 +430,7 @@ function Register() {
                   name="birth_date"
                   value={formData.birth_date}
                   onChange={handleInputChange}
-                  className={`w-full bg-gray-50 p-3 rounded-lg border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full bg-gray-50 p-3 rounded-ui-sm border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.birth_date ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
                 />
@@ -457,9 +457,9 @@ function Register() {
                     <button
                       key={opt.v}
                       type="button"
-                      className={`px-4 py-3 rounded-lg border-2 font-medium transition ${
+                      className={`px-4 py-3 rounded-ui-sm border-2 font-medium transition ${
                         formData.gender === opt.v
-                          ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                          ? 'bg-blue-500 text-white border-blue-500 shadow-card'
                           : 'bg-white border-gray-200 hover:border-blue-300'
                       }`}
                       onClick={() => handleGenderSelect(opt.v)}
@@ -487,7 +487,7 @@ function Register() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full bg-gray-50 p-3 rounded-lg border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full bg-gray-50 p-3 rounded-ui-sm border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.email ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
                   placeholder="Ej: juan@ejemplo.com"
@@ -505,7 +505,7 @@ function Register() {
 
             <button
               onClick={handleGoToCapture}
-              className="mt-6 w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="mt-6 w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-full font-semibold hover:from-blue-600 hover:to-purple-700 transition shadow-card hover:shadow-elevated transform hover:scale-105"
             >
               Continuar →
             </button>
@@ -531,19 +531,19 @@ function Register() {
               Centra tu rostro en el óvalo
             </p>
 
-            <div className="border-4 border-blue-500 rounded-2xl overflow-hidden relative mb-5 bg-gray-100">
+            <div className="border-4 border-blue-500 rounded-ui-lg overflow-hidden relative mb-5 bg-gray-100">
 
               {/* Cámara */}
               <Camera onCapture={handleCaptureFrame} isActive={true} />
 
               {/* Óvalo guía */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="border-4 border-dashed border-white w-[70%] h-[80%] rounded-full shadow-lg"></div>
+                <div className="border-4 border-dashed border-white w-[70%] h-[80%] rounded-full shadow-card"></div>
               </div>
 
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-ui-sm p-4 mb-4">
               <p className="text-sm text-gray-700 text-center">
                 📸 <strong>Consejos:</strong>
                 <br />• Coloca tu rostro dentro del óvalo
@@ -553,7 +553,7 @@ function Register() {
             </div>
 
             {status && (
-              <div className={`text-center font-semibold mb-4 p-3 rounded-lg ${
+              <div className={`text-center font-semibold mb-4 p-3 rounded-ui-sm ${
                 status.includes('✅') ? 'bg-green-50 text-green-700' : 
                 status.includes('📤') ? 'bg-blue-50 text-blue-700' :
                 'bg-gray-50 text-gray-700'
@@ -566,7 +566,7 @@ function Register() {
               type="button"
               onClick={handleRegister}
               disabled={isCapturing}
-              className={`w-full py-4 rounded-full font-semibold transition shadow-lg ${
+              className={`w-full py-4 rounded-full font-semibold transition shadow-card ${
                 isCapturing
                   ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                   : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'

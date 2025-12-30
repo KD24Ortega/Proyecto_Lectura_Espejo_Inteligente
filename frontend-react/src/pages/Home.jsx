@@ -251,7 +251,7 @@ function Home() {
 
         <button
           onClick={handleLogout}
-          className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition shadow-lg hover:shadow-xl"
+          className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-ui-sm font-semibold transition shadow-card hover:shadow-elevated"
         >
           Cerrar Sesión
         </button>
@@ -260,7 +260,7 @@ function Home() {
       {/* 🚨 Panel de emergencia (usa tools/emergencyNumber del tema) */}
       {theme?.emergency && (
         <div
-          className={`${theme?.colors?.card || "bg-red-50/95 border-4 border-red-500"} rounded-2xl shadow-xl p-6 mb-8`}
+          className={`${theme?.colors?.card || "bg-red-50/95 border-4 border-red-500"} rounded-ui-lg shadow-elevated p-6 mb-8`}
           role="alert"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -286,7 +286,7 @@ function Home() {
                     {href && (
                       <a
                         href={href}
-                        className={`px-4 py-2 rounded-xl text-white font-semibold bg-gradient-to-r ${theme?.colors?.button || "from-red-600 to-red-700"}`}
+                        className={`px-4 py-2 rounded-ui-sm text-white font-semibold bg-gradient-to-r ${theme?.colors?.button || "from-red-600 to-red-700"}`}
                       >
                         Llamar
                       </a>
@@ -322,7 +322,7 @@ function Home() {
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           
           {/* Card Tests Psicológicos */}
-          <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8 hover:scale-105 transition-transform duration-300`}>
+          <div className={`${theme.colors.card} backdrop-blur-sm rounded-ui-lg shadow-elevated p-8 hover:scale-105 transition-transform duration-300`}>
             <div className="text-center">
               <div className="text-6xl mb-4">📋</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
@@ -335,7 +335,7 @@ function Home() {
               <div className="space-y-3">
                 <button
                   onClick={() => navigate('/phq9')}
-                  className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-between`}
+                  className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-ui-sm font-semibold hover:shadow-card transition flex items-center justify-between`}
                 >
                   <span className="flex items-center gap-2">
                     <span>😔</span>
@@ -350,7 +350,7 @@ function Home() {
 
                 <button
                   onClick={() => navigate('/gad7')}
-                  className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-between`}
+                  className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-ui-sm font-semibold hover:shadow-card transition flex items-center justify-between`}
                 >
                   <span className="flex items-center gap-2">
                     <span>😰</span>
@@ -371,7 +371,7 @@ function Home() {
           </div>
 
           {/* Card Dashboard */}
-          <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8 hover:scale-105 transition-transform duration-300`}>
+          <div className={`${theme.colors.card} backdrop-blur-sm rounded-ui-lg shadow-elevated p-8 hover:scale-105 transition-transform duration-300`}>
             <div className="text-center">
               <div className="text-6xl mb-4">📈</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
@@ -383,13 +383,13 @@ function Home() {
 
               <button
                 onClick={() => navigate('/dashboard')}
-                className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-xl font-semibold hover:shadow-lg transition mb-4`}
+                className={`w-full px-6 py-4 bg-gradient-to-r ${theme.colors.button} text-white rounded-ui-sm font-semibold hover:shadow-card transition mb-4`}
               >
                 Ver estadísticas completas
               </button>
 
               {lastScores.phq9 !== null && (
-                <div className="bg-white/50 rounded-lg p-4 text-left">
+                <div className="bg-white/50 rounded-ui-sm p-4 text-left">
                   <p className="text-sm text-gray-600 mb-2">Vista rápida:</p>
                   <div className="space-y-2">
                     <div>
@@ -421,7 +421,7 @@ function Home() {
         </div>
 
         {/* Ejercicios de Voz - CONDICIONAL SEGÚN TESTS */}
-        <div className={`${theme.colors.card} backdrop-blur-sm rounded-3xl shadow-2xl p-8`}>
+        <div className={`${theme.colors.card} backdrop-blur-sm rounded-ui-lg shadow-elevated p-8`}>
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-gray-800 mb-2">
               Ejercicios de Voz y Respiración
@@ -455,20 +455,20 @@ function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={() => navigate('/phq9')}
-                  className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl font-bold transition shadow-lg hover:shadow-xl"
+                  className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-ui-sm font-bold transition shadow-card hover:shadow-elevated"
                 >
                   Comenzar con PHQ-9
                 </button>
                 
                 <button
                   onClick={() => navigate('/gad7')}
-                  className="px-8 py-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-bold transition shadow-lg hover:shadow-xl"
+                  className="px-8 py-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-ui-sm font-bold transition shadow-card hover:shadow-elevated"
                 >
                   Comenzar con GAD-7
                 </button>
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl inline-block">
+              <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-ui-md inline-block">
                 <p className="text-sm text-blue-800">
                   ⏱️ <strong>Solo toma 5-6 minutos</strong> completar ambos tests
                 </p>
@@ -482,7 +482,7 @@ function Home() {
                 {/* Tarjeta de Ansiedad */}
                 <motion.button
                   onClick={() => navigate('/exercises/anxiety')}
-                  className="group relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border-3 border-blue-300 hover:border-blue-500 hover:shadow-2xl transition-all duration-300 text-left overflow-hidden"
+                  className="group relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-ui-lg p-8 border-3 border-blue-300 hover:border-blue-500 shadow-card hover:shadow-elevated transition-all duration-300 text-left overflow-hidden"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -493,7 +493,7 @@ function Home() {
 
                   <div className="relative z-10">
                     {/* Icono principal */}
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-ui-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-card">
                       <span className="text-4xl">🧠</span>
                     </div>
 
@@ -528,7 +528,7 @@ function Home() {
                 {/* Tarjeta de Depresión */}
                 <motion.button
                   onClick={() => navigate('/exercises/depression')}
-                  className="group relative bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 border-3 border-amber-300 hover:border-amber-500 hover:shadow-2xl transition-all duration-300 text-left overflow-hidden"
+                  className="group relative bg-gradient-to-br from-amber-50 to-amber-100 rounded-ui-lg p-8 border-3 border-amber-300 hover:border-amber-500 shadow-card hover:shadow-elevated transition-all duration-300 text-left overflow-hidden"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -539,7 +539,7 @@ function Home() {
 
                   <div className="relative z-10">
                     {/* Icono principal */}
-                    <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                    <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-ui-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-card">
                       <span className="text-4xl">❤️</span>
                     </div>
 
@@ -574,7 +574,7 @@ function Home() {
               </div>
 
               {/* Nota informativa */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl">
+              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-ui-md">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl flex-shrink-0">💡</span>
                   <div>

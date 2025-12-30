@@ -102,15 +102,15 @@ function DepressionExercises() {
           <button
             type="button"
             onClick={() => navigate("/home")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver al inicio</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-ui-lg flex items-center justify-center shadow-card">
                 <span className="text-3xl">❤️</span>
               </div>
               <div>
@@ -131,7 +131,7 @@ function DepressionExercises() {
             <motion.button
               key={exercise.id}
               onClick={() => navigate(`/depression/${exercise.id}`)}
-              className={`w-full bg-gradient-to-br ${exercise.bgColor} rounded-2xl p-6 border-3 ${exercise.borderColor} ${exercise.hoverBorder} hover:shadow-2xl transition-all duration-300 text-left group`}
+              className={`w-full bg-gradient-to-br ${exercise.bgColor} rounded-ui-lg p-6 border-3 ${exercise.borderColor} ${exercise.hoverBorder} hover:shadow-elevated transition-all duration-300 text-left group`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -141,7 +141,7 @@ function DepressionExercises() {
               <div className="flex items-start gap-6">
                 {/* Icono */}
                 <div
-                  className={`w-20 h-20 bg-gradient-to-br ${exercise.color} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}
+                  className={`w-20 h-20 bg-gradient-to-br ${exercise.color} rounded-ui-lg flex items-center justify-center flex-shrink-0 shadow-card group-hover:scale-110 transition-transform`}
                 >
                   <span className="text-4xl">{exercise.icon}</span>
                 </div>
@@ -178,7 +178,7 @@ function DepressionExercises() {
         </div>
 
         {/* Información adicional */}
-        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card">
           <div className="flex items-start gap-3">
             <span className="text-3xl flex-shrink-0">💡</span>
             <div>
@@ -190,7 +190,7 @@ function DepressionExercises() {
                 tu tono, energía y estado emocional, brindándote retroalimentación
                 personalizada. Los ejercicios duran entre 3-5 minutos.
               </p>
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3">
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-ui-sm p-3">
                 <p className="text-sm text-gray-700">
                   <strong className="text-amber-800">Recomendación:</strong>{" "}
                   Practica estos ejercicios por la mañana para comenzar el día con
@@ -203,7 +203,7 @@ function DepressionExercises() {
 
         {/* Badge */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
+          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-card">
             <span className="text-2xl">🎯</span>
             <span className="text-sm text-gray-700">
               <strong>3 ejercicios</strong> disponibles para mejorar el ánimo

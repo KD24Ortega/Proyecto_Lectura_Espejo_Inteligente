@@ -41,7 +41,7 @@ function App() {
             position="top-right"
             toastOptions={{
               className:
-                'bg-white/90 text-slate-800 border border-slate-200 shadow-lg backdrop-blur-md',
+                'bg-white/90 text-slate-800 border border-slate-200 shadow-card backdrop-blur-md',
             }}
           />
           <Routes>

@@ -340,7 +340,7 @@ function FaceMonitor({ isActive = true }) {
             initial={{ y: -30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -30, opacity: 0 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-xl font-bold z-[999]"
+            className="fixed top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-elevated font-bold z-[999]"
           >
             ⏱️ Verificando presencia... {countdown}s
           </motion.div>
@@ -359,7 +359,7 @@ function FaceMonitor({ isActive = true }) {
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl text-center space-y-4"
+              className="bg-white max-w-md w-full p-6 rounded-ui-xl shadow-modal text-center space-y-4"
             >
               <div className="text-5xl">⏱️</div>
               <h2 className="text-xl font-bold text-gray-800">Sesión cerrada</h2>
@@ -368,7 +368,7 @@ function FaceMonitor({ isActive = true }) {
               </p>
               <button
                 onClick={finalizeLogout}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition"
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-ui-sm font-bold transition"
               >
                 Aceptar
               </button>

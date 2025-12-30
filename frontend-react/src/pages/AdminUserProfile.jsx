@@ -843,7 +843,7 @@ Administrador: ${adminName}
             <p className="text-2xl font-bold text-red-600 mb-2">Usuario no encontrado</p>
             <button
               onClick={() => navigate('/admin/users')}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition"
             >
               Volver a Usuarios
             </button>
@@ -855,10 +855,10 @@ Administrador: ${adminName}
       {showMain && (
         <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
           {/* Sidebar */}
-          <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
+          <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-elevated">
             <div className="p-6 border-b border-blue-700">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white rounded-ui-sm flex items-center justify-center">
                   <span className="text-2xl">🛡️</span>
                 </div>
                 <div>
@@ -871,7 +871,7 @@ Administrador: ${adminName}
             <nav className="flex-1 p-4">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
               >
                 <span>🏠</span>
                 <span className="font-medium">Inicio</span>
@@ -879,7 +879,7 @@ Administrador: ${adminName}
 
               <button
                 onClick={() => navigate('/admin/users')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
               >
                 <span>👥</span>
                 <span className="font-medium">Usuarios</span>
@@ -887,7 +887,7 @@ Administrador: ${adminName}
 
               <button
                 onClick={() => navigate('/admin/alerts')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
               >
                 <span>⚠️</span>
                 <span className="font-medium">Alertas</span>
@@ -906,7 +906,7 @@ Administrador: ${adminName}
               </div>
               <button
                 onClick={handleLogout}
-                className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
+                className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-ui-sm text-sm font-medium transition"
               >
                 Cerrar Sesión
               </button>
@@ -930,14 +930,14 @@ Administrador: ${adminName}
               <div className="flex gap-2">
                 <button
                   onClick={loadUserProfile}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-ui-sm hover:bg-gray-50 transition flex items-center gap-2"
                 >
                   <span>🔄</span>
                   <span>Actualizar</span>
                 </button>
                 <button
                   onClick={() => setShowNotes(!showNotes)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition flex items-center gap-2"
                 >
                   <span>📝</span>
                   <span>Notas</span>
@@ -948,24 +948,24 @@ Administrador: ${adminName}
             {/* Modal notas */}
             {showNotes && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-2xl p-6 w-96">
+                <div className="bg-white rounded-ui-md p-6 w-96 shadow-modal">
                   <h3 className="text-xl font-bold mb-4">Agregar Nota</h3>
                   <textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full h-32 p-3 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     placeholder="Escribe tus observaciones aquí..."
                   />
                   <div className="flex gap-2 mt-4">
                     <button
                       onClick={handleSaveNote}
-                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      className="flex-1 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition"
                     >
                       Guardar
                     </button>
                     <button
                       onClick={() => setShowNotes(false)}
-                      className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                      className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-ui-sm hover:bg-gray-400 transition"
                     >
                       Cancelar
                     </button>
@@ -975,9 +975,9 @@ Administrador: ${adminName}
             )}
 
             {/* Resumen usuario */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
               <div className="flex items-start gap-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-white text-4xl font-bold flex-shrink-0 shadow-lg">
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-500 rounded-ui-md flex items-center justify-center text-white text-4xl font-bold flex-shrink-0 shadow-card">
                   {(user?.user?.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
 
@@ -1010,7 +1010,7 @@ Administrador: ${adminName}
                   </div>
 
                   {((toNum(lastPhq9?.score, 0) ?? 0) >= 10 || (toNum(lastGad7?.score, 0) ?? 0) >= 10) && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <div className="bg-orange-50 border border-orange-200 rounded-ui-sm p-4">
                       <div className="flex items-start gap-3">
                         <span className="text-2xl flex-shrink-0">⚠️</span>
                         <div className="flex-1">
@@ -1025,13 +1025,13 @@ Administrador: ${adminName}
                           <div className="flex gap-2">
                             <button
                               onClick={() => setShowRecommendationsModal(true)}
-                              className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-lg text-sm hover:bg-orange-50 transition font-medium"
+                              className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-ui-sm text-sm hover:bg-orange-50 transition font-medium"
                             >
                               Ver recomendaciones
                             </button>
                             <button
                               onClick={handleMarkAsAttended}
-                              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition font-medium"
+                              className="px-4 py-2 bg-orange-600 text-white rounded-ui-sm text-sm hover:bg-orange-700 transition font-medium"
                             >
                               Marcar como atendido
                             </button>
@@ -1060,7 +1060,7 @@ Administrador: ${adminName}
             </div>
 
             {/* Multimodal */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-800">Evaluación Multimodal</h3>
                 <span className={`px-4 py-2 rounded-full text-sm font-bold ${multimodal.color}`}>
@@ -1069,19 +1069,19 @@ Administrador: ${adminName}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl border bg-gray-50">
+                <div className="p-4 rounded-ui-sm border bg-gray-50">
                   <p className="text-sm text-gray-500 mb-1 font-semibold">Índice Tests</p>
                   <p className="text-3xl font-bold text-gray-800">{emotionalIndex}</p>
                   <p className="text-xs text-gray-500">0–100 (PHQ-9/GAD-7 normalizado)</p>
                 </div>
 
-                <div className="p-4 rounded-xl border bg-gray-50">
+                <div className="p-4 rounded-ui-sm border bg-gray-50">
                   <p className="text-sm text-gray-500 mb-1 font-semibold">Índice Voz</p>
                   <p className="text-3xl font-bold text-gray-800">{voiceScore100 !== null ? voiceScore100.toFixed(1) : '—'}</p>
                   <p className="text-xs text-gray-500">Promedio (0–100)</p>
                 </div>
 
-                <div className="p-4 rounded-xl border bg-gray-50">
+                <div className="p-4 rounded-ui-sm border bg-gray-50">
                   <p className="text-sm text-gray-500 mb-1 font-semibold">Detalle</p>
                   <p className="text-sm text-gray-700">{multimodal.note}</p>
                   <div className="mt-2 text-xs text-gray-500">
@@ -1092,11 +1092,11 @@ Administrador: ${adminName}
             </div>
 
             {/* Estado actual */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4">Estado Actual</h3>
 
               <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl">
+                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-ui-md">
                   <p className="text-gray-600 text-sm mb-2 font-semibold">PHQ-9 (Depresión)</p>
                   <p className="text-6xl font-bold text-gray-800 mb-2">
                     {lastPhq9?.score ?? '—'}
@@ -1113,7 +1113,7 @@ Administrador: ${adminName}
                   </div>
                 </div>
 
-                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-ui-md">
                   <p className="text-gray-600 text-sm mb-2 font-semibold">GAD-7 (Ansiedad)</p>
                   <p className="text-6xl font-bold text-gray-800 mb-2">
                     {lastGad7?.score ?? '—'}
@@ -1154,7 +1154,7 @@ Administrador: ${adminName}
             </div>
 
             {/* Voz */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Análisis de Voz</h3>
@@ -1162,7 +1162,7 @@ Administrador: ${adminName}
                 </div>
                 <button
                   onClick={loadVoiceData}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-ui-sm hover:bg-gray-50 transition flex items-center gap-2"
                 >
                   <span>🎙️</span>
                   <span>Actualizar voz</span>
@@ -1177,7 +1177,7 @@ Administrador: ${adminName}
               )}
 
               {!voiceLoading && voiceError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-ui-sm">
                   {voiceError}
                 </div>
               )}
@@ -1185,7 +1185,7 @@ Administrador: ${adminName}
               {!voiceLoading && !voiceError && (
                 <>
                   <div className="grid grid-cols-4 gap-4 mb-5">
-                    <div className="p-4 rounded-xl border bg-gray-50">
+                    <div className="p-4 rounded-ui-sm border bg-gray-50">
                       <p className="text-xs text-gray-500 font-semibold">Sesiones</p>
                       <p className="text-2xl font-bold text-gray-800">
                         {voiceStats?.summary?.total_sessions ?? 0}
@@ -1195,7 +1195,7 @@ Administrador: ${adminName}
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-xl border bg-gray-50">
+                    <div className="p-4 rounded-ui-sm border bg-gray-50">
                       <p className="text-xs text-gray-500 font-semibold">Pitch promedio</p>
                       <p className="text-2xl font-bold text-gray-800">
                         {voiceStats?.summary?.avg_pitch ?? '—'}
@@ -1203,7 +1203,7 @@ Administrador: ${adminName}
                       <p className="text-xs text-gray-500">Hz (según backend)</p>
                     </div>
 
-                    <div className="p-4 rounded-xl border bg-gray-50">
+                    <div className="p-4 rounded-ui-sm border bg-gray-50">
                       <p className="text-xs text-gray-500 font-semibold">Energía promedio</p>
                       <p className="text-2xl font-bold text-gray-800">
                         {voiceStats?.summary?.avg_energy ?? '—'}
@@ -1211,7 +1211,7 @@ Administrador: ${adminName}
                       <p className="text-xs text-gray-500">Escala backend</p>
                     </div>
 
-                    <div className="p-4 rounded-xl border bg-gray-50">
+                    <div className="p-4 rounded-ui-sm border bg-gray-50">
                       <p className="text-xs text-gray-500 font-semibold">Score voz promedio</p>
                       <p className="text-2xl font-bold text-gray-800">
                         {voiceScore100 !== null ? voiceScore100.toFixed(1) : '—'}
@@ -1220,7 +1220,7 @@ Administrador: ${adminName}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border p-4 bg-gradient-to-r from-green-50 via-orange-50 to-red-50">
+                  <div className="rounded-ui-md border p-4 bg-gradient-to-r from-green-50 via-orange-50 to-red-50">
                     <p className="text-sm font-semibold text-gray-800 mb-2">Distribución de riesgo (sesiones)</p>
                     <div className="flex items-center gap-3 text-sm">
                       <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
@@ -1277,7 +1277,7 @@ Administrador: ${adminName}
                         </table>
                       </div>
                     ) : (
-                      <div className="text-gray-600 text-sm bg-gray-50 border rounded-lg p-4">
+                      <div className="text-gray-600 text-sm bg-gray-50 border rounded-ui-sm p-4">
                         Este usuario aún no tiene sesiones de voz registradas.
                       </div>
                     )}
@@ -1287,7 +1287,7 @@ Administrador: ${adminName}
             </div>
 
             {/* Historial (gráfica) */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Historial de Evaluaciones</h3>
@@ -1298,7 +1298,7 @@ Administrador: ${adminName}
                   <select
                     value={timeRange}
                     onChange={(e) => setTimeRange(Number(e.target.value))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="px-3 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
                     <option value={4}>4 semanas</option>
                     <option value={8}>8 semanas</option>
@@ -1310,7 +1310,7 @@ Administrador: ${adminName}
               <div ref={chartRef} className="grid lg:grid-cols-2 gap-6">
                 {/* PHQ-9 */}
                 <div
-                  className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-6"
+                  className="relative h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-ui-md p-6"
                   onMouseLeave={() => setHoveredPoint(null)}
                 >
                   <div className="mb-3 flex items-center justify-between">
@@ -1376,7 +1376,7 @@ Administrador: ${adminName}
 
                       {hoveredPoint?.type === 'phq9' && tooltipCoords && (
                         <foreignObject x={tooltipCoords.x} y={tooltipCoords.y} width="30" height="20">
-                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-emerald-500 text-xs whitespace-nowrap">
+                          <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-emerald-500 text-xs whitespace-nowrap">
                             <p className="font-bold text-gray-800">PHQ-9: {hoveredPoint.score}</p>
                             <p className="text-gray-600">
                               {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
@@ -1396,7 +1396,7 @@ Administrador: ${adminName}
 
                 {/* GAD-7 */}
                 <div
-                  className="relative h-80 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6"
+                  className="relative h-80 bg-gradient-to-br from-blue-50 to-purple-50 rounded-ui-md p-6"
                   onMouseLeave={() => setHoveredPoint(null)}
                 >
                   <div className="mb-3 flex items-center justify-between">
@@ -1462,7 +1462,7 @@ Administrador: ${adminName}
 
                       {hoveredPoint?.type === 'gad7' && tooltipCoords && (
                         <foreignObject x={tooltipCoords.x} y={tooltipCoords.y} width="30" height="20">
-                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
+                          <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 text-xs whitespace-nowrap">
                             <p className="font-bold text-gray-800">GAD-7: {hoveredPoint.score}</p>
                             <p className="text-gray-600">
                               {hoveredPoint.date ? new Date(hoveredPoint.date).toLocaleDateString('es-ES') : '—'}
@@ -1483,13 +1483,13 @@ Administrador: ${adminName}
             </div>
 
             {/* Acciones */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="bg-white rounded-ui-lg shadow-card p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4">Acciones</h3>
 
               <div className="grid grid-cols-4 gap-3">
                 <button
                   onClick={handleExportPDF}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition transform hover:scale-105"
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-ui-md hover:border-blue-500 hover:bg-blue-50 transition transform hover:scale-105"
                 >
                   <span className="text-3xl">📄</span>
                   <span className="text-sm font-medium text-gray-700 text-center">Exportar Reporte PDF</span>
@@ -1497,7 +1497,7 @@ Administrador: ${adminName}
 
                 <button
                   onClick={handleExportCSV}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition transform hover:scale-105"
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-ui-md hover:border-green-500 hover:bg-green-50 transition transform hover:scale-105"
                 >
                   <span className="text-3xl">📊</span>
                   <span className="text-sm font-medium text-gray-700 text-center">Exportar Datos CSV</span>
@@ -1505,7 +1505,7 @@ Administrador: ${adminName}
 
                 <button
                   onClick={handleSendNotification}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition transform hover:scale-105"
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-ui-md hover:border-purple-500 hover:bg-purple-50 transition transform hover:scale-105"
                 >
                   <span className="text-3xl">📧</span>
                   <span className="text-sm font-medium text-gray-700 text-center">Enviar Notificación</span>
@@ -1514,7 +1514,7 @@ Administrador: ${adminName}
                 <button
                   onClick={handleDeleteUser}
                   disabled={isDeletingUser}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-red-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition transform hover:scale-105"
+                  className="flex flex-col items-center gap-2 p-4 border-2 border-red-300 rounded-ui-md hover:border-red-500 hover:bg-red-50 transition transform hover:scale-105"
                 >
                   <span className="text-3xl">🗑️</span>
                   <span className="text-sm font-medium text-red-700 text-center">Eliminar Usuario</span>
@@ -1555,7 +1555,7 @@ Administrador: ${adminName}
             }}
           >
             <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="bg-red-50 border border-red-200 rounded-ui-sm p-4">
                 <p className="text-sm font-semibold text-red-900">Esta acción es irreversible.</p>
                 <p className="text-sm text-red-800 mt-1">
                   Para confirmar la eliminación, escribe exactamente el nombre del usuario:
@@ -1572,7 +1572,7 @@ Administrador: ${adminName}
                   value={deleteConfirmName}
                   onChange={(e) => setDeleteConfirmName(e.target.value)}
                   placeholder="Escribe el nombre completo"
-                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full border-2 border-gray-300 rounded-ui-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   disabled={isDeletingUser}
                 />
                 <p className="mt-2 text-xs text-gray-600">
@@ -1605,7 +1605,7 @@ Administrador: ${adminName}
             }}
           >
             <div className="space-y-5">
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="bg-gray-50 p-4 rounded-ui-sm border border-gray-200">
                 <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
                 <p className="font-bold text-lg text-gray-800">{user?.user?.full_name}</p>
                 <p className="text-sm text-gray-500">
@@ -1628,14 +1628,14 @@ Administrador: ${adminName}
                   value={attendanceNotes}
                   onChange={(e) => setAttendanceNotes(e.target.value)}
                   placeholder="Describe brevemente la sesión..."
-                  className="w-full border-2 border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full border-2 border-gray-300 rounded-ui-sm p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   rows="4"
                   disabled={isSubmittingAttendance}
                 />
               </div>
 
               <div className="space-y-3">
-                <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition">
+                <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-ui-sm cursor-pointer hover:bg-blue-100 transition">
                   <input
                     type="checkbox"
                     checked={scheduleFollowup}
@@ -1650,14 +1650,14 @@ Administrador: ${adminName}
                         type="date"
                         value={followupDate}
                         onChange={(e) => setFollowupDate(e.target.value)}
-                        className="mt-2 w-full border border-blue-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-2 w-full border border-blue-300 rounded-ui-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         disabled={isSubmittingAttendance}
                       />
                     )}
                   </div>
                 </label>
 
-                <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition">
+                <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-ui-sm cursor-pointer hover:bg-green-100 transition">
                   <input
                     type="checkbox"
                     checked={sendConfirmation}
@@ -1682,14 +1682,14 @@ Administrador: ${adminName}
             primaryAction={{ label: "Cerrar", onClick: () => setShowRecommendationsModal(false) }}
           >
             <div className="space-y-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-ui-sm p-4">
                 <p className="font-semibold text-gray-800">Multimodal:</p>
                 <p className="text-sm text-gray-700">
                   {multimodal.level}{multimodal.index !== null ? ` • ${multimodal.index}/100` : ''} — {multimodal.note}
                 </p>
               </div>
               {trends?.insights?.recommendations?.length ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-ui-sm p-4">
                   <p className="font-semibold text-blue-900 mb-2">Recomendaciones (tendencias):</p>
                   <ul className="list-disc pl-5 text-sm text-blue-800 space-y-1">
                     {trends.insights.recommendations.map((r, i) => <li key={i}>{r}</li>)}

@@ -100,15 +100,15 @@ function AnxietyExercises() {
           <button
             type="button"
             onClick={() => navigate("/home")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver al inicio</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-ui-lg flex items-center justify-center shadow-card">
                 <span className="text-3xl">🧠</span>
               </div>
               <div>
@@ -129,7 +129,7 @@ function AnxietyExercises() {
             <motion.button
               key={exercise.id}
               onClick={() => navigate(`/anxiety/${exercise.id}`)}
-              className={`w-full bg-gradient-to-br ${exercise.bgColor} rounded-2xl p-6 border-3 ${exercise.borderColor} ${exercise.hoverBorder} hover:shadow-2xl transition-all duration-300 text-left group`}
+              className={`w-full bg-gradient-to-br ${exercise.bgColor} rounded-ui-lg p-6 border-3 ${exercise.borderColor} ${exercise.hoverBorder} hover:shadow-elevated transition-all duration-300 text-left group`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -139,7 +139,7 @@ function AnxietyExercises() {
               <div className="flex items-start gap-6">
                 {/* Icono */}
                 <div
-                  className={`w-20 h-20 bg-gradient-to-br ${exercise.color} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}
+                  className={`w-20 h-20 bg-gradient-to-br ${exercise.color} rounded-ui-lg flex items-center justify-center flex-shrink-0 shadow-card group-hover:scale-110 transition-transform`}
                 >
                   <span className="text-4xl">{exercise.icon}</span>
                 </div>
@@ -175,7 +175,7 @@ function AnxietyExercises() {
         </div>
 
         {/* Información adicional */}
-        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+        <div className="mt-8 bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card">
           <div className="flex items-start gap-3">
             <span className="text-3xl flex-shrink-0">💡</span>
             <div>
@@ -187,7 +187,7 @@ function AnxietyExercises() {
                 tu estado emocional y proporcionarte retroalimentación inmediata.
                 Los ejercicios duran entre 3-5 minutos.
               </p>
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-sm p-3">
                 <p className="text-sm text-gray-700">
                   <strong className="text-blue-800">Recomendación:</strong>{" "}
                   Realiza estos ejercicios en un lugar tranquilo, con buena
@@ -200,7 +200,7 @@ function AnxietyExercises() {
 
         {/* Badge de progreso */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
+          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-card">
             <span className="text-2xl">🎯</span>
             <span className="text-sm text-gray-700">
               <strong>3 ejercicios</strong> disponibles para reducir ansiedad

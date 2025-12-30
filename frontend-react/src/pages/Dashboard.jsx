@@ -97,20 +97,20 @@ const INFO_CONTENTS = {
           fuentes para ofrecer una evaluación integral de tu bienestar mental:
         </p>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-sm p-4">
             <p className="font-bold text-blue-900 mb-2">📝 Tests (60%)</p>
             <p className="text-sm text-gray-700">
               PHQ-9 y GAD-7 evaluados por ti mismo
             </p>
           </div>
-          <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+          <div className="bg-purple-50 border-2 border-purple-200 rounded-ui-sm p-4">
             <p className="font-bold text-purple-900 mb-2">🎤 Voz (40%)</p>
             <p className="text-sm text-gray-700">
               Análisis de biomarcadores vocales
             </p>
           </div>
         </div>
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-5">
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-ui-md p-5">
           <h4 className="font-bold text-indigo-900 mb-3">¿Por qué es mejor?</h4>
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
@@ -139,7 +139,7 @@ const INFO_CONTENTS = {
           El análisis de voz evalúa biomarcadores acústicos que se correlacionan
           con estados emocionales y salud mental.
         </p>
-        <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
+        <div className="bg-purple-50 border-2 border-purple-200 rounded-ui-md p-5">
           <h4 className="font-bold text-purple-900 mb-3">
             Biomarcadores medidos:
           </h4>
@@ -181,7 +181,7 @@ const INFO_CONTENTS = {
             </li>
           </ul>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-ui-sm p-4">
           <p className="text-sm text-gray-700">
             <strong>💡 Importante:</strong> Los análisis de voz son
             complementarios a las evaluaciones clínicas tradicionales, no las
@@ -201,7 +201,7 @@ const INFO_CONTENTS = {
           <strong>GAD-7</strong> (ansiedad).
         </p>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-sm p-4">
             <p className="font-bold text-blue-900 mb-2">PHQ-9</p>
             <ul className="text-sm space-y-1">
               <li>• 0–4: mínima</li>
@@ -210,7 +210,7 @@ const INFO_CONTENTS = {
               <li>• 15–27: severa</li>
             </ul>
           </div>
-          <div className="bg-teal-50 border-2 border-teal-200 rounded-xl p-4">
+          <div className="bg-teal-50 border-2 border-teal-200 rounded-ui-sm p-4">
             <p className="font-bold text-teal-900 mb-2">GAD-7</p>
             <ul className="text-sm space-y-1">
               <li>• 0–4: mínima</li>
@@ -796,7 +796,7 @@ function Dashboard() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 max-w-md text-center"
+          className="bg-white rounded-ui-lg shadow-elevated p-8 max-w-md text-center"
         >
           <div className="text-6xl mb-4">📊</div>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
@@ -807,7 +807,7 @@ function Dashboard() {
           </p>
           <button
             onClick={() => navigate("/home")}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-ui-sm font-semibold hover:shadow-card transition"
           >
             Ir al Home
           </button>
@@ -874,14 +874,14 @@ function Dashboard() {
           </div>
 
           <div className="flex gap-3">
-            <div className="flex gap-2 bg-white rounded-lg p-1 shadow-md">
+            <div className="flex gap-2 bg-white rounded-ui-pill p-1 shadow-card">
               {DAYS_OPTIONS.map((days) => (
                 <button
                   key={days}
                   onClick={() => setTimeRange(days)}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`px-4 py-2 rounded-ui-sm font-medium transition ${
                     timeRange === days
-                      ? "bg-blue-500 text-white shadow-md"
+                      ? "bg-blue-500 text-white shadow-card"
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
@@ -892,7 +892,7 @@ function Dashboard() {
 
             <button
               onClick={() => navigate("/home")}
-              className="px-5 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition shadow-md font-medium flex items-center gap-2"
+              className="px-5 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-ui-sm transition shadow-card font-medium flex items-center gap-2"
             >
               <span>←</span>
               <span>Volver</span>
@@ -905,7 +905,7 @@ function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${theme?.colors?.card || "bg-red-50/95 border-4 border-red-500"} rounded-2xl shadow-xl p-6 mb-6`}
+            className={`${theme?.colors?.card || "bg-red-50/95 border-4 border-red-500"} rounded-ui-md shadow-card p-6 mb-6`}
             role="alert"
           >
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -931,7 +931,7 @@ function Dashboard() {
                       {href && (
                         <a
                           href={href}
-                          className={`px-4 py-2 rounded-xl text-white font-semibold bg-gradient-to-r ${theme?.colors?.button || "from-red-600 to-red-700"}`}
+                          className={`px-4 py-2 rounded-ui-sm text-white font-semibold bg-gradient-to-r ${theme?.colors?.button || "from-red-600 to-red-700"}`}
                         >
                           Llamar
                         </a>
@@ -966,7 +966,7 @@ function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-2xl p-8 mb-6 text-white"
+            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-ui-lg shadow-elevated p-8 mb-6 text-white"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -977,7 +977,7 @@ function Dashboard() {
               </div>
               <button
                 onClick={() => showInfoModal("multimodal")}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-medium transition"
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-ui-sm text-sm font-medium transition"
               >
                 ℹ️ ¿Cómo funciona?
               </button>
@@ -1022,7 +1022,7 @@ function Dashboard() {
               {/* Desglose */}
               <div className="md:col-span-2 space-y-4">
                 {/* Tests Score */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-ui-md p-4">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">📝</span>
@@ -1042,7 +1042,7 @@ function Dashboard() {
                 </div>
 
                 {/* Voice Score */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-ui-md p-4">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🎤</span>
@@ -1090,7 +1090,7 @@ function Dashboard() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl shadow-2xl p-8"
+            className="bg-white rounded-ui-lg shadow-elevated p-8"
           >
             <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               📝 Tests Psicométricos
@@ -1098,7 +1098,7 @@ function Dashboard() {
 
             <div className="space-y-4">
               {/* PHQ-9 */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-2 border-blue-200">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-ui-sm p-5 border-2 border-blue-200">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">
@@ -1143,7 +1143,7 @@ function Dashboard() {
               </div>
 
               {/* GAD-7 */}
-              <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-5 border-2 border-teal-200">
+              <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-ui-sm p-5 border-2 border-teal-200">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">
@@ -1194,7 +1194,7 @@ function Dashboard() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl shadow-2xl p-8"
+            className="bg-white rounded-ui-lg shadow-elevated p-8"
           >
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -1212,25 +1212,25 @@ function Dashboard() {
               <div className="space-y-4">
                 {/* Estadísticas de voz */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2 border-purple-200">
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-ui-sm p-4 border-2 border-purple-200">
                     <p className="text-xs text-gray-600 mb-1">Pitch Promedio</p>
                     <p className="text-2xl font-bold text-purple-600">
                       {voiceAverages.pitch} Hz
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border-2 border-green-200">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-ui-sm p-4 border-2 border-green-200">
                     <p className="text-xs text-gray-600 mb-1">Energía Vocal</p>
                     <p className="text-2xl font-bold text-green-600">
                       {voiceAverages.energy}%
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border-2 border-orange-200">
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-ui-sm p-4 border-2 border-orange-200">
                     <p className="text-xs text-gray-600 mb-1">Calidad (HNR)</p>
                     <p className="text-2xl font-bold text-orange-600">
                       {voiceAverages.hnr} dB
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-ui-sm p-4 border-2 border-blue-200">
                     <p className="text-xs text-gray-600 mb-1">Total Sesiones</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {voiceSessions.length}
@@ -1239,7 +1239,7 @@ function Dashboard() {
                 </div>
 
                 {/* Distribución de indicadores */}
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-ui-sm p-4">
                   <p className="text-sm font-semibold text-gray-700 mb-3">
                     Distribución de Indicadores Vocales
                   </p>
@@ -1275,7 +1275,7 @@ function Dashboard() {
                 </div>
 
                 {/* Ejercicios más usados */}
-                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-ui-sm p-4 border border-indigo-200">
                   <p className="text-sm font-semibold text-gray-700 mb-2">
                     📊 Ejercicios realizados
                   </p>
@@ -1300,7 +1300,7 @@ function Dashboard() {
                 </p>
                 <button
                   onClick={() => navigate("/exercises/anxiety")}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-ui-sm font-semibold hover:shadow-card transition"
                 >
                   Comenzar ejercicios
                 </button>
@@ -1315,7 +1315,7 @@ function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl shadow-2xl p-8 mb-6"
+            className="bg-white rounded-ui-lg shadow-elevated p-8 mb-6"
           >
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -1328,7 +1328,7 @@ function Dashboard() {
               </div>
               <button
                 onClick={() => showInfoModal("recommendations")}
-                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition font-medium text-sm"
+                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-ui-sm transition font-medium text-sm"
               >
                 ℹ️ Interpretar resultados
               </button>
@@ -1337,7 +1337,7 @@ function Dashboard() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* PHQ-9 */}
               {phqScores.length > 0 && (
-                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-8">
+                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-blue-50 rounded-ui-lg p-8">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="font-semibold text-gray-800">PHQ-9 (Depresión)</p>
                     <p className="text-sm text-gray-600">
@@ -1443,7 +1443,7 @@ function Dashboard() {
                           width="30"
                           height="20"
                         >
-                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-blue-500 text-xs whitespace-nowrap">
+                            <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 text-xs whitespace-nowrap">
                             <p className="font-bold text-gray-800">PHQ-9: {hoveredPoint.score}</p>
                             <p className="text-gray-600">
                               {hoveredPoint.date
@@ -1474,7 +1474,7 @@ function Dashboard() {
 
               {/* GAD-7 */}
               {gadScores.length > 0 && (
-                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-teal-50 rounded-2xl p-8">
+                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-teal-50 rounded-ui-lg p-8">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="font-semibold text-gray-800">GAD-7 (Ansiedad)</p>
                     <p className="text-sm text-gray-600">
@@ -1580,7 +1580,7 @@ function Dashboard() {
                           width="30"
                           height="20"
                         >
-                          <div className="bg-white px-3 py-2 rounded-lg shadow-xl border-2 border-teal-500 text-xs whitespace-nowrap">
+                            <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-teal-500 text-xs whitespace-nowrap">
                             <p className="font-bold text-gray-800">GAD-7: {hoveredPoint.score}</p>
                             <p className="text-gray-600">
                               {hoveredPoint.date
@@ -1617,13 +1617,13 @@ function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 mb-6"
+          className="bg-white rounded-ui-lg shadow-elevated p-8 mb-6"
         >
           <h3 className="text-2xl font-bold text-gray-800 mb-4">
             🧠 Evaluación Multimodal Integrada
           </h3>
 
-          <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 text-gray-800 space-y-3 text-sm leading-relaxed">
+          <div className="bg-gray-50 border-2 border-gray-200 rounded-ui-sm p-6 text-gray-800 space-y-3 text-sm leading-relaxed">
             {getClinicalMessage(multimodalClinicalResult)}
           </div>
         </motion.div>
@@ -1634,14 +1634,14 @@ function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-3xl shadow-2xl p-8"
+            className="bg-white rounded-ui-lg shadow-elevated p-8"
           >
             <h3 className="text-2xl font-bold text-gray-800 mb-6">
               💡 Recomendaciones Personalizadas
             </h3>
 
             <div
-              className={`p-6 rounded-xl border-2 ${
+              className={`p-6 rounded-ui-sm border-2 ${
                 multimodal.status === "excellent"
                   ? "bg-green-50 border-green-300"
                   : multimodal.status === "good"
@@ -1738,13 +1738,13 @@ function Dashboard() {
                       <div className="flex flex-wrap gap-3 mt-4">
                         <a
                           href="tel:952"
-                          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition shadow-lg"
+                          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-ui-sm font-bold transition shadow-card"
                         >
                           📞 Llamar Línea 171
                         </a>
                         <button
                           onClick={() => navigate("/home")}
-                          className="px-6 py-3 bg-white border-2 border-orange-600 text-orange-600 rounded-lg font-bold hover:bg-orange-50 transition"
+                          className="px-6 py-3 bg-white border-2 border-orange-600 text-orange-600 rounded-ui-sm font-bold hover:bg-orange-50 transition"
                         >
                           Ver recursos de ayuda
                         </button>
@@ -1758,7 +1758,7 @@ function Dashboard() {
             {/* Extra visual opcional: etiqueta del estado */}
             <div className="mt-6 flex justify-center">
               <div
-                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-white font-bold shadow-lg bg-gradient-to-r ${getStatusColor(
+                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-white font-bold shadow-card bg-gradient-to-r ${getStatusColor(
                   multimodal.status
                 )}`}
               >

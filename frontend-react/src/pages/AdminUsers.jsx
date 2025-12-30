@@ -394,12 +394,12 @@ Equipo de CalmaSense.
     <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
       
       {/* Barra Lateral */}
-      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-2xl">
+      <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col shadow-elevated">
         
         {/* Logo */}
         <div className="p-6 border-b border-blue-700">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white rounded-ui-sm flex items-center justify-center">
               <span className="text-2xl">🛡️</span>
             </div>
             <div>
@@ -413,13 +413,13 @@ Equipo de CalmaSense.
         <nav className="flex-1 p-4">
           <button
             onClick={() => navigate('/admin/dashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition"
           >
             <span>🏠</span>
             <span className="font-medium">Inicio</span>
           </button>
 
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 bg-blue-700 shadow-lg">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 bg-blue-700 shadow-card">
             <span>👥</span>
             <span className="font-medium">Usuarios</span>
             <span className="ml-auto bg-white text-blue-900 text-xs px-2 py-1 rounded-full font-bold">
@@ -429,7 +429,7 @@ Equipo de CalmaSense.
 
           <button
             onClick={() => navigate('/admin/alerts')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 hover:bg-blue-700/50 transition relative"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-ui-sm mb-2 hover:bg-blue-700/50 transition relative"
           >
             <span>⚠️</span>
             <span className="font-medium">Alertas</span>
@@ -449,7 +449,7 @@ Equipo de CalmaSense.
           </div>
           <button
             onClick={handleLogout}
-            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition"
+            className="w-full py-2 bg-red-600 hover:bg-red-700 rounded-ui-sm text-sm font-medium transition"
           >
             Cerrar Sesión
           </button>
@@ -485,7 +485,7 @@ Equipo de CalmaSense.
                 loadUsers();
                 loadActiveSessions();
               }}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+              className="px-4 py-2 bg-white border border-gray-300 rounded-ui-sm hover:bg-gray-50 transition flex items-center gap-2"
             >
               <span>🔄</span>
               <span>Actualizar</span>
@@ -494,7 +494,7 @@ Equipo de CalmaSense.
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-ui-lg shadow-card p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-800">Filtros</h3>
             <button
@@ -515,7 +515,7 @@ Equipo de CalmaSense.
                   placeholder="Buscar por nombre o ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 {searchTerm && (
@@ -535,7 +535,7 @@ Equipo de CalmaSense.
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="px-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option>Todos</option>
               <option>Activo</option>
@@ -546,7 +546,7 @@ Equipo de CalmaSense.
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="px-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option>Todos los niveles</option>
               <option>Crítico</option>
@@ -560,7 +560,7 @@ Equipo de CalmaSense.
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="px-4 py-2 border border-gray-300 rounded-ui-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="name">🔤 A-Z</option>
               <option value="phq9">📊 PHQ-9 ↓</option>
@@ -598,7 +598,7 @@ Equipo de CalmaSense.
         </div>
 
         {/* Tabla de Usuarios */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-ui-lg shadow-card overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -697,7 +697,7 @@ Equipo de CalmaSense.
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleViewProfile(user.id)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition font-medium"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-ui-sm transition font-medium"
                           title="Ver Perfil"
                         >
                           Ver Perfil
@@ -734,7 +734,7 @@ Equipo de CalmaSense.
               <p className="text-gray-500">Intenta ajustar los filtros de búsqueda</p>
               <button
                 onClick={clearFilters}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-ui-sm hover:bg-blue-700 transition"
               >
                 Limpiar filtros
               </button>
@@ -753,7 +753,7 @@ Equipo de CalmaSense.
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className={`px-4 py-2 rounded-lg transition ${
+                className={`px-4 py-2 rounded-ui-sm transition ${
                   currentPage === 1
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-white border border-gray-300 hover:bg-gray-50'
@@ -767,7 +767,7 @@ Equipo de CalmaSense.
                   <button
                     key={i}
                     onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 rounded-lg transition ${
+                    className={`w-10 h-10 rounded-ui-sm transition ${
                       currentPage === i + 1
                         ? 'bg-blue-600 text-white'
                         : 'bg-white border border-gray-300 hover:bg-gray-50'
@@ -781,7 +781,7 @@ Equipo de CalmaSense.
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className={`px-4 py-2 rounded-lg transition ${
+                className={`px-4 py-2 rounded-ui-sm transition ${
                   currentPage === totalPages
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-white border border-gray-300 hover:bg-gray-50'

@@ -192,7 +192,7 @@ function ProsodicReading() {
       <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-6`}>
         <FaceMonitor isActive={!isAnalyzing} />
 
-        <div className="bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md">
+        <div className="bg-white p-12 rounded-ui-xl shadow-elevated text-center max-w-md">
           <div className="w-20 h-20 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Analizando tu lectura…</h2>
           <p className="text-gray-600">Procesando tu expresividad vocal</p>
@@ -213,7 +213,7 @@ function ProsodicReading() {
             <button
               type="button"
               onClick={() => navigate("/exercises/depression")}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
             >
               <span className="text-xl">←</span>
               <span>Volver a ejercicios</span>
@@ -225,34 +225,34 @@ function ProsodicReading() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-ui-lg shadow-card p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span>📊</span>
               <span>Análisis de tu Voz</span>
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-indigo-50 rounded-xl p-4 border-2 border-indigo-200">
+              <div className="bg-indigo-50 rounded-ui-md p-4 border-2 border-indigo-200">
                 <p className="text-sm text-gray-600 mb-1">Tono de voz</p>
                 <p className="text-2xl font-bold text-indigo-600">{analysisResults.pitch_mean} Hz</p>
                 <p className="text-xs text-gray-500 mt-1">Variabilidad: {analysisResults.pitch_std}</p>
               </div>
 
-              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+              <div className="bg-green-50 rounded-ui-md p-4 border-2 border-green-200">
                 <p className="text-sm text-gray-600 mb-1">Energía vocal</p>
                 <p className="text-2xl font-bold text-green-600">
                   {(analysisResults.energy * 100).toFixed(1)}%
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+              <div className="bg-blue-50 rounded-ui-md p-4 border-2 border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Actividad vocal</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {(analysisResults.voice_ratio * 100).toFixed(0)}%
                 </p>
               </div>
 
-              <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+              <div className="bg-purple-50 rounded-ui-md p-4 border-2 border-purple-200">
                 <p className="text-sm text-gray-600 mb-1">Calidad de voz (HNR)</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {analysisResults.hnr.toFixed(1)} dB
@@ -261,7 +261,7 @@ function ProsodicReading() {
             </div>
 
             <div
-              className={`rounded-xl p-6 border-3 ${
+              className={`rounded-ui-md p-6 border-3 ${
                 analysisResults.risk_level === "LOW"
                   ? "bg-green-50 border-green-300"
                   : analysisResults.risk_level === "MODERATE"
@@ -288,13 +288,13 @@ function ProsodicReading() {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               🔄 Repetir ejercicio
             </button>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+              className="px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-ui-sm font-semibold hover:shadow-elevated transition"
             >
               📊 Ver mi progreso
             </button>
@@ -319,15 +319,15 @@ function ProsodicReading() {
           <button
             type="button"
             onClick={() => navigate("/exercises/depression")}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow border border-white/60"
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-md text-gray-900 hover:bg-white transition shadow-card border border-white/60"
           >
             <span className="text-xl">←</span>
             <span>Volver</span>
           </button>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-2 border-indigo-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-ui-lg p-6 shadow-card border-2 border-indigo-100">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-ui-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-3xl">📚</span>
               </div>
               <div>
@@ -339,14 +339,14 @@ function ProsodicReading() {
         </div>
 
         {/* SELECTOR DE TEXTO */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8 border-2 border-indigo-100">
+        <div className="bg-white rounded-ui-lg p-6 shadow-card mb-8 border-2 border-indigo-100">
           <h3 className="font-bold text-gray-800 mb-4">Selecciona un Texto</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               onClick={() => !isRecording && setSelectedText("sport")}
               disabled={isRecording}
-              className={`p-4 rounded-xl border-2 transition ${
+              className={`p-4 rounded-ui-md border-2 transition ${
                 selectedText === "sport"
                   ? "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-400 text-orange-800"
                   : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300"
@@ -359,7 +359,7 @@ function ProsodicReading() {
             <button
               onClick={() => !isRecording && setSelectedText("nature")}
               disabled={isRecording}
-              className={`p-4 rounded-xl border-2 transition ${
+              className={`p-4 rounded-ui-md border-2 transition ${
                 selectedText === "nature"
                   ? "bg-gradient-to-r from-green-50 to-green-100 border-green-400 text-green-800"
                   : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300"
@@ -372,7 +372,7 @@ function ProsodicReading() {
             <button
               onClick={() => !isRecording && setSelectedText("personal")}
               disabled={isRecording}
-              className={`p-4 rounded-xl border-2 transition ${
+              className={`p-4 rounded-ui-md border-2 transition ${
                 selectedText === "personal"
                   ? "bg-gradient-to-r from-purple-50 to-purple-100 border-purple-400 text-purple-800"
                   : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300"
@@ -385,13 +385,13 @@ function ProsodicReading() {
         </div>
 
         {/* TEXTO DE PRÁCTICA */}
-        <div className="bg-white rounded-3xl shadow-2xl p-10 mb-8 border-2 border-indigo-50">
+        <div className="bg-white rounded-ui-xl shadow-elevated p-10 mb-8 border-2 border-indigo-50">
           <div className="flex items-center gap-2 mb-6">
             <span className="text-2xl">📄</span>
             <h3 className="text-xl font-bold text-gray-800">Texto de Práctica</h3>
           </div>
 
-          <div className="bg-indigo-50 rounded-xl p-8 mb-6 border-2 border-indigo-200">
+          <div className="bg-indigo-50 rounded-ui-md p-8 mb-6 border-2 border-indigo-200">
             <AnimatePresence mode="wait">
               {isRecording ? (
                 <motion.div
@@ -420,7 +420,7 @@ function ProsodicReading() {
               <button
                 onClick={() => setCurrentParagraph(Math.max(0, currentParagraph - 1))}
                 disabled={currentParagraph === 0}
-                className={`px-6 py-2 rounded-lg font-semibold transition ${
+                className={`px-6 py-2 rounded-ui-sm font-semibold transition ${
                   currentParagraph === 0
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
@@ -441,7 +441,7 @@ function ProsodicReading() {
                   setCurrentParagraph(Math.min(currentText.content.length - 1, currentParagraph + 1))
                 }
                 disabled={currentParagraph === currentText.content.length - 1}
-                className={`px-6 py-2 rounded-lg font-semibold transition ${
+                className={`px-6 py-2 rounded-ui-sm font-semibold transition ${
                   currentParagraph === currentText.content.length - 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
@@ -473,7 +473,7 @@ function ProsodicReading() {
             {!isRecording ? (
               <button
                 onClick={startRecording}
-                className="px-12 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3"
+                className="px-12 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3"
               >
                 <span className="text-2xl">▶</span>
                 <span>Comenzar Lectura</span>
@@ -481,7 +481,7 @@ function ProsodicReading() {
             ) : (
               <button
                 onClick={finishReading}
-                className="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full font-bold text-lg hover:shadow-2xl transition flex items-center gap-3"
+                className="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full font-bold text-lg hover:shadow-elevated transition flex items-center gap-3"
               >
                 <span className="text-2xl">✓</span>
                 <span>Finalizar</span>
@@ -491,14 +491,14 @@ function ProsodicReading() {
         </div>
 
         {/* GUÍA */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-indigo-100">
+        <div className="bg-white rounded-ui-lg p-6 shadow-card border-2 border-indigo-100">
           <h3 className="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
             <span>📖</span>
             <span>Guía de Lectura</span>
           </h3>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
+            <div className="p-4 bg-red-50 rounded-ui-md border-2 border-red-200">
               <div className="flex items-center gap-2 mb-2">
                 <div className="flex gap-1">
                   <span className="w-6 h-1 bg-red-400 rounded"></span>
@@ -509,7 +509,7 @@ function ProsodicReading() {
               <p className="text-sm text-gray-700">Toma aire y haz una pausa completa</p>
             </div>
 
-            <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200">
+            <div className="p-4 bg-yellow-50 rounded-ui-md border-2 border-yellow-200">
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-6 h-1 bg-yellow-400 rounded"></span>
                 <span className="font-bold text-yellow-700">Pausa Corta</span>
@@ -518,7 +518,7 @@ function ProsodicReading() {
             </div>
           </div>
 
-          <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+          <div className="mt-4 p-4 bg-indigo-50 rounded-ui-sm border border-indigo-200">
             <p className="text-sm text-gray-700">
               <strong>💡 Consejo:</strong> Lee con expresividad, variando tu tono e intensidad. Respeta las pausas
               señaladas para mejorar tu expresión vocal.
