@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 from collections import defaultdict
 from datetime import datetime, timedelta, date
+import asyncio
 from backend.trends.trend_service import analyze_trends
 import json
 import os
@@ -749,6 +750,19 @@ async def register_user_production(
 # ==============================================
 from fastapi.concurrency import run_in_threadpool
 
+# -----------------------------
+# CONCURRENCIA CONTROLADA (CPU heavy)
+# -----------------------------
+# Estos límites son por-proceso (por worker). Útil para evitar saturación de CPU/RAM
+# cuando varios usuarios envían análisis de voz/transcripción al mismo tiempo.
+FACE_RECOGNITION_CONCURRENCY = int(os.getenv("FACE_RECOGNITION_CONCURRENCY", "1"))
+VOICE_ANALYSIS_CONCURRENCY = int(os.getenv("VOICE_ANALYSIS_CONCURRENCY", "1"))
+VOICE_TRANSCRIBE_CONCURRENCY = int(os.getenv("VOICE_TRANSCRIBE_CONCURRENCY", "2"))
+
+face_recognition_semaphore = asyncio.Semaphore(max(1, FACE_RECOGNITION_CONCURRENCY))
+voice_analysis_semaphore = asyncio.Semaphore(max(1, VOICE_ANALYSIS_CONCURRENCY))
+voice_transcribe_semaphore = asyncio.Semaphore(max(1, VOICE_TRANSCRIBE_CONCURRENCY))
+
 @app.post("/face/recognize/check")
 async def recognize_face_check(
     request: Request,
@@ -767,12 +781,15 @@ async def recognize_face_check(
     if np_img is None:
         return {"found": False, "user": None, "confidence": 0}
 
-    return await run_in_threadpool(
-        face_service.recognize,
-        np_img,
-        True,
-        expected_user_id,
-    )
+    # Face recognition usa librerías nativas (dlib/opencv/mediapipe) que pueden no ser thread-safe.
+    # Limitamos concurrencia por worker para evitar crashes tipo "corrupted double-linked list".
+    async with face_recognition_semaphore:
+        return await run_in_threadpool(
+            face_service.recognize,
+            np_img,
+            True,
+            expected_user_id,
+        )
 
 # ============================================================
 # ENDPOINTS DE SESIONES (CORREGIDOS SIN ROUTER)
@@ -1347,7 +1364,9 @@ async def transcribe_audio(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Servicio de transcripción no disponible")
     
     audio_bytes = await file.read()
-    result = transcription_service.transcribe(audio_bytes)
+
+    async with voice_transcribe_semaphore:
+        result = await run_in_threadpool(transcription_service.transcribe, audio_bytes)
     
     return result
 
@@ -1369,7 +1388,8 @@ async def speak_question(question_text: str):
     if not tts_service:
         raise HTTPException(status_code=500, detail="Servicio TTS no disponible")
     
-    audio_bytes = tts_service.generate_audio_bytes(question_text)
+    # TTS puede ser bloqueante según el engine; lo mandamos al threadpool.
+    audio_bytes = await run_in_threadpool(tts_service.generate_audio_bytes, question_text)
     
     from fastapi.responses import Response
     return Response(content=audio_bytes, media_type="audio/mpeg")
@@ -1776,7 +1796,8 @@ async def analyze_voice(
     """
     try:
         audio_bytes = await audio_file.read()
-        resultado = procesar_audio_archivo(audio_bytes, gender)
+        async with voice_analysis_semaphore:
+            resultado = await run_in_threadpool(procesar_audio_archivo, audio_bytes, gender)
         return resultado
         
     except Exception as e:
@@ -1829,7 +1850,8 @@ async def create_voice_session(
         
         # Leer y analizar audio
         audio_bytes = await audio_file.read()
-        analisis = procesar_audio_archivo(audio_bytes, gender)
+        async with voice_analysis_semaphore:
+            analisis = await run_in_threadpool(procesar_audio_archivo, audio_bytes, gender)
 
         # Normalizar risk_level para que coincida con el Enum de BD
         risk_raw = (analisis.get("risk_level") or "").strip()

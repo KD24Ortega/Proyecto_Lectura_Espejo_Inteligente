@@ -75,20 +75,32 @@ except Exception:
     pass
 
 # ========================================
-# CONFIGURACIÓN OPTIMIZADA PARA CARGA
+# CONFIGURACIÓN DE POOL (production-safe)
 # ========================================
+# Importante: con múltiples workers, cada worker crea su propio pool.
+# Por eso, los defaults aquí son conservadores y configurables por env.
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int((os.getenv(name) or "").strip() or default)
+    except Exception:
+        return default
+
+
+DB_POOL_SIZE = _env_int("DB_POOL_SIZE", 5)
+DB_MAX_OVERFLOW = _env_int("DB_MAX_OVERFLOW", 10)
+DB_POOL_TIMEOUT = _env_int("DB_POOL_TIMEOUT", 30)
+DB_POOL_RECYCLE = _env_int("DB_POOL_RECYCLE", 1800)
+
 engine = create_engine(
     DATABASE_URL,
-    # Pool de conexiones aumentado para soportar múltiples usuarios concurrentes
-    pool_size=20,           # De 5 → 20: Conexiones permanentes en el pool
-    max_overflow=30,        # De 10 → 30: Conexiones adicionales temporales
-    pool_timeout=60,        # De 30 → 60: Tiempo de espera para obtener conexión
-    pool_recycle=3600,      # Reciclar conexiones cada hora (evita conexiones "muertas")
-    pool_pre_ping=True,     # Verificar conexión antes de usarla (evita errores)
-    
-    # Opciones adicionales para mejor rendimiento
-    echo=False,             # No imprimir SQL queries (mejor performance)
-    future=True,            # Usar API moderna de SQLAlchemy
+    pool_size=max(1, DB_POOL_SIZE),
+    max_overflow=max(0, DB_MAX_OVERFLOW),
+    pool_timeout=max(1, DB_POOL_TIMEOUT),
+    pool_recycle=max(0, DB_POOL_RECYCLE),
+    pool_pre_ping=True,
+    echo=False,
+    future=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
