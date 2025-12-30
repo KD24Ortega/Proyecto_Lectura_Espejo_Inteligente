@@ -1,11 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../services/api';
 import useDynamicTheme from '../hooks/useDynamicTheme';
 
 function AdminDashboard() {
   const { theme } = useDynamicTheme();
   const bg = theme?.colors?.primary || 'from-gray-400 via-gray-500 to-slate-600';
+
+  const METRICS = useMemo(
+    () => ({
+      evaluations: {
+        key: 'evaluations',
+        title: 'Evaluaciones',
+        unit: 'evaluaciones',
+        color: '#3b82f6',
+        borderClass: 'border-blue-500',
+        dotClass: 'bg-blue-500',
+        description: 'Evaluaciones completadas por día',
+      },
+      users: {
+        key: 'users',
+        title: 'Usuarios',
+        unit: 'usuarios',
+        color: '#10b981',
+        borderClass: 'border-green-500',
+        dotClass: 'bg-green-500',
+        description: 'Nuevos usuarios registrados por día',
+      },
+      alerts: {
+        key: 'alerts',
+        title: 'Alertas',
+        unit: 'alertas',
+        color: '#ef4444',
+        borderClass: 'border-red-500',
+        dotClass: 'bg-red-500',
+        description: 'Alertas críticas generadas por día',
+      },
+    }),
+    []
+  );
 
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -89,6 +123,7 @@ function AdminDashboard() {
       // Transformar datos del backend al formato esperado por el frontend
       const realChartData = historyResponse.data.history.map((dayData, index) => ({
         day: index + 1,
+        date: dayData.date,
         evaluations: dayData.assessments,
         users: dayData.users,
         alerts: dayData.alerts
@@ -214,6 +249,17 @@ function AdminDashboard() {
   const avgMetric = metricData.length > 0
     ? (metricData.reduce((sum, val) => sum + val, 0) / metricData.length).toFixed(1)
     : 0;
+
+  const selectedMeta = METRICS[selectedMetric] || METRICS.evaluations;
+  const hoveredDatum = hoveredPoint !== null ? chartData[hoveredPoint] : null;
+  const hoveredDateLabel = hoveredDatum?.date
+    ? new Date(hoveredDatum.date).toLocaleDateString('es-ES', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null;
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${bg} transition-all duration-1000 flex`}>
@@ -462,6 +508,22 @@ function AdminDashboard() {
                 <p className="text-sm text-gray-600">
                   Promedio: {avgMetric} por día
                 </p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-700">
+                  {Object.values(METRICS).map((m) => (
+                    <div
+                      key={m.key}
+                      className={`inline-flex items-center gap-2 px-2 py-1 rounded-ui-sm border transition ${
+                        selectedMetric === m.key ? 'bg-gray-50 border-gray-300 font-semibold' : 'bg-white border-gray-200'
+                      }`}
+                      title={m.description}
+                    >
+                      <span className={`w-2.5 h-2.5 rounded-full ${m.dotClass}`} />
+                      <span>
+                        {m.title}: {m.description}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
               
               <div className="flex flex-col gap-2">
@@ -551,38 +613,41 @@ function AdminDashboard() {
                   <defs>
                     <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor={
-                        selectedMetric === 'evaluations' ? '#3b82f6' :
-                        selectedMetric === 'users' ? '#10b981' : '#ef4444'
+                        selectedMeta.color
                       } stopOpacity="0.3"/>
                       <stop offset="100%" stopColor={
-                        selectedMetric === 'evaluations' ? '#3b82f6' :
-                        selectedMetric === 'users' ? '#10b981' : '#ef4444'
+                        selectedMeta.color
                       } stopOpacity="0.05"/>
                     </linearGradient>
                   </defs>
 
-                  <polygon
+                  <motion.polygon
+                    key={`area-${selectedMetric}-${timeRange}`}
                     points={`0,100 ${metricData.map((val, i) => {
                       const x = (i / Math.max(metricData.length - 1, 1)) * 100;
                       const y = 100 - (val / metricMax) * 100;
                       return `${x},${y}`;
                     }).join(' ')} 100,100`}
                     fill="url(#chartGradient)"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
                   />
 
-                  <polyline
+                  <motion.polyline
+                    key={`line-${selectedMetric}-${timeRange}`}
                     points={metricData.map((val, i) => {
                       const x = (i / Math.max(metricData.length - 1, 1)) * 100;
                       const y = 100 - (val / metricMax) * 100;
                       return `${x},${y}`;
                     }).join(' ')}
                     fill="none"
-                    stroke={
-                      selectedMetric === 'evaluations' ? '#3b82f6' :
-                      selectedMetric === 'users' ? '#10b981' : '#ef4444'
-                    }
+                    stroke={selectedMeta.color}
                     strokeWidth="0.5"
                     vectorEffect="non-scaling-stroke"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 0.9, ease: 'easeOut' }}
                   />
 
                   {metricData.map((val, i) => {
@@ -594,10 +659,7 @@ function AdminDashboard() {
                         cx={x} 
                         cy={y} 
                         r={hoveredPoint === i ? "2" : "1"} 
-                        fill={
-                          selectedMetric === 'evaluations' ? '#3b82f6' :
-                          selectedMetric === 'users' ? '#10b981' : '#ef4444'
-                        }
+                        fill={selectedMeta.color}
                         stroke="white" 
                         strokeWidth="0.3" 
                         vectorEffect="non-scaling-stroke"
@@ -611,19 +673,42 @@ function AdminDashboard() {
                 {/* Tooltip on hover */}
                 {hoveredPoint !== null && (
                   <div 
-                    className="absolute bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 pointer-events-none"
+                    className={`absolute bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 ${selectedMeta.borderClass} pointer-events-none`}
                     style={{
                       left: `${(hoveredPoint / Math.max(metricData.length - 1, 1)) * 100}%`,
                       top: `${100 - (metricData[hoveredPoint] / metricMax) * 100}%`,
                       transform: 'translate(-50%, -120%)'
                     }}
                   >
-                    <p className="text-xs text-gray-600 mb-1">Día {hoveredPoint + 1}</p>
-                    <p className="text-sm font-bold text-blue-600">
-                      {selectedMetric === 'evaluations' && `${metricData[hoveredPoint]} evaluaciones`}
-                      {selectedMetric === 'users' && `${metricData[hoveredPoint]} usuarios`}
-                      {selectedMetric === 'alerts' && `${metricData[hoveredPoint]} alertas`}
-                    </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs text-gray-600">
+                          {hoveredDateLabel || `Día ${hoveredPoint + 1}`}
+                        </p>
+                        <p className="text-[11px] text-gray-500">Últimos {timeRange} días</p>
+                      </div>
+                      <div className="text-[11px] text-gray-500">#{hoveredPoint + 1}/{metricData.length}</div>
+                    </div>
+
+                    <div className="mt-2 space-y-1">
+                      {['evaluations', 'users', 'alerts'].map((k) => {
+                        const m = METRICS[k];
+                        const value = hoveredDatum?.[k] ?? 0;
+                        const isActive = selectedMetric === k;
+
+                        return (
+                          <div key={k} className={`flex items-center justify-between gap-3 ${isActive ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                            <div className="inline-flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 rounded-full ${m.dotClass}`} />
+                              <span className="text-xs">{m.title}</span>
+                            </div>
+                            <span className="text-xs">
+                              {value} {m.unit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

@@ -270,6 +270,29 @@ export default function Welcome() {
           
           setUserName(user);
 
+          // Determinar redirección según si ya tiene tests
+          // - Si falta PHQ-9 → ir a /phq9
+          // - Si falta GAD-7 → ir a /gad7
+          // - Si ya tiene ambos → ir a /home
+          let nextRoute = '/home';
+          try {
+            const lastAssessments = await api.get(`/assessments/last/${userId}`, {
+              signal: abortControllerRef.current.signal,
+            });
+
+            const hasPhq9 = lastAssessments?.data?.phq9?.score !== null && lastAssessments?.data?.phq9?.score !== undefined;
+            const hasGad7 = lastAssessments?.data?.gad7?.score !== null && lastAssessments?.data?.gad7?.score !== undefined;
+
+            if (!hasPhq9) nextRoute = '/phq9';
+            else if (!hasGad7) nextRoute = '/gad7';
+          } catch (assessmentsError) {
+            if (assessmentsError.name === 'AbortError' || assessmentsError.name === 'CanceledError') {
+              console.log('🛑 Verificación de assessments cancelada');
+              return;
+            }
+            console.warn('⚠️ No se pudo verificar si existen tests previos:', assessmentsError);
+          }
+
           // Iniciar sesión en DB
           try {
             await api.post('/session/start', { 
@@ -296,8 +319,8 @@ export default function Welcome() {
           // Redirigir después de 1.5 segundos
           setTimeout(() => {
             if (isComponentMounted.current) {
-              console.log('🚀 Redirigiendo a /home');
-              navigate('/home');
+              console.log(`🚀 Redirigiendo a ${nextRoute}`);
+              navigate(nextRoute);
             }
           }, 1500);
           

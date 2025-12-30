@@ -37,6 +37,28 @@ const safeNum = (v, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const getPhq9Severity = (score) => {
+  const s = safeNum(score, 0);
+  if (s <= 4) return { label: "Mínima", range: "0–4" };
+  if (s <= 9) return { label: "Leve", range: "5–9" };
+  if (s <= 14) return { label: "Moderada", range: "10–14" };
+  return { label: "Severa", range: "15–27" };
+};
+
+const getGad7Severity = (score) => {
+  const s = safeNum(score, 0);
+  if (s <= 4) return { label: "Mínima", range: "0–4" };
+  if (s <= 9) return { label: "Leve", range: "5–9" };
+  if (s <= 14) return { label: "Moderada", range: "10–14" };
+  return { label: "Severa", range: "15–21" };
+};
+
+const formatDelta = (delta) => {
+  const d = safeNum(delta, 0);
+  if (d === 0) return "0";
+  return `${d > 0 ? "+" : ""}${d}`;
+};
+
 const buildXAxisLabels = (dates, target = 6) => {
   const arr = Array.isArray(dates) ? dates : [];
   if (!arr.length) return [];
@@ -93,39 +115,59 @@ const INFO_CONTENTS = {
     render: () => (
       <div className="space-y-4">
         <p className="text-gray-700">
-          La <strong>Puntuación Multimodal</strong> combina datos de múltiples
-          fuentes para ofrecer una evaluación integral de tu bienestar mental:
+          La <strong>Puntuación Multimodal</strong> es un indicador de seguimiento
+          (no diagnóstico) que combina <strong>cuestionarios</strong> y
+          <strong> análisis de voz</strong> para darte una visión más completa de
+          tu estado.
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-sm p-4">
             <p className="font-bold text-blue-900 mb-2">📝 Tests (60%)</p>
             <p className="text-sm text-gray-700">
-              PHQ-9 y GAD-7 evaluados por ti mismo
+              PHQ-9 (depresión) y GAD-7 (ansiedad), respondidos por ti.
             </p>
           </div>
           <div className="bg-purple-50 border-2 border-purple-200 rounded-ui-sm p-4">
             <p className="font-bold text-purple-900 mb-2">🎤 Voz (40%)</p>
             <p className="text-sm text-gray-700">
-              Análisis de biomarcadores vocales
+              Biomarcadores de la voz (tono, energía y estabilidad), usados como
+              señal complementaria.
             </p>
           </div>
         </div>
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-ui-md p-5">
-          <h4 className="font-bold text-indigo-900 mb-3">¿Por qué es mejor?</h4>
+          <h4 className="font-bold text-indigo-900 mb-3">¿Cómo leerla?</h4>
+          <p className="text-sm text-gray-700 mb-3">
+            Úsala para ver <strong>tendencias</strong> (si vas mejorando o
+            empeorando con el tiempo), no como una “nota” absoluta.
+          </p>
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <span className="text-green-600">✓</span>
-              <span>Más preciso que evaluaciones individuales</span>
+              <span>
+                Combina señales: si una fuente cambia, la otra ayuda a
+                contextualizar.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-600">✓</span>
-              <span>Detecta inconsistencias entre auto-reporte y voz</span>
+              <span>
+                Detecta discrepancias (por ejemplo, te sientes mal pero tu voz no
+                muestra cambios, o al revés).
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-600">✓</span>
-              <span>Captura cambios que podrías no percibir</span>
+              <span>Ayuda a identificar cambios sutiles semana a semana.</span>
             </li>
           </ul>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-ui-sm p-4">
+          <p className="text-sm text-gray-700">
+            <strong>Consejo:</strong> Para comparar de forma justa, intenta
+            contestar y grabar en condiciones similares (hora del día, descanso,
+            ruido).
+          </p>
         </div>
       </div>
     ),
@@ -136,8 +178,9 @@ const INFO_CONTENTS = {
     render: () => (
       <div className="space-y-4">
         <p className="text-gray-700">
-          El análisis de voz evalúa biomarcadores acústicos que se correlacionan
-          con estados emocionales y salud mental.
+          El <strong>análisis de voz</strong> estima cambios en biomarcadores
+          acústicos que pueden variar con estrés, fatiga y estado emocional.
+          Es una señal de apoyo para el seguimiento.
         </p>
         <div className="bg-purple-50 border-2 border-purple-200 rounded-ui-md p-5">
           <h4 className="font-bold text-purple-900 mb-3">
@@ -153,7 +196,7 @@ const INFO_CONTENTS = {
                   Pitch (Tono fundamental)
                 </p>
                 <p className="text-gray-600">
-                  Frecuencia de tu voz. Cambios pueden reflejar tu estado emocional.
+                  Frecuencia de tu voz. Puede cambiar con tensión, ánimo o cansancio.
                 </p>
               </div>
             </li>
@@ -164,7 +207,7 @@ const INFO_CONTENTS = {
               <div>
                 <p className="font-semibold text-gray-800">Energía vocal</p>
                 <p className="text-gray-600">
-                  Intensidad de tu voz. Refleja tu vitalidad y estado de ánimo.
+                  Intensidad de tu voz. Se relaciona con energía/vitalidad al hablar.
                 </p>
               </div>
             </li>
@@ -175,11 +218,18 @@ const INFO_CONTENTS = {
               <div>
                 <p className="font-semibold text-gray-800">Calidad vocal (HNR)</p>
                 <p className="text-gray-600">
-                  Relación armónicos/ruido. Mide estabilidad emocional.
+                  Relación armónicos/ruido. Orienta sobre estabilidad/claridad vocal.
                 </p>
               </div>
             </li>
           </ul>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-ui-sm p-4">
+          <p className="text-sm text-gray-700">
+            <strong>Para mejores resultados:</strong> graba en un lugar silencioso,
+            habla a una distancia similar del micrófono y evita hacerlo justo
+            después de gritar, fumar o si estás resfriado.
+          </p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-ui-sm p-4">
           <p className="text-sm text-gray-700">
@@ -197,12 +247,22 @@ const INFO_CONTENTS = {
     render: () => (
       <div className="space-y-4 text-gray-700">
         <p>
-          Aquí estás viendo la evolución de <strong>PHQ-9</strong> (depresión) y{" "}
-          <strong>GAD-7</strong> (ansiedad).
+          Aquí ves la evolución de <strong>PHQ-9</strong> (depresión) y{" "}
+          <strong>GAD-7</strong> (ansiedad) a lo largo del tiempo.
         </p>
+        <div className="bg-gray-50 border border-gray-200 rounded-ui-sm p-4">
+          <p className="text-sm text-gray-700">
+            <strong>Cómo usar estas gráficas:</strong> pasa el mouse sobre un punto
+            para ver el detalle. Fíjate especialmente en <strong>la tendencia</strong>
+            (sube/baja) y en el <strong>cambio vs. la medición anterior</strong>.
+          </p>
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="bg-blue-50 border-2 border-blue-200 rounded-ui-sm p-4">
             <p className="font-bold text-blue-900 mb-2">PHQ-9</p>
+            <p className="text-xs text-gray-700 mb-2">
+              A mayor puntuación, mayor intensidad de síntomas de depresión.
+            </p>
             <ul className="text-sm space-y-1">
               <li>• 0–4: mínima</li>
               <li>• 5–9: leve</li>
@@ -212,6 +272,9 @@ const INFO_CONTENTS = {
           </div>
           <div className="bg-teal-50 border-2 border-teal-200 rounded-ui-sm p-4">
             <p className="font-bold text-teal-900 mb-2">GAD-7</p>
+            <p className="text-xs text-gray-700 mb-2">
+              A mayor puntuación, mayor intensidad de síntomas de ansiedad.
+            </p>
             <ul className="text-sm space-y-1">
               <li>• 0–4: mínima</li>
               <li>• 5–9: leve</li>
@@ -221,8 +284,8 @@ const INFO_CONTENTS = {
           </div>
         </div>
         <p className="text-xs text-gray-500">
-          ⚠️ Esto no es diagnóstico clínico. Es una guía orientativa basada en
-          escalas psicométricas.
+          ⚠️ Esto no es diagnóstico clínico. Si tus puntajes se mantienen altos
+          o empeoran, considera hablar con un profesional de salud mental.
         </p>
       </div>
     ),
@@ -1337,7 +1400,7 @@ function Dashboard() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* PHQ-9 */}
               {phqScores.length > 0 && (
-                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-blue-50 rounded-ui-lg p-8">
+                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-ui-lg p-8">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="font-semibold text-gray-800">PHQ-9 (Depresión)</p>
                     <p className="text-sm text-gray-600">
@@ -1345,8 +1408,25 @@ function Dashboard() {
                     </p>
                   </div>
 
+                  <div className="mb-5 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-5 h-0.5 bg-blue-500 rounded" />
+                      <span>Línea: puntuación por evaluación</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-4 h-3 bg-blue-500/20 border border-blue-200 rounded-sm" />
+                      <span>Área: tendencia acumulada</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" />
+                      <span>Punto: medición individual</span>
+                    </div>
+                  </div>
+
+                  <div className="relative h-80">
+
                   {/* Eje Y */}
-                  <div className="absolute left-4 top-16 bottom-20 flex flex-col justify-between text-sm text-gray-600 font-medium">
+                  <div className="absolute left-0 top-2 bottom-12 flex flex-col justify-between text-sm text-gray-600 font-medium">
                     <span>27</span>
                     <span>20</span>
                     <span>15</span>
@@ -1356,7 +1436,7 @@ function Dashboard() {
                   </div>
 
                   {/* Grid */}
-                  <div className="absolute left-16 right-8 top-16 bottom-20">
+                  <div className="absolute left-12 right-0 top-2 bottom-12">
                     {[0, 1, 2, 3, 4, 5].map((i) => (
                       <div
                         key={i}
@@ -1368,7 +1448,7 @@ function Dashboard() {
 
                   {/* SVG Chart */}
                   <div
-                    className="absolute left-16 right-8 top-16 bottom-20"
+                    className="absolute left-12 right-0 top-2 bottom-12"
                     onMouseLeave={clearHover}
                   >
                     <svg
@@ -1384,11 +1464,21 @@ function Dashboard() {
                       </defs>
 
                       {/* Área */}
-                      {phqPolygon && <polygon points={phqPolygon} fill="url(#phq9Gradient)" />}
+                      {phqPolygon && (
+                        <motion.polygon
+                          key={`phq-area-${phqPolygon}`}
+                          points={phqPolygon}
+                          fill="url(#phq9Gradient)"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        />
+                      )}
 
                       {/* Línea */}
                       {phqPoints.length > 1 && (
-                        <polyline
+                        <motion.polyline
+                          key={`phq-line-${phqPolyline}`}
                           points={phqPolyline}
                           fill="none"
                           stroke="#3b82f6"
@@ -1396,6 +1486,9 @@ function Dashboard() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           vectorEffect="non-scaling-stroke"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: 1, opacity: 1 }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
                         />
                       )}
 
@@ -1420,6 +1513,9 @@ function Dashboard() {
                                 type: "phq9",
                                 index: p.index,
                                 score: p.score,
+                                prevScore: p.index > 0 ? safeNum(phqScores[p.index - 1]) : null,
+                                delta: p.index > 0 ? safeNum(p.score) - safeNum(phqScores[p.index - 1]) : null,
+                                severity: getPhq9Severity(p.score),
                                 date: safePhq?.dates?.[p.index],
                               })
                             }
@@ -1431,25 +1527,47 @@ function Dashboard() {
                       {hoveredPoint?.type === "phq9" && (
                         <foreignObject
                           x={clamp(
-                            (hoveredPoint.index / Math.max(phqPoints.length - 1, 1)) * 100 - 15,
+                            (hoveredPoint.index / Math.max(phqPoints.length - 1, 1)) * 100 - 22,
                             0,
-                            70
+                            56
                           )}
                           y={clamp(
-                            100 - (safeNum(hoveredPoint.score) / MAX_PHQ9) * 100 - 25,
+                            100 - (safeNum(hoveredPoint.score) / MAX_PHQ9) * 100 - 34,
                             0,
-                            80
+                            66
                           )}
-                          width="30"
-                          height="20"
+                          width="44"
+                          height="32"
                         >
-                            <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 text-xs whitespace-nowrap">
-                            <p className="font-bold text-gray-800">PHQ-9: {hoveredPoint.score}</p>
-                            <p className="text-gray-600">
+                          <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-blue-500 text-xs">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-bold text-gray-800">PHQ-9</p>
+                              <p className="text-gray-500">#{safeNum(hoveredPoint.index) + 1}/{phqPoints.length}</p>
+                            </div>
+                            <p className="text-gray-600 mt-0.5">
                               {hoveredPoint.date
-                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES")
+                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES", {
+                                    weekday: "short",
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
                                 : "—"}
                             </p>
+                            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
+                              <p className="text-gray-700">Puntuación</p>
+                              <p className="font-semibold text-gray-900">{hoveredPoint.score}/{MAX_PHQ9}</p>
+                              <p className="text-gray-700">Categoría</p>
+                              <p className="font-semibold text-gray-900">
+                                {hoveredPoint?.severity?.label} ({hoveredPoint?.severity?.range})
+                              </p>
+                              <p className="text-gray-700">Cambio</p>
+                              <p className="font-semibold text-gray-900">
+                                {hoveredPoint.delta === null || hoveredPoint.delta === undefined
+                                  ? "—"
+                                  : `${formatDelta(hoveredPoint.delta)} vs anterior`}
+                              </p>
+                            </div>
                           </div>
                         </foreignObject>
                       )}
@@ -1457,7 +1575,7 @@ function Dashboard() {
                   </div>
 
                   {/* Eje X */}
-                  <div className="absolute left-16 right-8 bottom-12 flex justify-between text-xs text-gray-600">
+                  <div className="absolute left-12 right-0 bottom-2 flex justify-between text-xs text-gray-600">
                     {phqXAxisLabels.map((date, index) => (
                       <span key={index}>
                         {date
@@ -1469,12 +1587,13 @@ function Dashboard() {
                       </span>
                     ))}
                   </div>
+                  </div>
                 </div>
               )}
 
               {/* GAD-7 */}
               {gadScores.length > 0 && (
-                <div className="relative h-96 bg-gradient-to-br from-gray-50 to-teal-50 rounded-ui-lg p-8">
+                <div className="bg-gradient-to-br from-gray-50 to-teal-50 rounded-ui-lg p-8">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="font-semibold text-gray-800">GAD-7 (Ansiedad)</p>
                     <p className="text-sm text-gray-600">
@@ -1482,8 +1601,25 @@ function Dashboard() {
                     </p>
                   </div>
 
+                  <div className="mb-5 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-5 h-0.5 bg-teal-500 rounded" />
+                      <span>Línea: puntuación por evaluación</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-4 h-3 bg-teal-500/20 border border-teal-200 rounded-sm" />
+                      <span>Área: tendencia acumulada</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-teal-500 rounded-full border border-white" />
+                      <span>Punto: medición individual</span>
+                    </div>
+                  </div>
+
+                  <div className="relative h-80">
+
                   {/* Eje Y */}
-                  <div className="absolute left-4 top-16 bottom-20 flex flex-col justify-between text-sm text-gray-600 font-medium">
+                  <div className="absolute left-0 top-2 bottom-12 flex flex-col justify-between text-sm text-gray-600 font-medium">
                     <span>21</span>
                     <span>17</span>
                     <span>13</span>
@@ -1493,7 +1629,7 @@ function Dashboard() {
                   </div>
 
                   {/* Grid */}
-                  <div className="absolute left-16 right-8 top-16 bottom-20">
+                  <div className="absolute left-12 right-0 top-2 bottom-12">
                     {[0, 1, 2, 3, 4, 5].map((i) => (
                       <div
                         key={i}
@@ -1505,7 +1641,7 @@ function Dashboard() {
 
                   {/* SVG Chart */}
                   <div
-                    className="absolute left-16 right-8 top-16 bottom-20"
+                    className="absolute left-12 right-0 top-2 bottom-12"
                     onMouseLeave={clearHover}
                   >
                     <svg
@@ -1521,11 +1657,21 @@ function Dashboard() {
                       </defs>
 
                       {/* Área */}
-                      {gadPolygon && <polygon points={gadPolygon} fill="url(#gad7Gradient)" />}
+                      {gadPolygon && (
+                        <motion.polygon
+                          key={`gad-area-${gadPolygon}`}
+                          points={gadPolygon}
+                          fill="url(#gad7Gradient)"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        />
+                      )}
 
                       {/* Línea */}
                       {gadPoints.length > 1 && (
-                        <polyline
+                        <motion.polyline
+                          key={`gad-line-${gadPolyline}`}
                           points={gadPolyline}
                           fill="none"
                           stroke="#14b8a6"
@@ -1533,6 +1679,9 @@ function Dashboard() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           vectorEffect="non-scaling-stroke"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: 1, opacity: 1 }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
                         />
                       )}
 
@@ -1557,6 +1706,9 @@ function Dashboard() {
                                 type: "gad7",
                                 index: p.index,
                                 score: p.score,
+                                prevScore: p.index > 0 ? safeNum(gadScores[p.index - 1]) : null,
+                                delta: p.index > 0 ? safeNum(p.score) - safeNum(gadScores[p.index - 1]) : null,
+                                severity: getGad7Severity(p.score),
                                 date: safeGad?.dates?.[p.index],
                               })
                             }
@@ -1568,25 +1720,47 @@ function Dashboard() {
                       {hoveredPoint?.type === "gad7" && (
                         <foreignObject
                           x={clamp(
-                            (hoveredPoint.index / Math.max(gadPoints.length - 1, 1)) * 100 - 15,
+                            (hoveredPoint.index / Math.max(gadPoints.length - 1, 1)) * 100 - 22,
                             0,
-                            70
+                            56
                           )}
                           y={clamp(
-                            100 - (safeNum(hoveredPoint.score) / MAX_GAD7) * 100 - 25,
+                            100 - (safeNum(hoveredPoint.score) / MAX_GAD7) * 100 - 34,
                             0,
-                            80
+                            66
                           )}
-                          width="30"
-                          height="20"
+                          width="44"
+                          height="32"
                         >
-                            <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-teal-500 text-xs whitespace-nowrap">
-                            <p className="font-bold text-gray-800">GAD-7: {hoveredPoint.score}</p>
-                            <p className="text-gray-600">
+                          <div className="bg-white px-3 py-2 rounded-ui-sm shadow-card border-2 border-teal-500 text-xs">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-bold text-gray-800">GAD-7</p>
+                              <p className="text-gray-500">#{safeNum(hoveredPoint.index) + 1}/{gadPoints.length}</p>
+                            </div>
+                            <p className="text-gray-600 mt-0.5">
                               {hoveredPoint.date
-                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES")
+                                ? new Date(hoveredPoint.date).toLocaleDateString("es-ES", {
+                                    weekday: "short",
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
                                 : "—"}
                             </p>
+                            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
+                              <p className="text-gray-700">Puntuación</p>
+                              <p className="font-semibold text-gray-900">{hoveredPoint.score}/{MAX_GAD7}</p>
+                              <p className="text-gray-700">Categoría</p>
+                              <p className="font-semibold text-gray-900">
+                                {hoveredPoint?.severity?.label} ({hoveredPoint?.severity?.range})
+                              </p>
+                              <p className="text-gray-700">Cambio</p>
+                              <p className="font-semibold text-gray-900">
+                                {hoveredPoint.delta === null || hoveredPoint.delta === undefined
+                                  ? "—"
+                                  : `${formatDelta(hoveredPoint.delta)} vs anterior`}
+                              </p>
+                            </div>
                           </div>
                         </foreignObject>
                       )}
@@ -1594,7 +1768,7 @@ function Dashboard() {
                   </div>
 
                   {/* Eje X */}
-                  <div className="absolute left-16 right-8 bottom-12 flex justify-between text-xs text-gray-600">
+                  <div className="absolute left-12 right-0 bottom-2 flex justify-between text-xs text-gray-600">
                     {gadXAxisLabels.map((date, index) => (
                       <span key={index}>
                         {date
@@ -1605,6 +1779,7 @@ function Dashboard() {
                           : "—"}
                       </span>
                     ))}
+                  </div>
                   </div>
                 </div>
               )}
