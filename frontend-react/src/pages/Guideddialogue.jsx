@@ -6,6 +6,7 @@ import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
 import BackgroundMusic from "../components/BackgroundMusic";
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import { notifyError } from "../utils/toast";
 
 function GuidedDialogue() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ function GuidedDialogue() {
       }, 1000);
     } catch (err) {
       console.error("Error al acceder al micrófono:", err);
-      alert("No se pudo acceder al micrófono. Por favor, permite el acceso.");
+      notifyError("No se pudo acceder al micrófono. Por favor, permite el acceso.");
     }
   };
 
@@ -155,7 +156,7 @@ function GuidedDialogue() {
       setShowResults(true);
     } catch (error) {
       console.error("Error al procesar diálogo:", error);
-      alert("Error al procesar tu diálogo. Por favor, intenta nuevamente.");
+      notifyError("Error al procesar tu diálogo. Por favor, intenta nuevamente.");
     } finally {
       setIsAnalyzing(false);
     }

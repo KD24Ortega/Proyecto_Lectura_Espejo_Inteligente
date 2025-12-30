@@ -5,6 +5,8 @@ import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import api from '../services/api';
 import useDynamicTheme from '../hooks/useDynamicTheme';
+import UnifiedModal from '../components/UnifiedModal';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/toast';
 
 function AdminUserProfile() {
   const { theme } = useDynamicTheme();
@@ -36,6 +38,11 @@ function AdminUserProfile() {
   const [sendConfirmation, setSendConfirmation] = useState(true);
   const [followupDate, setFollowupDate] = useState('');
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+
+  // Eliminar usuario (reemplaza prompt/confirm)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   // ====== VOZ ======
   const [voiceStats, setVoiceStats] = useState(null);
@@ -246,7 +253,7 @@ function AdminUserProfile() {
       if (error.response?.status === 403) {
         navigate('/admin/login');
       } else if (error.response?.status === 404) {
-        alert('Usuario no encontrado');
+        notifyError('Usuario no encontrado');
         navigate('/admin/users');
       }
       setUser(null);
@@ -290,8 +297,8 @@ function AdminUserProfile() {
       const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
 
       const statsRes = await apiGetTryPaths([
-        `/voice/user/${userId}/stats?days=${days}`,
         `/api/voice/user/${userId}/stats?days=${days}`,
+        `/voice/user/${userId}/stats?days=${days}`,
       ]);
       setVoiceStats(statsRes.data);
 
@@ -300,14 +307,14 @@ function AdminUserProfile() {
 
       try {
         sessionsRes = await apiGetTryPaths([
-          `/voice/sessions/user/${userId}?days=${days}&limit=50`,
           `/api/voice/sessions/user/${userId}?days=${days}&limit=50`,
+          `/voice/sessions/user/${userId}?days=${days}&limit=50`,
         ]);
       } catch {
         backendFiltered = false;
         sessionsRes = await apiGetTryPaths([
-          `/voice/sessions/user/${userId}?limit=50`,
           `/api/voice/sessions/user/${userId}?limit=50`,
+          `/voice/sessions/user/${userId}?limit=50`,
         ]);
       }
 
@@ -487,11 +494,11 @@ function AdminUserProfile() {
       setScheduleFollowup(true);
       setSendConfirmation(true);
 
-      alert('✅ Usuario marcado como atendido exitosamente');
+      notifySuccess('Usuario marcado como atendido exitosamente');
       loadUserProfile();
     } catch (error) {
       console.error('Error al marcar como atendido:', error);
-      alert('❌ Error al marcar como atendido. Por favor intenta nuevamente.');
+      notifyError('Error al marcar como atendido. Por favor intenta nuevamente.');
     } finally {
       setIsSubmittingAttendance(false);
     }
@@ -505,14 +512,14 @@ function AdminUserProfile() {
       author: adminName
     };
     localStorage.setItem('user_notes', JSON.stringify(notes));
-    alert('Nota guardada exitosamente');
+    notifySuccess('Nota guardada exitosamente');
     setShowNotes(false);
   };
 
   const handleExportCSV = () => {
     try {
       if (!assessments.length) {
-        alert("Este usuario aún no posee evaluaciones registradas.");
+        notifyInfo("Este usuario aún no posee evaluaciones registradas.");
         return;
       }
 
@@ -534,17 +541,17 @@ function AdminUserProfile() {
       el.download = `datos_${(user?.user?.full_name || 'usuario')}_${new Date().toISOString().split('T')[0]}.csv`;
       el.click();
 
-      alert('Datos exportados exitosamente');
+      notifySuccess('Datos exportados exitosamente');
     } catch (error) {
       console.error(error);
-      alert('Error al exportar CSV');
+      notifyError('Error al exportar CSV');
     }
   };
 
   const handleSendNotification = async () => {
     try {
       if (!user?.user?.email) {
-        alert("Este usuario no tiene correo registrado");
+        notifyWarning("Este usuario no tiene correo registrado");
         return;
       }
 
@@ -583,29 +590,40 @@ Administrador: ${adminName}
         message
       });
 
-      alert("📧 Correo enviado correctamente");
+      notifySuccess("Correo enviado correctamente");
     } catch (error) {
       console.error("Error enviando correo:", error);
-      alert("❌ No se pudo enviar la notificación.");
+      notifyError("No se pudo enviar la notificación.");
     }
   };
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = () => {
     if (!user?.user?.full_name) return;
+    setDeleteConfirmName('');
+    setShowDeleteModal(true);
+  };
 
-    const confirmation = prompt(`Para confirmar la eliminación, escribe el nombre del usuario: "${user.user.full_name}"`);
-    if (confirmation === user.user.full_name) {
-      try {
-        const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
-        await api.delete(`/admin/user/${userId}?user_id=${adminId}`);
-        alert('Usuario eliminado exitosamente');
-        navigate('/admin/users');
-      } catch (error) {
-        console.error('Error al eliminar usuario:', error);
-        alert('Error al eliminar usuario');
-      }
-    } else if (confirmation !== null) {
-      alert('El nombre no coincide. Operación cancelada.');
+  const submitDeleteUser = async () => {
+    if (!user?.user?.full_name) return;
+    if (isDeletingUser) return;
+
+    if (deleteConfirmName !== user.user.full_name) {
+      notifyWarning('El nombre no coincide. Operación cancelada.');
+      return;
+    }
+
+    try {
+      setIsDeletingUser(true);
+      const adminId = localStorage.getItem('admin_id') || sessionStorage.getItem('admin_id');
+      await api.delete(`/admin/user/${userId}?user_id=${adminId}`);
+      notifySuccess('Usuario eliminado exitosamente');
+      setShowDeleteModal(false);
+      navigate('/admin/users');
+    } catch (error) {
+      console.error('Error al eliminar usuario:', error);
+      notifyError('Error al eliminar usuario');
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -629,7 +647,7 @@ Administrador: ${adminName}
 
     const profile = user.user;
     if (!assessments.length) {
-      alert("Este usuario aún no posee evaluaciones registradas.");
+      notifyInfo("Este usuario aún no posee evaluaciones registradas.");
       return;
     }
 
@@ -1495,6 +1513,7 @@ Administrador: ${adminName}
 
                 <button
                   onClick={handleDeleteUser}
+                  disabled={isDeletingUser}
                   className="flex flex-col items-center gap-2 p-4 border-2 border-red-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition transform hover:scale-105"
                 >
                   <span className="text-3xl">🗑️</span>
@@ -1505,149 +1524,182 @@ Administrador: ${adminName}
           </main>
 
           {/* Modal marcar atendido */}
-          {showAttendedModal && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
-                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">✅ Marcar como Atendido</h2>
-                    <button
-                      onClick={() => setShowAttendedModal(false)}
-                      className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
-                      disabled={isSubmittingAttendance}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
+          <UnifiedModal
+            isOpen={showDeleteModal}
+            variant="error"
+            title="Eliminar usuario"
+            icon="🗑️"
+            size="lg"
+            onClose={() => {
+              if (isDeletingUser) return;
+              setShowDeleteModal(false);
+              setDeleteConfirmName('');
+            }}
+            closeOnBackdrop={!isDeletingUser}
+            closeOnEsc={!isDeletingUser}
+            primaryAction={{
+              label: 'Eliminar',
+              onClick: submitDeleteUser,
+              disabled: isDeletingUser || deleteConfirmName !== (user?.user?.full_name || ''),
+              loading: isDeletingUser,
+              loadingLabel: 'Eliminando...',
+            }}
+            secondaryAction={{
+              label: 'Cancelar',
+              onClick: () => {
+                if (isDeletingUser) return;
+                setShowDeleteModal(false);
+                setDeleteConfirmName('');
+              },
+              disabled: isDeletingUser,
+            }}
+          >
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-red-900">Esta acción es irreversible.</p>
+                <p className="text-sm text-red-800 mt-1">
+                  Para confirmar la eliminación, escribe exactamente el nombre del usuario:
+                </p>
+                <p className="mt-2 font-bold text-red-900">{user?.user?.full_name}</p>
+              </div>
 
-                <div className="p-6 space-y-5">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
-                    <p className="font-bold text-lg text-gray-800">{user?.user?.full_name}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date().toLocaleDateString('es-ES', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Notas de la Sesión (Opcional)
-                    </label>
-                    <textarea
-                      value={attendanceNotes}
-                      onChange={(e) => setAttendanceNotes(e.target.value)}
-                      placeholder="Describe brevemente la sesión..."
-                      className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      rows="4"
-                      disabled={isSubmittingAttendance}
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition">
-                      <input
-                        type="checkbox"
-                        checked={scheduleFollowup}
-                        onChange={(e) => setScheduleFollowup(e.target.checked)}
-                        className="mt-1 w-5 h-5 text-blue-600"
-                        disabled={isSubmittingAttendance}
-                      />
-                      <div className="flex-1">
-                        <span className="font-semibold text-gray-800">Programar seguimiento</span>
-                        {scheduleFollowup && (
-                          <input
-                            type="date"
-                            value={followupDate}
-                            onChange={(e) => setFollowupDate(e.target.value)}
-                            className="mt-2 w-full border border-blue-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={isSubmittingAttendance}
-                          />
-                        )}
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:bg-green-100 transition">
-                      <input
-                        type="checkbox"
-                        checked={sendConfirmation}
-                        onChange={(e) => setSendConfirmation(e.target.checked)}
-                        className="w-5 h-5 text-green-600"
-                        disabled={isSubmittingAttendance}
-                      />
-                      <span className="font-semibold text-gray-800">Enviar email de confirmación al paciente</span>
-                    </label>
-                  </div>
-
-                  <div className="flex gap-3 pt-4 border-t">
-                    <button
-                      onClick={() => setShowAttendedModal(false)}
-                      className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-                      disabled={isSubmittingAttendance}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={submitAttendance}
-                      className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      disabled={isSubmittingAttendance}
-                    >
-                      {isSubmittingAttendance ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Registrando...
-                        </>
-                      ) : (
-                        <>✓ Confirmar Atención</>
-                      )}
-                    </button>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Confirmación
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder="Escribe el nombre completo"
+                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  disabled={isDeletingUser}
+                />
+                <p className="mt-2 text-xs text-gray-600">
+                  El botón “Eliminar” se habilita cuando coincide.
+                </p>
               </div>
             </div>
-          )}
+          </UnifiedModal>
+
+          <UnifiedModal
+            isOpen={showAttendedModal}
+            variant="warning"
+            title="Marcar como Atendido"
+            icon="✅"
+            size="lg"
+            onClose={() => setShowAttendedModal(false)}
+            closeOnBackdrop={!isSubmittingAttendance}
+            closeOnEsc={!isSubmittingAttendance}
+            primaryAction={{
+              label: "Confirmar Atención",
+              onClick: submitAttendance,
+              disabled: isSubmittingAttendance,
+              loading: isSubmittingAttendance,
+              loadingLabel: "Registrando...",
+            }}
+            secondaryAction={{
+              label: "Cancelar",
+              onClick: () => setShowAttendedModal(false),
+              disabled: isSubmittingAttendance,
+            }}
+          >
+            <div className="space-y-5">
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <p className="text-sm text-gray-600 mb-1">Registrando atención para:</p>
+                <p className="font-bold text-lg text-gray-800">{user?.user?.full_name}</p>
+                <p className="text-sm text-gray-500">
+                  {new Date().toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Notas de la Sesión (Opcional)
+                </label>
+                <textarea
+                  value={attendanceNotes}
+                  onChange={(e) => setAttendanceNotes(e.target.value)}
+                  placeholder="Describe brevemente la sesión..."
+                  className="w-full border-2 border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  rows="4"
+                  disabled={isSubmittingAttendance}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={scheduleFollowup}
+                    onChange={(e) => setScheduleFollowup(e.target.checked)}
+                    className="mt-1 w-5 h-5 text-blue-600"
+                    disabled={isSubmittingAttendance}
+                  />
+                  <div className="flex-1">
+                    <span className="font-semibold text-gray-800">Programar seguimiento</span>
+                    {scheduleFollowup && (
+                      <input
+                        type="date"
+                        value={followupDate}
+                        onChange={(e) => setFollowupDate(e.target.value)}
+                        className="mt-2 w-full border border-blue-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={isSubmittingAttendance}
+                      />
+                    )}
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={sendConfirmation}
+                    onChange={(e) => setSendConfirmation(e.target.checked)}
+                    className="w-5 h-5 text-green-600"
+                    disabled={isSubmittingAttendance}
+                  />
+                  <span className="font-semibold text-gray-800">Enviar email de confirmación al paciente</span>
+                </label>
+              </div>
+            </div>
+          </UnifiedModal>
 
           {/* Modal recomendaciones (si quieres, lo reinsertamos igual que antes) */}
-          {showRecommendationsModal && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl flex justify-between">
-                  <h2 className="text-xl font-bold">💡 Recomendaciones</h2>
-                  <button
-                    onClick={() => setShowRecommendationsModal(false)}
-                    className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="bg-gray-50 border rounded-xl p-4">
-                    <p className="font-semibold text-gray-800">Multimodal:</p>
-                    <p className="text-sm text-gray-700">
-                      {multimodal.level}{multimodal.index !== null ? ` • ${multimodal.index}/100` : ''} — {multimodal.note}
-                    </p>
-                  </div>
-                  {trends?.insights?.recommendations?.length ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <p className="font-semibold text-blue-900 mb-2">Recomendaciones (tendencias):</p>
-                      <ul className="list-disc pl-5 text-sm text-blue-800 space-y-1">
-                        {trends.insights.recommendations.map((r, i) => <li key={i}>{r}</li>)}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-600">No hay recomendaciones automáticas disponibles.</p>
-                  )}
-                </div>
+          <UnifiedModal
+            isOpen={showRecommendationsModal}
+            variant="info"
+            title="Recomendaciones"
+            icon="💡"
+            size="lg"
+            onClose={() => setShowRecommendationsModal(false)}
+            primaryAction={{ label: "Cerrar", onClick: () => setShowRecommendationsModal(false) }}
+          >
+            <div className="space-y-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="font-semibold text-gray-800">Multimodal:</p>
+                <p className="text-sm text-gray-700">
+                  {multimodal.level}{multimodal.index !== null ? ` • ${multimodal.index}/100` : ''} — {multimodal.note}
+                </p>
               </div>
+              {trends?.insights?.recommendations?.length ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="font-semibold text-blue-900 mb-2">Recomendaciones (tendencias):</p>
+                  <ul className="list-disc pl-5 text-sm text-blue-800 space-y-1">
+                    {trends.insights.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">No hay recomendaciones automáticas disponibles.</p>
+              )}
             </div>
-          )}
+          </UnifiedModal>
 
         </div>
       )}

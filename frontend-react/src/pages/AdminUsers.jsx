@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import api from '../services/api';
 import useDynamicTheme from '../hooks/useDynamicTheme';
+import { notifyError, notifySuccess } from '../utils/toast';
 
 function AdminUsers() {
   const { theme } = useDynamicTheme();
@@ -304,7 +305,7 @@ function AdminUsers() {
 
     } catch (error) {
       console.error("Error al generar PDF:", error);
-      alert("Ocurrió un error al generar el reporte.");
+      notifyError("Ocurrió un error al generar el reporte.");
     }
   };
 
@@ -325,11 +326,11 @@ Equipo de CalmaSense.
         message: message
       });
 
-      alert("Correo enviado correctamente ✔️");
+      notifySuccess("Correo enviado correctamente");
 
     } catch (error) {
       console.error("Error enviando correo:", error);
-      alert("Error enviando correo.");
+      notifyError("Error enviando correo.");
     }
   };
 

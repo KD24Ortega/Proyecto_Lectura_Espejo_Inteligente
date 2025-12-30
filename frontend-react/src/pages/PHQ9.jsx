@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
+import UnifiedModal from "../components/UnifiedModal";
+import { notifyConnectionError, notifySuccess } from "../utils/toast";
 
 // ✅ Fallback STT (Vosk en backend)
 import { recordAudioBlob } from "../utils/voskFallback";
@@ -29,6 +31,13 @@ function PHQ9() {
 
   // ✅ evita doble envío
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ evita doble click en "Siguiente" (avance de pregunta)
+  const [isAdvancing, setIsAdvancing] = useState(false);
+
+  useEffect(() => {
+    setIsAdvancing(false);
+  }, [currentQuestion]);
 
   // Estados de voz - Text to Speech
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -227,88 +236,6 @@ function PHQ9() {
     }
   };
 
-  // ============================================
-  // COMPONENTE MODAL REUTILIZABLE
-  // ============================================
-  const Modal = ({
-    type,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    showCancel = false,
-  }) => {
-    const icons = {
-      error: "❌",
-      warning: "⚠️",
-      info: "💡",
-      success: "✅",
-    };
-
-    const colorClasses = {
-      error: { title: "text-red-600", button: "bg-red-600 hover:bg-red-700" },
-      warning: {
-        title: "text-yellow-600",
-        button: "bg-yellow-600 hover:bg-yellow-700",
-      },
-      info: { title: "text-blue-600", button: "bg-blue-600 hover:bg-blue-700" },
-      success: {
-        title: "text-green-600",
-        button: "bg-green-600 hover:bg-green-700",
-      },
-    };
-
-    const colors = colorClasses[type];
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
-        >
-          <div className="text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1, type: "spring" }}
-              className="mb-4 text-6xl"
-            >
-              {icons[type]}
-            </motion.div>
-
-            {title && (
-              <h3 className={`text-2xl font-bold ${colors.title} mb-3`}>
-                {title}
-              </h3>
-            )}
-
-            <p className="text-gray-600 mb-6 leading-relaxed">{message}</p>
-
-            <div className="flex gap-3 justify-center">
-              {showCancel && (
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all hover:scale-105"
-                >
-                  Cancelar
-                </button>
-              )}
-
-              <button
-                onClick={onConfirm || onClose}
-                className={`px-6 py-3 ${colors.button} text-white rounded-xl font-semibold transition-all shadow-lg hover:scale-105`}
-              >
-                {showCancel ? "Confirmar" : "Aceptar"}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    );
-  };
-
   const showModalMessage = (config) => {
     setModalConfig(config);
     setShowModal(true);
@@ -328,6 +255,7 @@ function PHQ9() {
       setIsLoading(false);
     } catch (error) {
       console.error("Error al cargar preguntas:", error);
+      notifyConnectionError(error, "Error de conexión");
       setIsLoading(false);
       showModalMessage({
         type: "error",
@@ -509,6 +437,7 @@ function PHQ9() {
   // ============================================
   const handleNext = () => {
     if (isSubmitting) return;
+    if (isAdvancing) return;
 
     if (answers[currentQuestion] === null) {
       showModalMessage({
@@ -521,6 +450,7 @@ function PHQ9() {
     }
 
     if (currentQuestion < questions.length - 1) {
+      setIsAdvancing(true);
       setCurrentQuestion(currentQuestion + 1);
       setVoiceTranscript("");
       setShowVoiceConfirm(false);
@@ -532,8 +462,10 @@ function PHQ9() {
 
   const handlePrevious = () => {
     if (isSubmitting) return;
+    if (isAdvancing) return;
 
     if (currentQuestion > 0) {
+      setIsAdvancing(true);
       setCurrentQuestion(currentQuestion - 1);
       setVoiceTranscript("");
       setShowVoiceConfirm(false);
@@ -581,6 +513,8 @@ function PHQ9() {
       localStorage.setItem("last_phq9_score", response.data.score);
       localStorage.setItem("last_phq9_severity", response.data.severity);
 
+      notifySuccess("Evaluación completada");
+
       navigate("/results", {
         state: {
           type: "phq9",
@@ -590,6 +524,7 @@ function PHQ9() {
       });
     } catch (error) {
       console.error("Error al enviar test:", error);
+      notifyConnectionError(error, "Error de conexión");
       showModalMessage({
         type: "error",
         title: "Error al enviar",
@@ -656,25 +591,48 @@ function PHQ9() {
   ];
 
   const isLast = currentQuestion === questions.length - 1;
-  const isNextDisabled = answers[currentQuestion] === null || isSubmitting;
+  const isNextDisabled = answers[currentQuestion] === null || isSubmitting || isAdvancing;
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${bg} p-4 md:p-6 transition-all duration-1000`}>
       {enableFace && <FaceMonitor isActive={true} />}
 
       <AnimatePresence>
-        {showModal && <Modal {...modalConfig} onClose={closeModal} />}
+        <UnifiedModal
+          isOpen={showModal}
+          variant={modalConfig.type}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          onClose={closeModal}
+          primaryAction={{
+            label: modalConfig.showCancel ? "Confirmar" : "Aceptar",
+            onClick: modalConfig.onConfirm || closeModal,
+          }}
+          secondaryAction={
+            modalConfig.showCancel
+              ? { label: "Cancelar", onClick: closeModal }
+              : null
+          }
+        />
 
-        {showExitConfirm && (
-          <Modal
-            type="warning"
-            title="¿Salir del test?"
-            message="Si sales ahora, perderás tu progreso actual. ¿Estás seguro de que quieres salir?"
-            showCancel={true}
-            onConfirm={() => navigate("/home")}
-            onClose={() => setShowExitConfirm(false)}
-          />
-        )}
+        <UnifiedModal
+          isOpen={showExitConfirm}
+          variant="warning"
+          title="¿Salir del test?"
+          message="Si sales ahora, perderás tu progreso actual. ¿Estás seguro de que quieres salir?"
+          onClose={() => setShowExitConfirm(false)}
+          primaryAction={{
+            label: "Confirmar",
+            onClick: () => {
+              setShowExitConfirm(false);
+              navigate("/home");
+            },
+          }}
+          secondaryAction={{
+            label: "Cancelar",
+            onClick: () => setShowExitConfirm(false),
+          }}
+        />
       </AnimatePresence>
 
       <div className="max-w-2xl mx-auto">
@@ -944,9 +902,9 @@ function PHQ9() {
           <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <button
               onClick={handlePrevious}
-              disabled={currentQuestion === 0 || isSubmitting}
+              disabled={currentQuestion === 0 || isSubmitting || isAdvancing}
               className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                currentQuestion === 0 || isSubmitting
+                currentQuestion === 0 || isSubmitting || isAdvancing
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                   : "bg-gray-200 hover:bg-gray-300 text-gray-700 hover:shadow-md hover:scale-105"
               }`}
@@ -966,6 +924,11 @@ function PHQ9() {
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   Guardando...
+                  <span className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin"></span>
+                </span>
+              ) : isAdvancing ? (
+                <span className="inline-flex items-center gap-2">
+                  Avanzando...
                   <span className="w-4 h-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin"></span>
                 </span>
               ) : (

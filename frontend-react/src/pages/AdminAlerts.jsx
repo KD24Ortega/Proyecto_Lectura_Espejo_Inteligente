@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useDynamicTheme from '../hooks/useDynamicTheme';
+import { notifyError, notifySuccess, notifyWarning } from '../utils/toast';
 
 function AdminAlerts() {
   const { theme } = useDynamicTheme();
@@ -174,7 +175,7 @@ function AdminAlerts() {
       const body = encodeURIComponent(`Estimado/a ${user.full_name},\n\nNos comunicamos para hacer un seguimiento de tu estado...\n\nSaludos,\n${adminName}`);
       window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`;
     } else {
-      alert('Este usuario no tiene email registrado');
+      notifyWarning('Este usuario no tiene email registrado');
     }
   };
 
@@ -198,7 +199,7 @@ function AdminAlerts() {
 
   const handleBulkAction = (action) => {
     if (selectedAlerts.length === 0) {
-      alert('Selecciona al menos un usuario');
+      notifyWarning('Selecciona al menos un usuario');
       return;
     }
 
@@ -209,7 +210,7 @@ function AdminAlerts() {
       if (emails) {
         window.location.href = `mailto:${emails}?subject=${encodeURIComponent('Seguimiento - CalmaSense')}`;
       } else {
-        alert('Ninguno de los usuarios seleccionados tiene email');
+        notifyWarning('Ninguno de los usuarios seleccionados tiene email');
       }
     } else if (action === 'export') {
       // Exportar CSV de seleccionados
@@ -232,9 +233,9 @@ function AdminAlerts() {
       a.download = `alertas_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       
-      alert(`${selectedAlerts.length} alertas exportadas`);
+      notifySuccess(`${selectedAlerts.length} alertas exportadas`);
     } else if (action === 'mark') {
-      alert(`${selectedAlerts.length} alertas marcadas como atendidas`);
+      notifySuccess(`${selectedAlerts.length} alertas marcadas como atendidas`);
       setSelectedAlerts([]);
     }
   };

@@ -301,9 +301,9 @@ function Home() {
             <div className="mt-4">
               <p className="text-sm font-semibold text-gray-800 mb-2">Acciones sugeridas</p>
               <div className="flex flex-wrap gap-2">
-                {theme.tools.map((t) => (
+                {theme.tools.map((t, idx) => (
                   <span
-                    key={t}
+                    key={`tool-${idx}`}
                     className="px-3 py-1 rounded-full bg-white/80 border border-gray-200 text-sm text-gray-800"
                   >
                     {t}

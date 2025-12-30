@@ -2,39 +2,14 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Camera from '../components/Camera';
 import api from '../services/api';
+import UnifiedModal from '../components/UnifiedModal';
 
-// Modal personalizado para alertas
-const AlertModal = ({ message, type = 'error', onClose }) => {
-  const icons = {
-    error: '❌',
-    warning: '⚠️',
-    success: '✅',
-    info: 'ℹ️'
-  };
-
-  const colors = {
-    error: 'border-red-300 bg-red-50',
-    warning: 'border-yellow-300 bg-yellow-50',
-    success: 'border-green-300 bg-green-50',
-    info: 'border-blue-300 bg-blue-50'
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border-2 ${colors[type]}`}>
-        <div className="text-center">
-          <div className="text-5xl mb-4">{icons[type]}</div>
-          <p className="text-gray-800 font-medium mb-6">{message}</p>
-          <button
-            onClick={onClose}
-            className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-blue-700 transition"
-          >
-            Entendido
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+const getAlertTitle = (type) => {
+  const t = (type || 'info').toLowerCase();
+  if (t === 'success') return '¡Listo!';
+  if (t === 'warning') return 'Atención';
+  if (t === 'error') return 'Ups…';
+  return 'Información';
 };
 
 function Register() {
@@ -327,10 +302,17 @@ function Register() {
 
       {/* Modal de alertas */}
       {alert && (
-        <AlertModal
+        <UnifiedModal
+          isOpen={true}
+          variant={alert.type}
+          title={getAlertTitle(alert.type)}
           message={alert.message}
-          type={alert.type}
+          size="sm"
           onClose={() => setAlert(null)}
+          primaryAction={{
+            label: 'Entendido',
+            onClick: () => setAlert(null),
+          }}
         />
       )}
 

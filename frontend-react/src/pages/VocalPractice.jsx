@@ -11,6 +11,7 @@ import BackgroundMusic from "../components/BackgroundMusic";
 
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import { notifyError } from "../utils/toast";
 
 function VocalPractice() {
   const navigate = useNavigate();
@@ -144,7 +145,7 @@ function VocalPractice() {
       startSequence();
     } catch (err) {
       console.error("Error al acceder al micrófono:", err);
-      alert("No se pudo acceder al micrófono. Por favor, permite el acceso.");
+      notifyError("No se pudo acceder al micrófono. Por favor, permite el acceso.");
     }
   };
 
@@ -214,7 +215,7 @@ function VocalPractice() {
       setShowResults(true);
     } catch (error) {
       console.error("Error al procesar práctica vocal:", error);
-      alert("Error al procesar tu práctica vocal. Por favor, intenta nuevamente.");
+      notifyError("Error al procesar tu práctica vocal. Por favor, intenta nuevamente.");
     } finally {
       setIsAnalyzing(false);
     }

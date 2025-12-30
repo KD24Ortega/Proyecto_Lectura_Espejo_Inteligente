@@ -10,6 +10,7 @@ import parselmouth
 import webrtcvad
 import io
 import base64
+import os
 from typing import Dict
 
 # =====================
@@ -202,11 +203,49 @@ def procesar_audio_archivo(archivo_bytes: bytes, genero: str = "neutro") -> Dict
     Soporta WAV, WebM, MP3, OGG, etc.
     """
     try:
+        # 1) Camino rápido: si es WAV real, evitamos ffmpeg por completo.
+        # Esto ayuda especialmente en Windows/localhost donde ffmpeg suele faltar.
+        if archivo_bytes[:4] == b"RIFF" and b"WAVE" in archivo_bytes[:16]:
+            try:
+                from scipy.io import wavfile
+
+                sr, data = wavfile.read(io.BytesIO(archivo_bytes))
+                if data is None or (hasattr(data, "size") and data.size == 0):
+                    raise ValueError("WAV vacío")
+
+                # Convertir a mono
+                if getattr(data, "ndim", 1) > 1:
+                    data = np.mean(data, axis=1)
+
+                # Normalizar a float32 [-1, 1]
+                if np.issubdtype(data.dtype, np.integer):
+                    max_val = float(np.iinfo(data.dtype).max) or 32768.0
+                    audio_data = data.astype(np.float32) / max_val
+                else:
+                    audio_data = data.astype(np.float32)
+
+                # Resample a SAMPLE_RATE si hace falta
+                if int(sr) != SAMPLE_RATE:
+                    audio_data = librosa.resample(audio_data, orig_sr=int(sr), target_sr=SAMPLE_RATE)
+                    sr = SAMPLE_RATE
+
+                return analizar_voz_audio(audio_data, int(sr), genero)
+            except Exception:
+                # Si no se puede leer como WAV (p.ej. Blob "audio/wav" que en realidad es WebM),
+                # caemos al path con ffmpeg.
+                pass
+
+        # 2) Camino general: pydub + ffmpeg para WebM/MP3/OGG/etc.
         from pydub import AudioSegment
+        from pydub.exceptions import CouldntDecodeError
         import tempfile
-        import os
         import io
         
+        # Permitir setear ffmpeg explícitamente (útil en Windows).
+        ffmpeg_bin = (os.getenv("FFMPEG_BINARY") or os.getenv("FFMPEG_PATH") or "").strip()
+        if ffmpeg_bin:
+            AudioSegment.converter = ffmpeg_bin
+
         # Crear archivo temporal (la extensión puede ser engañosa; ffmpeg suele detectar por contenido)
         with tempfile.NamedTemporaryFile(suffix='.tmp', delete=False) as temp_input:
             temp_input.write(archivo_bytes)
@@ -234,6 +273,26 @@ def procesar_audio_archivo(archivo_bytes: bytes, genero: str = "neutro") -> Dict
             resultado = analizar_voz_audio(audio_data, sr, genero)
             return resultado
             
+        except FileNotFoundError as e:
+            # Frecuente en localhost Windows: ffmpeg no está instalado/en PATH.
+            if os.path.exists(temp_input_path):
+                os.unlink(temp_input_path)
+            raise Exception(
+                "No se pudo decodificar el audio porque falta ffmpeg. "
+                "En deploy funciona porque el Dockerfile instala ffmpeg. "
+                "Solución localhost (Windows): instala ffmpeg y agrégalo al PATH, "
+                "o setea la variable de entorno FFMPEG_BINARY con la ruta a ffmpeg.exe. "
+                f"Detalle: {str(e)}"
+            )
+        except CouldntDecodeError as e:
+            if os.path.exists(temp_input_path):
+                os.unlink(temp_input_path)
+            raise Exception(
+                "No se pudo decodificar el audio (formato no soportado/local sin ffmpeg). "
+                "Si estás grabando con MediaRecorder, normalmente el blob real es WebM/Opus aunque lo nombres .wav. "
+                "Instala ffmpeg localmente o ejecuta el backend vía Docker para igualar el entorno de deploy. "
+                f"Detalle: {str(e)}"
+            )
         except Exception as e:
             # Limpiar en caso de error
             if os.path.exists(temp_input_path):

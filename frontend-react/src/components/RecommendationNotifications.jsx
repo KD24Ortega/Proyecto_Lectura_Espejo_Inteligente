@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import UnifiedModal from './UnifiedModal';
 
 /**
  * Notificación Toast - Aparece en la esquina
@@ -122,131 +123,91 @@ export const RecommendationModal = ({
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={onClose}
-        >
+    <UnifiedModal
+      isOpen={isOpen}
+      variant="info"
+      title={personalizedMessage?.title || "Recomendaciones"}
+      icon={personalizedMessage?.emoji || "💡"}
+      onClose={onClose}
+      size="lg"
+      primaryAction={{ label: "Ver más tarde", onClick: onClose }}
+    >
+      {personalizedMessage?.message ? (
+        <p className="text-sm text-gray-700 mb-5">{personalizedMessage.message}</p>
+      ) : null}
+
+      <h3 className="text-lg font-bold text-gray-900 mb-4">
+        Ejercicios recomendados para ti:
+      </h3>
+
+      <div className="space-y-4">
+        {(exercises || []).map((exercise, index) => (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            key={exercise.id}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.06 }}
+            className={`group border-2 ${
+              exercise.type === 'anxiety'
+                ? 'border-blue-200 hover:border-blue-400 bg-blue-50/50'
+                : 'border-amber-200 hover:border-amber-400 bg-amber-50/50'
+            } rounded-2xl p-5 transition-all hover:shadow-lg cursor-pointer`}
+            onClick={() => handleExerciseClick(exercise)}
           >
-            {/* Header */}
-            <div className={`bg-gradient-to-r from-${personalizedMessage.color}-500 to-${personalizedMessage.color}-600 p-6`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-4xl">{personalizedMessage.emoji}</span>
-                    <h2 className="text-3xl font-bold text-white">
-                      {personalizedMessage.title}
-                    </h2>
-                  </div>
-                  <p className="text-white/90 text-sm ml-12">
-                    {personalizedMessage.message}
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Ejercicios recomendados */}
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Ejercicios recomendados para ti:
-              </h3>
-
-              <div className="space-y-4">
-                {exercises.map((exercise, index) => (
-                  <motion.div
-                    key={exercise.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`group border-2 ${
-                      exercise.type === 'anxiety'
-                        ? 'border-blue-200 hover:border-blue-400 bg-blue-50/50'
-                        : 'border-amber-200 hover:border-amber-400 bg-amber-50/50'
-                    } rounded-2xl p-5 transition-all hover:shadow-lg cursor-pointer`}
-                    onClick={() => handleExerciseClick(exercise)}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Icono */}
-                      <div className={`w-16 h-16 bg-gradient-to-br ${
-                        exercise.type === 'anxiety'
-                          ? 'from-blue-400 to-blue-600'
-                          : 'from-amber-400 to-amber-600'
-                      } rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                        <span className="text-3xl">{exercise.icon}</span>
-                      </div>
-
-                      {/* Contenido */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-bold text-gray-800 text-lg">
-                            {exercise.title}
-                          </h4>
-                          <span className="text-xs bg-white px-3 py-1 rounded-full text-gray-600 flex items-center gap-1 flex-shrink-0 ml-2">
-                            <span>⏱️</span>
-                            {exercise.duration}
-                          </span>
-                        </div>
-
-                        <p className="text-gray-600 text-sm mb-3 leading-relaxed">
-                          {exercise.description}
-                        </p>
-
-                        {/* Tags */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {exercise.tags && exercise.tags.map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className={`px-2 py-1 ${
-                                exercise.type === 'anxiety'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-amber-100 text-amber-700'
-                              } rounded-full text-xs`}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Flecha */}
-                      <div className={`${
-                        exercise.type === 'anxiety' ? 'text-blue-500' : 'text-amber-500'
-                      } text-2xl group-hover:translate-x-1 transition-transform flex-shrink-0`}>
-                        →
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Botón cerrar */}
-              <button
-                onClick={onClose}
-                className="w-full mt-6 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition"
+            <div className="flex items-start gap-4">
+              <div
+                className={`w-16 h-16 bg-gradient-to-br ${
+                  exercise.type === 'anxiety'
+                    ? 'from-blue-400 to-blue-600'
+                    : 'from-amber-400 to-amber-600'
+                } rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}
               >
-                Ver más tarde
-              </button>
+                <span className="text-3xl">{exercise.icon}</span>
+              </div>
+
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-bold text-gray-800 text-lg">
+                    {exercise.title}
+                  </h4>
+                  <span className="text-xs bg-white px-3 py-1 rounded-full text-gray-600 flex items-center gap-1 flex-shrink-0 ml-2">
+                    <span>⏱️</span>
+                    {exercise.duration}
+                  </span>
+                </div>
+
+                <p className="text-gray-600 text-sm mb-3 leading-relaxed">
+                  {exercise.description}
+                </p>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {exercise.tags && exercise.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className={`px-2 py-1 ${
+                        exercise.type === 'anxiety'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-amber-100 text-amber-700'
+                      } rounded-full text-xs`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className={`${
+                  exercise.type === 'anxiety' ? 'text-blue-500' : 'text-amber-500'
+                } text-2xl group-hover:translate-x-1 transition-transform flex-shrink-0`}
+              >
+                →
+              </div>
             </div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        ))}
+      </div>
+    </UnifiedModal>
   );
 };
 

@@ -11,6 +11,7 @@ import BackgroundMusic from '../components/BackgroundMusic';
 
 // ✅ Hook de theme dinámico
 import useDynamicTheme from '../hooks/useDynamicTheme';
+import { notifyError } from '../utils/toast';
 
 function BreathingVocalization() {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ function BreathingVocalization() {
 
     } catch (error) {
       console.error('Error al acceder al micrófono:', error);
-      alert('No se pudo acceder al micrófono. Por favor, permite el acceso.');
+      notifyError('No se pudo acceder al micrófono. Por favor, permite el acceso.');
     }
   };
 
@@ -174,7 +175,7 @@ function BreathingVocalization() {
 
     } catch (error) {
       console.error('Error al analizar audio:', error);
-      alert('Hubo un error al analizar tu voz. Por favor, intenta nuevamente.');
+      notifyError('Hubo un error al analizar tu voz. Por favor, intenta nuevamente.');
     } finally {
       setIsAnalyzing(false);
     }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import useDynamicTheme from '../hooks/useDynamicTheme';
+import UnifiedModal from '../components/UnifiedModal';
 
 function AdminLogin() {
   const { theme } = useDynamicTheme();
@@ -21,78 +22,6 @@ function AdminLogin() {
     title: '',
     message: ''
   });
-
-  // ============================================
-  // COMPONENTE MODAL
-  // ============================================
-  const Modal = ({ type, title, message, onClose }) => {
-    const icons = {
-      error: '❌',
-      warning: '⚠️',
-      info: '💡',
-      success: '✅'
-    };
-
-    const colorClasses = {
-      error: {
-        bg: 'from-red-50 to-red-100',
-        title: 'text-red-600',
-        button: 'bg-red-600 hover:bg-red-700'
-      },
-      warning: {
-        bg: 'from-yellow-50 to-yellow-100',
-        title: 'text-yellow-600',
-        button: 'bg-yellow-600 hover:bg-yellow-700'
-      },
-      info: {
-        bg: 'from-blue-50 to-blue-100',
-        title: 'text-blue-600',
-        button: 'bg-blue-600 hover:bg-blue-700'
-      },
-      success: {
-        bg: 'from-green-50 to-green-100',
-        title: 'text-green-600',
-        button: 'bg-green-600 hover:bg-green-700'
-      }
-    };
-
-    const colors = colorClasses[type];
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
-        >
-          <div className="text-center">
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1, type: 'spring' }}
-              className="mb-4 text-6xl"
-            >
-              {icons[type]}
-            </motion.div>
-            {title && (
-              <h3 className={`text-2xl font-bold ${colors.title} mb-3`}>
-                {title}
-              </h3>
-            )}
-            <p className="text-gray-600 mb-6 leading-relaxed">{message}</p>
-            
-            <button
-              onClick={onClose}
-              className={`px-8 py-3 ${colors.button} text-white rounded-xl font-semibold transition-all shadow-lg hover:scale-105`}
-            >
-              Entendido
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  };
 
   const showModalMessage = (config) => {
     setModalConfig(config);
@@ -210,12 +139,15 @@ function AdminLogin() {
       
       {/* Modal */}
       <AnimatePresence>
-        {showModal && (
-          <Modal
-            {...modalConfig}
-            onClose={closeModal}
-          />
-        )}
+        <UnifiedModal
+          isOpen={showModal}
+          variant={modalConfig.type}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          onClose={closeModal}
+          primaryAction={{ label: 'Entendido', onClick: closeModal }}
+          size="md"
+        />
       </AnimatePresence>
 
       <motion.div 

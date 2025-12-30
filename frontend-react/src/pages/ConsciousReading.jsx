@@ -11,6 +11,7 @@ import BackgroundMusic from "../components/BackgroundMusic";
 
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import { notifyError } from "../utils/toast";
 
 function ConsciousReading() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ function ConsciousReading() {
         setTimeElapsed((prev) => prev + 1);
       }, 1000);
     } catch (e) {
-      alert("No se pudo acceder al micrófono.");
+      notifyError("No se pudo acceder al micrófono.");
     }
   };
 
@@ -143,7 +144,7 @@ function ConsciousReading() {
 
       setAnalysisResults(res.data);
     } catch (err) {
-      alert("Error al analizar audio.");
+      notifyError("Error al analizar audio.");
     } finally {
       setIsAnalyzing(false);
     }

@@ -5,6 +5,7 @@ import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
 import BackgroundMusic from '../components/BackgroundMusic';
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import UnifiedModal from "../components/UnifiedModal";
 
 /* =====================================================
    CONSTANTES / HELPERS (fuera del componente)
@@ -67,43 +68,18 @@ const InfoModal = React.memo(function InfoModal({
   content,
   icon,
 }) {
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{icon}</span>
-                <h2 className="text-3xl font-bold text-gray-800">{title}</h2>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition"
-                aria-label="Cerrar"
-              >
-                ✕
-              </button>
-            </div>
-            {content}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    <UnifiedModal
+      isOpen={isOpen}
+      variant="info"
+      title={title}
+      icon={icon}
+      onClose={onClose}
+      size="lg"
+      hideFooter={true}
+    >
+      {content}
+    </UnifiedModal>
   );
 });
 
@@ -970,9 +946,9 @@ function Dashboard() {
               <div className="mt-4">
                 <p className="text-sm font-semibold text-gray-800 mb-2">Acciones sugeridas</p>
                 <div className="flex flex-wrap gap-2">
-                  {theme.tools.map((t) => (
+                  {theme.tools.map((t, idx) => (
                     <span
-                      key={t}
+                      key={`tool-${idx}`}
                       className="px-3 py-1 rounded-full bg-white/80 border border-gray-200 text-sm text-gray-800"
                     >
                       {t}

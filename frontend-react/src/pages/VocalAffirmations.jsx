@@ -11,6 +11,7 @@ import BackgroundMusic from "../components/BackgroundMusic";
 
 // ✅ Hook de theme dinámico
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import { notifyError } from "../utils/toast";
 
 function VocalAffirmations() {
   const navigate = useNavigate();
@@ -108,7 +109,7 @@ function VocalAffirmations() {
       }, 1000);
     } catch (err) {
       console.error("Error al acceder al micrófono:", err);
-      alert("No se pudo acceder al micrófono. Por favor, permite el acceso.");
+      notifyError("No se pudo acceder al micrófono. Por favor, permite el acceso.");
     }
   };
 
@@ -158,7 +159,7 @@ function VocalAffirmations() {
       setShowResults(true);
     } catch (error) {
       console.error("Error al procesar afirmaciones:", error);
-      alert("Error al procesar tus afirmaciones. Por favor, intenta nuevamente.");
+      notifyError("Error al procesar tus afirmaciones. Por favor, intenta nuevamente.");
     } finally {
       setIsAnalyzing(false);
     }

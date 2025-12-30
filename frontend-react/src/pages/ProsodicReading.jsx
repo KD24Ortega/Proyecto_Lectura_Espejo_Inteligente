@@ -6,6 +6,7 @@ import api from "../services/api";
 import FaceMonitor from "../components/FaceMonitor";
 import BackgroundMusic from "../components/BackgroundMusic";
 import useDynamicTheme from "../hooks/useDynamicTheme";
+import { notifyError } from "../utils/toast";
 
 function ProsodicReading() {
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ function ProsodicReading() {
       }, 1000);
     } catch (err) {
       console.error("Error al acceder al micrófono:", err);
-      alert("No se pudo acceder al micrófono. Por favor, permite el acceso.");
+      notifyError("No se pudo acceder al micrófono. Por favor, permite el acceso.");
     }
   };
 
@@ -136,7 +137,7 @@ function ProsodicReading() {
       setShowResults(true);
     } catch (error) {
       console.error("Error al procesar lectura:", error);
-      alert("Error al procesar tu lectura. Por favor, intenta nuevamente.");
+      notifyError("Error al procesar tu lectura. Por favor, intenta nuevamente.");
     } finally {
       setIsAnalyzing(false);
     }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Camera from '../components/Camera';
 import api from '../services/api';
+import { notifyConnectionError, notifySuccess } from '../utils/toast';
 
 // -------------------------------------
 // MENSAJES ROTATIVOS
@@ -278,6 +279,7 @@ export default function Welcome() {
               signal: abortControllerRef.current.signal
             });
             console.log('✅ Sesión iniciada en DB');
+            notifySuccess('Sesión guardada');
           } catch (sessionError) {
             // Ignorar si fue cancelado
             if (sessionError.name === 'AbortError' || sessionError.name === 'CanceledError') {
@@ -285,6 +287,7 @@ export default function Welcome() {
               return;
             }
             console.warn('⚠️ Error al iniciar sesión en DB:', sessionError);
+            notifyConnectionError(sessionError, 'Error de conexión');
           }
 
           // NUEVO: Verificar montaje antes de redirigir

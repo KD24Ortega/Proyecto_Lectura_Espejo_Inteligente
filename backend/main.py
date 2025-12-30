@@ -25,6 +25,7 @@ from backend.voice.tts_service import TTSService
 from backend.db.database import Base, engine, get_db
 from backend.db import models
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from backend.assessments.phq_gad_service import (
     PHQ9_QUESTIONS, GAD7_QUESTIONS,
@@ -1668,28 +1669,46 @@ async def get_exercises(
     Query params:
     - category: "anxiety", "depression" o "both" (opcional)
     """
-    query = db.query(models.Exercise)
-    
+    # NOTA: en algunos entornos la tabla `exercises` puede tener enums con valores
+    # en minúsculas (anxiety/depression/both) y en otros con nombres de Enum
+    # (ANXIETY/DEPRESSION/BOTH). Para soportar ambos sin romper el ORM, usamos SQL crudo
+    # casteando enum->text y normalizando.
+    params: dict = {}
+    where_sql = ""
     if category:
-        query = query.filter(
-            (models.Exercise.category == category) | 
-            (models.Exercise.category == "both")
-        )
-    
-    exercises = query.all()
-    
+        params["category"] = str(category).strip().lower()
+        where_sql = "WHERE (lower(category::text) = :category OR lower(category::text) = 'both')"
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+              id,
+              title,
+              description,
+              lower(category::text) AS category,
+              lower(exercise_type::text) AS exercise_type,
+              duration_seconds,
+              instructions,
+              audio_guide_url
+            FROM exercises
+            """ + where_sql + " ORDER BY id ASC"
+        ),
+        params,
+    ).mappings().all()
+
     return [
         {
-            "id": ex.id,
-            "title": ex.title,
-            "description": ex.description,
-            "category": ex.category.value if hasattr(ex.category, 'value') else ex.category,
-            "exercise_type": ex.exercise_type.value if hasattr(ex.exercise_type, 'value') else ex.exercise_type,
-            "duration_seconds": ex.duration_seconds,
-            "instructions": ex.instructions,
-            "audio_guide_url": ex.audio_guide_url
+            "id": r["id"],
+            "title": r["title"],
+            "description": r["description"],
+            "category": r["category"],
+            "exercise_type": r["exercise_type"],
+            "duration_seconds": r["duration_seconds"],
+            "instructions": r["instructions"],
+            "audio_guide_url": r["audio_guide_url"],
         }
-        for ex in exercises
+        for r in rows
     ]
 
 
@@ -1699,22 +1718,37 @@ async def get_exercise(
     db: Session = Depends(get_db)
 ):
     """Obtiene un ejercicio específico por ID"""
-    exercise = db.query(models.Exercise).filter(
-        models.Exercise.id == exercise_id
-    ).first()
-    
-    if not exercise:
+    row = db.execute(
+        text(
+            """
+            SELECT
+              id,
+              title,
+              description,
+              lower(category::text) AS category,
+              lower(exercise_type::text) AS exercise_type,
+              duration_seconds,
+              instructions,
+              audio_guide_url
+            FROM exercises
+            WHERE id = :id
+            """
+        ),
+        {"id": exercise_id},
+    ).mappings().first()
+
+    if not row:
         raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
-    
+
     return {
-        "id": exercise.id,
-        "title": exercise.title,
-        "description": exercise.description,
-        "category": exercise.category.value if hasattr(exercise.category, 'value') else exercise.category,
-        "exercise_type": exercise.exercise_type.value if hasattr(exercise.exercise_type, 'value') else exercise.exercise_type,
-        "duration_seconds": exercise.duration_seconds,
-        "instructions": exercise.instructions,
-        "audio_guide_url": exercise.audio_guide_url
+        "id": row["id"],
+        "title": row["title"],
+        "description": row["description"],
+        "category": row["category"],
+        "exercise_type": row["exercise_type"],
+        "duration_seconds": row["duration_seconds"],
+        "instructions": row["instructions"],
+        "audio_guide_url": row["audio_guide_url"],
     }
 
 
@@ -1779,11 +1813,12 @@ async def create_voice_session(
         if not user:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-        # Validar ejercicio
-        exercise = db.query(models.Exercise).filter(
-            models.Exercise.id == exercise_id
+        # Validar ejercicio (sin cargar ORM: evita fallos por enums legacy en la tabla exercises)
+        exercise_row = db.execute(
+            text("SELECT id FROM exercises WHERE id = :id"),
+            {"id": exercise_id},
         ).first()
-        if not exercise:
+        if not exercise_row:
             raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
         
         # Leer y analizar audio
