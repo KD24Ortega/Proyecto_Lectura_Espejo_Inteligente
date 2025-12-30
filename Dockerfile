@@ -2,6 +2,7 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
+ENV WEB_CONCURRENCY=4
 
 WORKDIR /app
 
@@ -66,4 +67,4 @@ EXPOSE 8000
 # ============================================
 # COMANDO DE INICIO - EXPANDE PORT
 # ============================================
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-4}"]
