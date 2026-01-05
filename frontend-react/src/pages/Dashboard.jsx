@@ -7,6 +7,10 @@ import BackgroundMusic from '../components/BackgroundMusic';
 import useDynamicTheme from "../hooks/useDynamicTheme";
 import UnifiedModal from "../components/UnifiedModal";
 
+// eslint no-unused-vars does not always detect JSX member usage (e.g. <motion.div />) reliably.
+// This keeps the import considered “used” without changing runtime behavior.
+const MOTION = motion;
+
 /* =====================================================
    CONSTANTES / HELPERS (fuera del componente)
 ===================================================== */
@@ -17,20 +21,6 @@ const MAX_GAD7 = 21;
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 const safeUpper = (v) => (typeof v === "string" ? v.toUpperCase() : v);
-
-const getMaxVoiceRiskLevel = (sessions) => {
-  const arr = Array.isArray(sessions) ? sessions : [];
-  if (!arr.length) return "LOW";
-
-  const order = { LOW: 0, MODERATE: 1, HIGH: 2 };
-  let max = "LOW";
-  for (const s of arr) {
-    const r = safeUpper(s?.risk_level) || "LOW";
-    const rr = order[r] !== undefined ? r : "LOW";
-    if (order[rr] > order[max]) max = rr;
-  }
-  return max;
-};
 
 const safeNum = (v, fallback = 0) => {
   const n = Number(v);
