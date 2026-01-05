@@ -32,6 +32,9 @@ function GAD7() {
   // Regla de calendario: lunes (1) y viernes (5)
   const isRequiredDay = useRef(false);
 
+  // ✅ En lunes/viernes, solo es obligatorio hasta completar el par del día
+  const hasBothTodayRef = useRef(false);
+
   // ✅ Bloqueo de envío (evita doble submit)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -241,6 +244,41 @@ function GAD7() {
       const hasGad7 = response.data.gad7 && response.data.gad7.score !== null;
       const hasPhq9 = response.data.phq9 && response.data.phq9.score !== null;
       setHasBothResults(Boolean(hasGad7 && hasPhq9));
+
+      // Regla de pares por día
+      const todayStatus = response.data?.today_status;
+      const phqCount = Number(todayStatus?.phq9_count ?? 0);
+      const gadCount = Number(todayStatus?.gad7_count ?? 0);
+
+      hasBothTodayRef.current = phqCount >= 1 && gadCount >= 1;
+
+      // Si GAD-7 ya está "adelantado" hoy, no permitir repetir: primero PHQ-9
+      if (gadCount > phqCount) {
+        showModalMessage({
+          type: "info",
+          title: "Completa el par de hoy",
+          message:
+            "Ya completaste GAD-7 hoy. Para mantener los resultados en pares, primero completa PHQ-9.",
+          onConfirm: () => {
+            closeModal();
+            navigate("/phq9", { replace: true });
+          },
+        });
+        setIsFirstTest(!hasGad7);
+        setCheckingFirstTest(false);
+        return;
+      }
+
+      // Si ya hay al menos un PHQ-9 y un GAD-7 hoy, avisar (pero permitir repetir)
+      if (phqCount >= 1 && gadCount >= 1 && phqCount === gadCount) {
+        showModalMessage({
+          type: "info",
+          title: "Tests ya completados hoy",
+          message:
+            "Hoy ya completaste PHQ-9 y GAD-7. Si quieres repetirlos, puedes hacerlo, pero recuerda completar ambos para mantener el par.",
+          onConfirm: closeModal,
+        });
+      }
       
       setIsFirstTest(!hasGad7); // Es primera vez si NO tiene GAD-7
       setCheckingFirstTest(false);
@@ -498,7 +536,8 @@ function GAD7() {
     if (isSubmitting) return;
     
     // Si es primera vez o es día obligatorio (lunes/viernes), no permitir salir
-    if (isFirstTest || isRequiredDay.current) {
+    const mustCompleteToday = isRequiredDay.current && !hasBothTodayRef.current;
+    if (isFirstTest || mustCompleteToday) {
       showModalMessage({
         type: "info",
         title: "Test obligatorio",

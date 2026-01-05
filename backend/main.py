@@ -1036,11 +1036,62 @@ def phq9_questions():
     return {"questions": PHQ9_QUESTIONS}
 
 
+def _utc_day_bounds(day_utc: Optional[date] = None) -> tuple[datetime, datetime]:
+    d = day_utc or datetime.utcnow().date()
+    start = datetime(d.year, d.month, d.day)
+    end = start + timedelta(days=1)
+    return start, end
+
+
+def _get_assessment_counts_for_day(db: Session, user_id: int, day_utc: Optional[date] = None) -> dict:
+    start, end = _utc_day_bounds(day_utc)
+
+    phq9_count = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "phq9",
+        models.Assessment.created_at >= start,
+        models.Assessment.created_at < end,
+    ).count()
+
+    gad7_count = db.query(models.Assessment).filter(
+        models.Assessment.user_id == user_id,
+        models.Assessment.type == "gad7",
+        models.Assessment.created_at >= start,
+        models.Assessment.created_at < end,
+    ).count()
+
+    pairs_completed = int(min(phq9_count, gad7_count))
+    has_both_today = pairs_completed >= 1
+
+    return {
+        "date_utc": (day_utc or datetime.utcnow().date()).isoformat(),
+        "phq9_count": int(phq9_count),
+        "gad7_count": int(gad7_count),
+        "pairs_completed": pairs_completed,
+        "has_both_today": has_both_today,
+        "next_required_for_pair": (
+            "gad7" if phq9_count > gad7_count else "phq9" if gad7_count > phq9_count else None
+        ),
+    }
+
+
 @app.post("/phq9/submit")
 def phq9_submit(
     payload: AssessmentRequest,
     db: Session = Depends(get_db)
 ):
+
+    # Regla de pares por día:
+    # - Se permite completar PHQ-9 aunque GAD-7 aún no exista hoy.
+    # - Pero NO se permite repetir PHQ-9 si ya hay un PHQ-9 "pendiente" de emparejar hoy.
+    today_counts = _get_assessment_counts_for_day(db, payload.user_id)
+    if today_counts["phq9_count"] > today_counts["gad7_count"]:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ya completaste PHQ-9 hoy. Para mantener el par del día, primero completa GAD-7."
+            ),
+        )
 
     result = phq9_score(payload.responses)
 
@@ -1070,6 +1121,16 @@ def gad7_submit(
     payload: AssessmentRequest,
     db: Session = Depends(get_db)
 ):
+
+    # Regla de pares por día (simétrica a PHQ-9)
+    today_counts = _get_assessment_counts_for_day(db, payload.user_id)
+    if today_counts["gad7_count"] > today_counts["phq9_count"]:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ya completaste GAD-7 hoy. Para mantener el par del día, primero completa PHQ-9."
+            ),
+        )
 
     result = gad7_score(payload.responses)
 
@@ -1432,6 +1493,10 @@ async def get_last_assessments(user_id: int, db: Session = Depends(get_db)):
         models.Assessment.user_id == user_id,
         models.Assessment.type == "gad7"
     ).order_by(models.Assessment.created_at.desc()).first()
+
+    today_counts = _get_assessment_counts_for_day(db, user_id)
+    utc_weekday = datetime.utcnow().date().weekday()  # 0=Lunes ... 6=Domingo
+    is_required_day_utc = utc_weekday in (0, 4)
     
     return {
         "phq9": {
@@ -1443,7 +1508,11 @@ async def get_last_assessments(user_id: int, db: Session = Depends(get_db)):
             "score": last_gad7.score if last_gad7 else None,
             "severity": last_gad7.severity if last_gad7 else None,
             "timestamp": last_gad7.created_at.isoformat() if last_gad7 else None
-        }
+        },
+        "today_status": {
+            **today_counts,
+            "is_required_day_utc": is_required_day_utc,
+        },
     }
 
 

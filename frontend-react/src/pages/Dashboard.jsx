@@ -617,13 +617,36 @@ function Dashboard() {
     return texts[status] || status;
   }, []);
 
-  const getTrendIcon = useCallback((trend) => {
-    if (trend === "improving")
-      return { icon: "📈", text: "Mejorando", color: "text-green-600" };
-    if (trend === "worsening")
-      return { icon: "📊", text: "Requiere atención", color: "text-amber-600" };
-    return { icon: "➡️", text: "Estable", color: "text-gray-600" };
+  const normalizeTrend = useCallback((trend) => {
+    const t = String(trend || "").toLowerCase();
+    if (t.startsWith("improving")) return "improving";
+    if (t.startsWith("worsening")) return "worsening";
+    if (t === "stable") return "stable";
+    if (t === "insufficient_data") return "insufficient_data";
+    return "stable";
   }, []);
+
+  const getTrendIcon = useCallback((trend) => {
+    const normalized = normalizeTrend(trend);
+
+    if (normalized === "improving") {
+      return { icon: "📈", text: "¡Vas muy bien!", color: "text-green-600" };
+    }
+
+    if (normalized === "worsening") {
+      return { icon: "📊", text: "Vamos paso a paso.", color: "text-amber-600" };
+    }
+
+    if (normalized === "insufficient_data") {
+      return {
+        icon: "ℹ️",
+        text: "Completa más tests para ver tu tendencia.",
+        color: "text-gray-600",
+      };
+    }
+
+    return { icon: "➡️", text: "¡Sigue así!", color: "text-gray-600" };
+  }, [normalizeTrend]);
 
   const showInfoModal = useCallback((type) => {
     const def = INFO_CONTENTS[type];

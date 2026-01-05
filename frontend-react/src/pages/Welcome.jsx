@@ -305,11 +305,22 @@ export default function Welcome() {
             else if (!hasGad7) nextRoute = '/gad7';
             else if (isRequiredDay) {
               // Lunes/Viernes: obligar a completar hoy
-              const phqDoneToday = isSameLocalDay(phq?.timestamp);
-              const gadDoneToday = isSameLocalDay(gad?.timestamp);
+              const todayStatus = lastAssessments?.data?.today_status;
+              const phqCount = Number(todayStatus?.phq9_count ?? 0);
+              const gadCount = Number(todayStatus?.gad7_count ?? 0);
 
-              if (!phqDoneToday) nextRoute = '/phq9';
-              else if (!gadDoneToday) nextRoute = '/gad7';
+              // Si el backend no envía conteos (o vienen 0), caemos al método anterior
+              if (!todayStatus) {
+                const phqDoneToday = isSameLocalDay(phq?.timestamp);
+                const gadDoneToday = isSameLocalDay(gad?.timestamp);
+
+                if (!phqDoneToday) nextRoute = '/phq9';
+                else if (!gadDoneToday) nextRoute = '/gad7';
+              } else {
+                // 100% obligatorio: si falta cualquiera de los dos hoy, redirigir al que falta
+                if (phqCount < 1) nextRoute = '/phq9';
+                else if (gadCount < 1) nextRoute = '/gad7';
+              }
             }
           } catch (assessmentsError) {
             if (assessmentsError.name === 'AbortError' || assessmentsError.name === 'CanceledError') {

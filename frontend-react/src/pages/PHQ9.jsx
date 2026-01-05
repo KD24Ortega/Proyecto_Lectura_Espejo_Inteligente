@@ -33,6 +33,9 @@ function PHQ9() {
   // Regla de calendario: lunes (1) y viernes (5)
   const isRequiredDay = useRef(false);
 
+  // ✅ En lunes/viernes, solo es obligatorio hasta completar el par del día
+  const hasBothTodayRef = useRef(false);
+
   // ✅ evita doble envío
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -252,6 +255,41 @@ function PHQ9() {
       const hasPhq9 = response.data.phq9 && response.data.phq9.score !== null;
       const hasGad7 = response.data.gad7 && response.data.gad7.score !== null;
       setHasBothResults(Boolean(hasPhq9 && hasGad7));
+
+      // Regla de pares por día (opcional salvo lunes/viernes donde ya se fuerza desde Welcome/SessionManager)
+      const todayStatus = response.data?.today_status;
+      const phqCount = Number(todayStatus?.phq9_count ?? 0);
+      const gadCount = Number(todayStatus?.gad7_count ?? 0);
+
+      hasBothTodayRef.current = phqCount >= 1 && gadCount >= 1;
+
+      // Si PHQ-9 ya está "adelantado" hoy, no permitir repetir: primero GAD-7
+      if (phqCount > gadCount) {
+        showModalMessage({
+          type: "info",
+          title: "Completa el par de hoy",
+          message:
+            "Ya completaste PHQ-9 hoy. Para mantener los resultados en pares, primero completa GAD-7.",
+          onConfirm: () => {
+            closeModal();
+            navigate("/gad7", { replace: true });
+          },
+        });
+        setIsFirstTest(!hasPhq9);
+        setCheckingFirstTest(false);
+        return;
+      }
+
+      // Si ya hay al menos un PHQ-9 y un GAD-7 hoy, avisar (pero permitir repetir)
+      if (phqCount >= 1 && gadCount >= 1 && phqCount === gadCount) {
+        showModalMessage({
+          type: "info",
+          title: "Tests ya completados hoy",
+          message:
+            "Hoy ya completaste PHQ-9 y GAD-7. Si quieres repetirlos, puedes hacerlo, pero recuerda completar ambos para mantener el par.",
+          onConfirm: closeModal,
+        });
+      }
       
       setIsFirstTest(!hasPhq9); // Es primera vez si NO tiene PHQ-9
       setCheckingFirstTest(false);
@@ -506,7 +544,8 @@ function PHQ9() {
     if (isSubmitting) return;
     
     // Si es primera vez o es día obligatorio (lunes/viernes), no permitir salir
-    if (isFirstTest || isRequiredDay.current) {
+    const mustCompleteToday = isRequiredDay.current && !hasBothTodayRef.current;
+    if (isFirstTest || mustCompleteToday) {
       showModalMessage({
         type: "info",
         title: "Test obligatorio",

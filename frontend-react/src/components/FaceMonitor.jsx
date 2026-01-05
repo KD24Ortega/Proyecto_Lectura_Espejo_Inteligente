@@ -359,7 +359,7 @@ function FaceMonitor({ isActive = true }) {
             initial={{ y: -30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -30, opacity: 0 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-elevated font-bold z-[999]"
+            className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-elevated font-bold z-[999]"
           >
             ⏱️ Verificando presencia... {countdown}s
           </motion.div>

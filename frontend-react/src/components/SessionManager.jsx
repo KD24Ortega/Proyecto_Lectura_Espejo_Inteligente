@@ -155,6 +155,23 @@ export default function SessionManager({ children }) {
 
         if (!enforce) return;
 
+        const todayStatus = res?.data?.today_status;
+        const phqCount = Number(todayStatus?.phq9_count ?? 0);
+        const gadCount = Number(todayStatus?.gad7_count ?? 0);
+
+        if (todayStatus) {
+          if (phqCount < 1) {
+            navigate('/phq9', { replace: true });
+            return;
+          }
+          if (gadCount < 1) {
+            navigate('/gad7', { replace: true });
+            return;
+          }
+          return;
+        }
+
+        // Fallback si backend no trae today_status
         const phqDoneToday = isSameLocalDay(phq?.timestamp, today);
         const gadDoneToday = isSameLocalDay(gad?.timestamp, today);
 
