@@ -87,6 +87,16 @@ function Results() {
   // ============================================
   // VERIFICAR ESTADO DE LOS TESTS
   // ============================================
+  const getLocalDateKey = (dateLike) => {
+    const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+    if (Number.isNaN(d.getTime())) return null;
+
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
   const checkTestStatus = async (currentTestType) => {
     try {
       const userId = localStorage.getItem("user_id");
@@ -102,20 +112,22 @@ function Results() {
       const hasPhq9Ever = response.data.phq9 && response.data.phq9.score !== null;
       const hasGad7Ever = response.data.gad7 && response.data.gad7.score !== null;
 
-      // ✅ Verificar si los tests son de HOY
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      
-      let phq9Today = false;
-      let gad7Today = false;
-      
-      if (hasPhq9Ever && response.data.phq9.timestamp) {
-        const phq9Date = new Date(response.data.phq9.timestamp).toISOString().split('T')[0];
-        phq9Today = phq9Date === today;
-      }
-      
-      if (hasGad7Ever && response.data.gad7.timestamp) {
-        const gad7Date = new Date(response.data.gad7.timestamp).toISOString().split('T')[0];
-        gad7Today = gad7Date === today;
+      // ✅ Verificar si los tests son de HOY (evitar problemas de zona horaria)
+      // Preferir el conteo del backend (`today_status`), y si no viene, caer a comparación de fecha LOCAL.
+      const todayStatus = response.data?.today_status;
+      const phqCount = Number(todayStatus?.phq9_count ?? NaN);
+      const gadCount = Number(todayStatus?.gad7_count ?? NaN);
+
+      let phq9Today = Number.isFinite(phqCount) ? phqCount >= 1 : false;
+      let gad7Today = Number.isFinite(gadCount) ? gadCount >= 1 : false;
+
+      if (!Number.isFinite(phqCount) || !Number.isFinite(gadCount)) {
+        const today = getLocalDateKey(new Date());
+        const phq9DateKey = hasPhq9Ever ? getLocalDateKey(response.data?.phq9?.timestamp) : null;
+        const gad7DateKey = hasGad7Ever ? getLocalDateKey(response.data?.gad7?.timestamp) : null;
+
+        phq9Today = Boolean(phq9DateKey && today && phq9DateKey === today);
+        gad7Today = Boolean(gad7DateKey && today && gad7DateKey === today);
       }
 
       // ✅ LÓGICA CORRECTA:
@@ -243,6 +255,12 @@ function Results() {
   };
 
   const handleContinue = () => {
+    // Safety: if both tests are already complete, never loop back into questionnaires.
+    if (!isFirstEver && !needsOtherTest) {
+      navigate("/dashboard");
+      return;
+    }
+
     if (testType === "phq9") {
       navigate("/gad7");
     } else {

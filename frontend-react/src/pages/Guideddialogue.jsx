@@ -8,6 +8,8 @@ import BackgroundMusic from "../components/BackgroundMusic";
 import useDynamicTheme from "../hooks/useDynamicTheme";
 import { notifyError } from "../utils/toast";
 
+const MOTION = motion;
+
 function GuidedDialogue() {
   const navigate = useNavigate();
 
